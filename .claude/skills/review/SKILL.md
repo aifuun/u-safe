@@ -1,0 +1,387 @@
+---
+name: review
+description: |
+  Conduct code review with quality checks, architecture validation, and framework compliance.
+  TRIGGER when: user wants code reviewed ("review my code", "check this PR", "review these changes", "quality check").
+  Dynamically detects project configuration (Pillars, architecture rules, ADRs) and adapts checks accordingly.
+  DO NOT TRIGGER when: user wants to create/write code (not reviewing), or just wants explanations without quality assessment.
+---
+
+# Code Review - Quality and Architecture Validation
+
+Automated code review that adapts to your project's configuration, checking quality, architecture, Pillars, ADRs, security, and performance.
+
+## Overview
+
+This skill provides comprehensive code review by:
+
+**What it does:**
+1. Runs quality gates (types, tests, linting)
+2. Validates architecture patterns (dynamically detected)
+3. Checks Pillar compliance (based on project profile)
+4. Verifies ADR compliance (scans docs/adr/)
+5. Identifies security vulnerabilities
+6. Detects performance issues
+7. Writes review status for /finish-issue integration
+
+**Why it's needed:**
+Manual code review is time-consuming and inconsistent. This skill automates quality checks while adapting to each project's specific configuration (minimal vs full-stack, different architecture patterns, custom ADRs).
+
+**Key feature - Dynamic Detection:**
+- No hardcoded assumptions
+- Reads project profile to determine which Pillars to check
+- Scans architecture rules from .claude/rules/architecture/
+- Discovers ADRs from docs/adr/
+- Different projects → different checks
+
+## Review Workflow
+
+### Step 1: Create Todo List
+
+**Initialize review tracking** using TaskCreate:
+
+```
+Task #1: Run quality gates (types, tests, linting)
+Task #2: Check architecture patterns (blocked by #1)
+Task #3: Verify Pillar compliance (blocked by #1)
+Task #4: Check ADR compliance (blocked by #1)
+Task #5: Security scan (blocked by #1)
+Task #6: Performance check (blocked by #1)
+Task #7: Write review status file (blocked by #2-6)
+```
+
+After creating tasks, proceed with review execution.
+
+## Review Dimensions
+
+### 1. Quality Gates
+
+Basic quality checks that every project needs:
+
+```
+✅ Types valid (TypeScript compiles)
+✅ Tests passing
+✅ Linting passes
+✅ No obvious bugs
+```
+
+**How to check:**
+```bash
+# TypeScript
+npx tsc --noEmit
+
+# Tests
+npm test
+
+# Linting
+npm run lint
+```
+
+### 2. Architecture Validation
+
+**Dynamic detection** - scans `.claude/rules/architecture/` to find which rules are enabled:
+
+```
+Process:
+1. List files in .claude/rules/architecture/
+2. For each rule file found, check compliance
+3. Common rules to look for:
+   - clean-architecture.md → Check module boundaries
+   - dependency-rules.md → Check dependency direction
+   - layer-boundaries.md → Check layer separation
+   - naming-conventions.md → Check naming patterns
+   - error-handling.md → Check error patterns
+
+If no architecture rules found:
+  ℹ️ Skip architecture checks (not configured for this project)
+```
+
+### 3. Pillar Compliance
+
+**Dynamic detection** - determines which Pillars to check based on project profile:
+
+```
+Detection Method:
+1. Read .framework-install file for profile
+   OR scan .prot/pillars/ for installed Pillars
+2. Map profile to Pillars:
+   - minimal: A, B, K (3 Pillars)
+   - node-lambda: A, B, K, M, Q, R (6 Pillars)
+   - react-aws: A, B, K, L, M, Q, R (7 Pillars)
+   - custom: Whatever exists in .prot/pillars/
+
+3. Only check enabled Pillars
+
+Example checks (if enabled):
+✅ Pillar A (Nominal Types) - Branded types for IDs
+✅ Pillar B (Airlock) - Schema validation at boundaries
+✅ Pillar K (Testing) - Test pyramid structure
+✅ Pillar M (Saga) - Transaction compensation
+✅ Pillar Q (Idempotency) - Idempotent operations
+✅ Pillar R (Logging) - Semantic logging with traceId
+```
+
+**Important:** Only check Pillars enabled in THIS project. Don't assume all Pillars exist.
+
+### 4. ADR Compliance
+
+**Dynamic scanning** - discovers and checks ADRs specific to this project:
+
+```
+Process:
+1. Scan docs/adr/ (or docs/ADRs/) for all *.md files
+2. Extract ADR number, title, and requirements
+3. Identify which ADRs are relevant to changed code
+4. Check compliance for each relevant ADR
+5. Report violations with file:line references
+
+Example (project-specific):
+✅ ADR-001 (Official Skill Patterns)
+   Check: SKILL.md has YAML frontmatter
+   Check: Description has TRIGGER conditions
+
+⚠️ ADR-009 (Zustand Vanilla Store)
+   Violation: src/stores/taskStore.ts:5
+   Issue: Using create() instead of createStore()
+   Fix: import { createStore } from 'zustand/vanilla'
+
+When no ADRs found:
+  ℹ️ No ADRs in docs/adr/ - skip ADR checks
+```
+
+**Key point:** ADR checks are 100% project-specific. Different projects have different ADRs.
+
+### 5. Security
+
+Common security checks:
+
+```
+✅ Input validation present
+✅ No hardcoded secrets or API keys
+✅ SQL injection prevention (parameterized queries)
+✅ CSRF protection (if web app)
+✅ XSS prevention (escaped output)
+```
+
+### 6. Performance
+
+Basic performance checks:
+
+```
+✅ No N+1 queries
+✅ Proper caching strategy
+✅ Reasonable algorithm complexity (no O(n²) in hot paths)
+✅ Lazy loading where appropriate
+```
+
+## Review Output
+
+Generate a structured review report:
+
+```markdown
+# Code Review: [Feature Name]
+
+## Summary
+- Files: 8 changed, 150 insertions, 50 deletions
+- Quality Score: 85/100
+- Status: ⚠️ Approved with recommendations
+
+## ✅ Strengths
+1. Clear schema validation at API boundaries
+2. Comprehensive test coverage (88%)
+3. Good error messages with context
+
+## Configuration Detected
+- Profile: react-aws (7 Pillars enabled)
+- Architecture: Clean Architecture + Layer Boundaries
+- ADRs: 3 found in docs/adr/
+
+## Quality Gates
+✅ TypeScript compiles without errors
+✅ All tests passing (45/45)
+✅ Linting passed
+✅ No obvious bugs detected
+
+## Pillar Compliance (7/7 enabled)
+✅ Pillar A (Nominal Types): TaskId, UserId use branded types
+✅ Pillar B (Airlock): Zod validation at boundaries
+✅ Pillar K (Testing): Good test pyramid
+✅ Pillar L (Headless): UI logic separated
+✅ Pillar M (Saga): Transaction patterns correct
+✅ Pillar Q (Idempotency): Operations idempotent
+✅ Pillar R (Logging): Semantic logging present
+
+## ADR Compliance (3 ADRs checked)
+✅ ADR-005 (Identity Model): Branded types used
+⚠️ ADR-009 (Zustand Store): Violation in taskStore.ts:5
+✅ ADR-007 (AWS Deployment): CDK patterns followed
+
+## ⚠️ Issues Found
+
+### Blocking (must fix before merge)
+None
+
+### Non-blocking (recommendations)
+1. **ADR-009 Violation** (src/stores/taskStore.ts:5)
+   - Using create() instead of createStore()
+   - Fix: Import from 'zustand/vanilla'
+   - Impact: Services cannot access store
+
+2. **Performance** (src/loaders/userLoader.ts:23)
+   - N+1 query detected in user loading
+   - Suggestion: Add DataLoader or batch queries
+
+## 🚀 Suggestions
+1. Fix ADR-009 violation before merge
+2. Add caching for user queries
+3. Consider extracting validation logic to shared utility
+
+## Approval
+⚠️ Approved with recommendations
+- Can merge after fixing ADR-009
+- Other issues are non-blocking
+```
+
+## Approval Levels
+
+**✅ Green (Approved)**
+- All quality checks pass
+- Architecture sound
+- Pillars correctly implemented
+- ADRs complied with
+- No security issues
+- Ready to merge
+
+**⚠️ Yellow (Approved with recommendations)**
+- Minor issues that don't block merge
+- Non-critical ADR deviations (with justification)
+- Can be addressed in follow-up
+- Merge allowed with observations
+
+**❌ Red (Changes required)**
+- Must fix before merge
+- Security vulnerabilities
+- Breaking changes
+- Architecture violations
+- Critical ADR violations
+
+## Integration with /finish-issue
+
+After review, automatically write status to `.claude/.review-status.json`:
+
+```json
+{
+  "timestamp": "2026-03-05T10:30:00Z",
+  "status": "approved_with_recommendations",
+  "score": 85,
+  "files_reviewed": ["src/auth/*.ts", "src/services/*.ts"],
+  "issues_count": {
+    "blocking": 0,
+    "non_blocking": 2
+  },
+  "valid_until": "2026-03-05T12:00:00Z"
+}
+```
+
+**Status values:**
+- `"approved"` - All green, no issues
+- `"approved_with_recommendations"` - Yellow flags, can merge
+- `"issues_found"` - Red flags, must fix
+
+**Validity:** 90 minutes from review completion
+
+**Workflow:**
+```
+/review              # Review code, write status
+/finish-issue #N     # Reads status, skips re-review if valid
+```
+
+## Usage Examples
+
+### Example 1: Review Current Changes
+
+**User says:**
+> "review my code changes"
+
+**What happens:**
+1. Detect project config (profile, rules, ADRs)
+2. Run quality gates
+3. Check architecture, Pillars, ADRs
+4. Generate report
+5. Write .review-status.json
+6. Show approval status
+
+### Example 2: Review Specific Files
+
+**User says:**
+> "review src/auth/ for security issues"
+
+**What happens:**
+1. Focus on src/auth/ directory
+2. Run security checks
+3. Check relevant Pillars (B for validation)
+4. Check relevant ADRs
+5. Report findings
+
+### Example 3: Pre-PR Review
+
+**User says:**
+> "check if this is ready for PR"
+
+**What happens:**
+1. Full review all dimensions
+2. Check quality gates
+3. Validate all applicable patterns
+4. Provide go/no-go recommendation
+5. Write status for /finish-issue
+
+## Best Practices
+
+1. **Run before /finish-issue** - Catches issues early
+2. **Trust dynamic detection** - Skill adapts to your project
+3. **Fix blocking issues** - Don't merge with red flags
+4. **Learn from reviews** - Improves code quality over time
+5. **Re-review after fixes** - Status expires in 90 minutes
+
+## Task Management
+
+**After completing each review dimension**, update progress:
+
+```
+Quality gates done → Update Task #1
+Architecture validated → Update Task #2
+Pillars checked → Update Task #3
+ADRs verified → Update Task #4
+Security scanned → Update Task #5
+Performance checked → Update Task #6
+Status file written → Update Task #7
+```
+
+Provides real-time visibility of review progress.
+
+## Final Verification
+
+**Before completing review**, verify:
+
+```
+- [ ] All 7 review tasks completed
+- [ ] Status file written (.claude/.review-status.json)
+- [ ] Approval level determined (✅/⚠️/❌)
+- [ ] All blocking issues documented
+- [ ] Score calculated (0-100)
+- [ ] Valid until timestamp set (90 min)
+```
+
+Missing items indicate incomplete review.
+
+## Related Skills
+
+- **/finish-issue** - Uses review status to skip re-review
+- **/pillar** - Deep dive into specific Pillar
+- **/adr** - Create or check Architecture Decision Records
+
+---
+
+**Version:** 2.1.0
+**Pattern:** Tool-Reference (guides review process)
+**Compliance:** ADR-001 Section 4 ✅
