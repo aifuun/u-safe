@@ -35,120 +35,51 @@
 
 ## Context
 
-U-Safe 需要在 U 盘上加密存储财务数据，面临特殊挑战：
-- **意外断电/拔出**: U 盘可能在写入时被拔出，需保证数据不损坏
-- **大量历史记录**: 用户可能有数千条交易记录，需快速加密/解密
-- **低配置设备**: 需要在 8GB RAM 的设备上流畅运行
-- **篡改检测**: 必须能检测数据是否被恶意修改（完整性）
-
-传统加密方案的问题：
-- **AES-CBC**: 无认证，无法检测篡改，需额外 HMAC（复杂且易错）
-- **全文件加密**: 大文件会占用大量内存（1GB 文件需 1GB+ RAM）
-- **简单 KDF**: 如 PBKDF2 易受 GPU 暴力破解
+U-Safe 在 U 盘上加密财务数据，面临：意外断电/拔出、大量历史记录、低配设备 (8GB RAM)、篡改检测需求。传统方案问题：AES-CBC 无认证需额外 HMAC、全文件加密占用大量内存、PBKDF2 易受 GPU 破解。
 
 ## Decision Details
 
-### 1. 为什么选择 AES-256-GCM（而非 AES-CBC 或 ChaCha20）
+### 1. 为什么选择 AES-256-GCM
 
-**AES-GCM 优势**:
-- **AEAD**: Authenticated Encryption with Associated Data，一次操作完成加密+认证
-- **硬件加速**: Intel/AMD CPU 自 2010 年起支持 AES-NI 指令集（~10x 性能提升）
-- **并行化**: GCM 模式可并行加密，CBC 必须串行
+- **AEAD**: 一次操作完成加密+认证，避免 Encrypt-then-MAC 易错模式
+- **硬件加速**: Intel/AMD AES-NI 指令集（2010 年起），~10x 性能提升
+- **性能对比** (Intel i5, 100MB): GCM 50ms vs CBC+HMAC 120ms vs ChaCha20 80ms
+- **vs ChaCha20**: x86 平台无硬件加速，目标平台 (Windows/Mac/Linux) 均有 AES-NI
 
-**vs AES-CBC**:
-- CBC 需额外 HMAC 保证完整性（Encrypt-then-MAC 模式，易出错）
-- CBC 填充攻击风险（Padding Oracle Attack）
+### 2. 为什么采用 64KB 分块
 
-**vs ChaCha20-Poly1305**:
-- ChaCha20 无硬件加速（ARM 平台优势，x86 劣势）
-- U-Safe 目标平台（Windows/Mac/Linux x86）均有 AES-NI
-
-**性能对比**（Intel Core i5, 100MB 文件）:
-- AES-256-GCM (AES-NI): ~50 ms
-- AES-256-CBC + HMAC: ~120 ms
-- ChaCha20-Poly1305: ~80 ms
-
-### 2. 为什么采用 64KB 分块流式加密
-
-**分块策略**:
-- 每个文件分割为 64KB 块，独立加密
-- 每块有独立 nonce（12 bytes），防重放攻击
-- 每块有独立 MAC（16 bytes），可单独验证完整性
-
-**64KB 的理由**:
-- **内存友好**: 加密/解密单块仅需 ~64KB 内存（vs 全文件加密需文件大小内存）
-- **性能平衡**: 太小（如 4KB）则 MAC 开销大，太大（如 1MB）则内存占用高
-- **断点续传**: 未来可实现按块解密（只解密需要的块）
-
-**原子写入**:
-- 先写临时文件（.tmp）
-- 完成后原子重命名（atomic rename）
-- U 盘拔出时，要么有完整文件，要么无新文件（不会有半成品）
+- **内存友好**: 单块 64KB vs 全文件内存占用
+- **性能平衡**: 避免 4KB 块 MAC 开销大、1MB 块内存占用高
+- **原子写入**: 临时文件 → 分块写入 + fsync → atomic rename，U 盘拔出时要么完整旧文件要么完整新文件
 
 ### 3. 密钥管理策略
 
-**Argon2id 选择**:
-- **内存硬度**: 需要大量内存计算，抵抗 GPU/ASIC 暴力破解
-- **侧信道防护**: Argon2id 混合 Argon2i（防时间侧信道）和 Argon2d（防 trade-off 攻击）
-- **OWASP 推荐**: 2023 年密码哈希竞赛冠军，行业标准
+- **Argon2id**: 内存硬度抵抗 GPU/ASIC 暴力破解，混合 Argon2i/d 防侧信道，OWASP 2023 推荐
+- **参数**: 64MB 内存 + 3 次迭代（~0.5s 解密延迟）+ 单线程
+- **密码要求**: 最短 12 字符，zxcvbn 评估强度
+- **内存保护**: Rust `zeroize` crate 清零密钥，mlock 防 swap
 
-**参数选择**:
-- Memory: 64 MB（在低配设备可接受）
-- Iterations: 3（平衡安全性和用户体验，~0.5s 解密延迟）
-- Parallelism: 1（单线程，避免复杂度）
+### 4. U 盘意外拔出保护
 
-**密码强度要求**:
-- 最短 12 字符（强制）
-- 包含大小写、数字、符号（建议）
-- 使用 zxcvbn 库评估强度
-
-**内存保护**:
-- 使用 Rust `zeroize` crate，密钥使用后立即清零
-- 避免密钥被 swap 到磁盘（mlock）
-
-### 4. U 盘意外拔出的数据完整性
-
-**写入流程**:
-1. 生成临时文件名（原文件名 + `.tmp.{timestamp}`）
-2. 加密并写入临时文件（分块写入，每块 fsync）
-3. 关闭文件句柄
-4. 原子重命名：`rename(temp, target)`（操作系统保证原子性）
-
-**完整性验证**:
-- 每块有 GCM MAC（16 bytes），读取时验证
-- 整个文件有元数据（文件大小、块数、版本），存储在文件头
-- 启动时扫描，发现损坏文件标记为 corrupted
-
-**最坏情况**:
-- U 盘在步骤 2 拔出：临时文件不完整，原文件未受影响
-- U 盘在步骤 4 拔出：操作系统保证 rename 原子性，要么成功要么失败
+- **写入流程**: 临时文件 (.tmp.{timestamp}) → 分块写入 + fsync → rename (原子性)
+- **完整性验证**: 每块 GCM MAC (16 bytes) + 文件头元数据 (大小/块数/版本)
+- **最坏情况**: 步骤 2 拔出 (临时文件损坏，原文件完整)、步骤 4 拔出 (OS 保证 rename 原子性)
 
 ## Consequences
 
-### Positive (TL;DR 中未详述的优势)
-- **Rust 生态成熟**: `aes-gcm` crate 经过审计，`ring` 库基于 BoringSSL
-- **未来扩展**: 分块设计支持增量备份、差异同步
-- **跨平台一致**: AES-GCM 在所有平台行为一致（vs 文件系统差异）
+**Positive**: Rust 生态成熟 (aes-gcm/ring 经审计)、分块支持增量备份、跨平台一致
 
-### Negative (TL;DR 中未详述的挑战)
-- **Nonce 管理**: 必须确保每块 nonce 唯一（使用随机数 + 块索引）
-- **文件膨胀**: 每 64KB 块增加 28 bytes（12 nonce + 16 MAC），约 0.04% 开销
-- **老旧设备**: 2010 年前 CPU 无 AES-NI，性能降至软件实现（~10x 慢）
+**Negative**: Nonce 唯一性管理 (随机数+块索引)、文件膨胀 0.04% (28 bytes/64KB)、2010 年前 CPU 无 AES-NI 性能降 10x
 
 ## Alternatives Considered
 
-### Alternative 1: AES-256-CBC + HMAC-SHA256
-**不选原因**: 实现复杂（需正确实现 Encrypt-then-MAC），性能不如 GCM（需两次遍历），无硬件加速 HMAC
-
-### Alternative 2: ChaCha20-Poly1305
-**不选原因**: 无硬件加速（x86 平台），性能劣于 AES-GCM，Rust 生态不如 AES 成熟
-
-### Alternative 3: 全文件加密（无分块）
-**不选原因**: 大文件（1GB+）占用大量内存，无法实现断点续传，意外中断时整个文件损坏
+- **AES-CBC + HMAC**: 需两次遍历，Encrypt-then-MAC 易错 → 拒绝
+- **ChaCha20-Poly1305**: x86 无硬件加速，Rust 生态不如 AES → 拒绝
+- **全文件加密**: 大文件占用大量内存，无断点续传 → 拒绝
 
 ## References
 
 - [AES-GCM Spec (NIST SP 800-38D)](https://csrc.nist.gov/publications/detail/sp/800-38d/final)
 - [Argon2 RFC 9106](https://www.rfc-editor.org/rfc/rfc9106.html)
 - [Rust aes-gcm crate](https://docs.rs/aes-gcm/)
-- [OWASP Password Storage Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html)
+- [OWASP Password Storage](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html)
