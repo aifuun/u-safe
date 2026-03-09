@@ -217,7 +217,7 @@ sequenceDiagram
 
         UI->>Rust: initialize_master_password(password)
         Rust->>Rust: 生成 32 bytes Salt
-        Rust->>Rust: Argon2id 派生密钥<br/>(64MB, 3 iterations)
+        Rust->>Rust: Argon2id 派生密钥 (64MB, 3 iterations)
         Rust->>Rust: 加密主密钥
         Rust->>DB: 存储配置
 
@@ -372,11 +372,11 @@ sequenceDiagram
     User->>UI: 输入密码
     UI->>Rust: verify_password(password)
     Rust->>Rust: 读取 Salt
-    Rust->>Rust: Argon2id 派生密钥<br/>(~500ms)
+    Rust->>Rust: Argon2id 派生密钥 (~500ms)
     Rust->>Rust: 尝试解密主密钥
 
     alt 解密成功
-        Rust->>Memory: 缓存主密钥<br/>(TTL: 15分钟)
+        Rust->>Memory: 缓存主密钥 (TTL: 15分钟)
         Rust-->>UI: 返回成功
         UI->>User: 显示主界面
     else 解密失败
@@ -420,7 +420,7 @@ sequenceDiagram
                             <div class="mermaid">
 flowchart TD
     A[用户创建标签] --> B{是否有父标签?}
-    B -->|否| C[创建根标签<br/>parent_tag_id=NULL]
+    B -->|否| C[创建根标签 (parent_tag_id=NULL)]
     B -->|是| D[选择父标签]
     C --> E[输入标签名称]
     D --> E
