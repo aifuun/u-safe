@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>U-Safe 产品核心逻辑详细设计</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Mermaid.js for diagrams -->
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'neutral',
+            flowchart: { useMaxWidth: true }
+        });
+    </script>
+
+    <!-- Prism.js for code highlighting -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-rust.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-sql.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-typescript.min.js"></script>
+
+    <style>
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #888; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #555; }
+
+        /* Smooth scroll */
+        html { scroll-behavior: smooth; }
+
+        /* Sticky TOC */
+        .toc-sticky { position: sticky; top: 2rem; max-height: calc(100vh - 4rem); overflow-y: auto; }
+
+        /* Active TOC item */
+        .toc-item.active { @apply bg-blue-100 text-blue-700 font-semibold; }
+
+        /* Print styles */
+        @media print {
+            .no-print { display: none; }
+            .toc-sticky { position: static; }
+        }
+
+        /* Mermaid diagram container */
+        .mermaid {
+            background: #f9fafb;
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            margin: 1.5rem 0;
+            overflow-x: auto;
+        }
+
+        /* Code block styling */
+        pre[class*="language-"] {
+            margin: 1rem 0;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        /* Section headings */
+        h2 { @apply text-3xl font-bold text-gray-800 mt-8 mb-4 pb-2 border-b-2 border-gray-200; }
+        h3 { @apply text-2xl font-semibold text-gray-700 mt-6 mb-3; }
+        h4 { @apply text-xl font-medium text-gray-600 mt-4 mb-2; }
+
+        /* Tables */
+        table { @apply w-full border-collapse my-4; }
+        th { @apply bg-gray-100 border border-gray-300 px-4 py-2 text-left font-semibold; }
+        td { @apply border border-gray-300 px-4 py-2; }
+
+        /* Badges */
+        .badge { @apply inline-block px-2 py-1 text-xs font-semibold rounded; }
+        .badge-success { @apply bg-green-100 text-green-800; }
+        .badge-info { @apply bg-blue-100 text-blue-800; }
+        .badge-warning { @apply bg-yellow-100 text-yellow-800; }
+
+        /* Back to top button */
+        #back-to-top {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        #back-to-top.show { opacity: 1; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-900">
+    <!-- Header -->
+    <header class="bg-gradient-to-r from-blue-600 to-indigo-700 text-white shadow-lg no-print">
+        <div class="container mx-auto px-6 py-6">
+            <h1 class="text-4xl font-bold">产品核心逻辑详细设计 - U-Safe</h1>
+            <p class="mt-2 text-blue-100">版本 v1.0 | 2026-03-09</p>
+            <div class="mt-4 flex gap-2">
+                <span class="badge bg-white text-blue-700">加密流程</span>
+                <span class="badge bg-white text-blue-700">标签管理</span>
+                <span class="badge bg-white text-blue-700">虚拟视图</span>
+                <span class="badge bg-white text-blue-700">文件操作</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="container mx-auto px-6 py-8">
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            <!-- Table of Contents -->
+            <aside class="lg:col-span-1 no-print">
+                <nav class="toc-sticky bg-white rounded-lg shadow-md p-6">
+                    <h3 class="text-lg font-bold mb-4 text-gray-800">目录</h3>
+                    <ul class="space-y-2 text-sm">
+                        <li><a href="#overview" class="toc-item block px-3 py-2 rounded hover:bg-gray-100">概述</a></li>
+                        <li>
+                            <a href="#encryption" class="toc-item block px-3 py-2 rounded hover:bg-gray-100">1. 加密/解密流程</a>
+                            <ul class="ml-4 mt-1 space-y-1">
+                                <li><a href="#enc-1-1" class="block px-2 py-1 text-gray-600 hover:text-blue-600">1.1 密码设置</a></li>
+                                <li><a href="#enc-1-2" class="block px-2 py-1 text-gray-600 hover:text-blue-600">1.2 文件加密</a></li>
+                                <li><a href="#enc-1-3" class="block px-2 py-1 text-gray-600 hover:text-blue-600">1.3 文件解密</a></li>
+                                <li><a href="#enc-1-4" class="block px-2 py-1 text-gray-600 hover:text-blue-600">1.4 密码验证</a></li>
+                            </ul>
+                        </li>
+                        <li>
+                            <a href="#tags" class="toc-item block px-3 py-2 rounded hover:bg-gray-100">2. 标签管理</a>
+                            <ul class="ml-4 mt-1 space-y-1">
+                                <li><a href="#tag-2-1" class="block px-2 py-1 text-gray-600 hover:text-blue-600">2.1 标签创建</a></li>
+                                <li><a href="#tag-2-2" class="block px-2 py-1 text-gray-600 hover:text-blue-600">2.2 编辑/删除</a></li>
+                                <li><a href="#tag-2-3" class="block px-2 py-1 text-gray-600 hover:text-blue-600">2.3 批量操作</a></li>
+                            </ul>
+                        </li>
+                        <li>
+                            <a href="#views" class="toc-item block px-3 py-2 rounded hover:bg-gray-100">3. 虚拟视图</a>
+                            <ul class="ml-4 mt-1 space-y-1">
+                                <li><a href="#view-3-1" class="block px-2 py-1 text-gray-600 hover:text-blue-600">3.1 视图切换</a></li>
+                                <li><a href="#view-3-2" class="block px-2 py-1 text-gray-600 hover:text-blue-600">3.2 文件显示</a></li>
+                                <li><a href="#view-3-3" class="block px-2 py-1 text-gray-600 hover:text-blue-600">3.3 文件操作</a></li>
+                            </ul>
+                        </li>
+                        <li>
+                            <a href="#files" class="toc-item block px-3 py-2 rounded hover:bg-gray-100">4. 文件操作</a>
+                        </li>
+                        <li><a href="#errors" class="toc-item block px-3 py-2 rounded hover:bg-gray-100">5. 错误处理</a></li>
+                        <li><a href="#performance" class="toc-item block px-3 py-2 rounded hover:bg-gray-100">6. 性能优化</a></li>
+                        <li><a href="#implementation" class="toc-item block px-3 py-2 rounded hover:bg-gray-100">7. 实现清单</a></li>
+                    </ul>
+                </nav>
+            </aside>
+
+            <!-- Main Content -->
+            <main class="lg:col-span-3">
+                <div class="bg-white rounded-lg shadow-md p-8">
+                    <!-- Overview -->
+                    <section id="overview" class="mb-12">
+                        <h2>概述</h2>
+                        <div class="bg-blue-50 border-l-4 border-blue-500 p-4 my-4">
+                            <p class="font-semibold text-blue-800">设计依据</p>
+                            <p class="text-gray-700 mt-2">本文档详细阐述 U-Safe 的核心业务逻辑，所有设计基于：</p>
+                            <ul class="list-disc ml-6 mt-2 text-gray-700">
+                                <li><strong>ADR 0003</strong>: AES-256-GCM + 64KB 分块 + Argon2id KDF</li>
+                                <li><strong>Database Schema</strong>: SQLite + 5 个核心表</li>
+                                <li><strong>ADR 0002</strong>: Tauri + Rust + React 架构</li>
+                            </ul>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 my-6">
+                            <div class="bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-6 border border-purple-200">
+                                <h4 class="text-purple-800 font-bold mb-2">🔐 加密/解密</h4>
+                                <p class="text-sm text-gray-600">密码设置、文件加密、文件解密、密码验证</p>
+                                <div class="mt-3 text-xs text-purple-700">4 个子流程 | 4 个流程图</div>
+                            </div>
+                            <div class="bg-gradient-to-br from-green-50 to-teal-50 rounded-lg p-6 border border-green-200">
+                                <h4 class="text-green-800 font-bold mb-2">🏷️ 标签管理</h4>
+                                <p class="text-sm text-gray-600">标签 CRUD、层级关系、批量操作</p>
+                                <div class="mt-3 text-xs text-green-700">3 个子功能 | 1 个流程图</div>
+                            </div>
+                            <div class="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-lg p-6 border border-blue-200">
+                                <h4 class="text-blue-800 font-bold mb-2">👁️ 虚拟视图</h4>
+                                <p class="text-sm text-gray-600">物理视图 vs 标签视图、操作行为差异</p>
+                                <div class="mt-3 text-xs text-blue-700">3 个子模块 | 1 个状态图</div>
+                            </div>
+                            <div class="bg-gradient-to-br from-orange-50 to-red-50 rounded-lg p-6 border border-orange-200">
+                                <h4 class="text-orange-800 font-bold mb-2">📁 文件操作</h4>
+                                <p class="text-sm text-gray-600">新增、删除、移动、重命名</p>
+                                <div class="mt-3 text-xs text-orange-700">4 个核心操作 | 1 个流程图</div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- 1. Encryption -->
+                    <section id="encryption" class="mb-12">
+                        <h2>1. 加密/解密流程</h2>
+
+                        <!-- 1.1 Password Setup -->
+                        <div id="enc-1-1" class="mt-8">
+                            <h3>1.1 用户首次设置密码流程</h3>
+                            <p class="text-gray-700 my-4">用户首次启动 U-Safe，需要设置主密码。</p>
+
+                            <div class="mermaid">
+sequenceDiagram
+    participant User as 用户
+    participant UI as 前端 UI
+    participant Rust as Rust 后端
+    participant DB as SQLite
+
+    User->>UI: 启动 U-Safe
+    UI->>Rust: 检查是否已初始化
+    Rust->>DB: 查询 config 表
+
+    alt 未初始化
+        DB-->>Rust: NULL or false
+        Rust-->>UI: 返回"未初始化"
+        UI->>User: 显示"设置主密码"界面
+        User->>UI: 输入密码 + 确认密码
+
+        UI->>Rust: initialize_master_password(password)
+        Rust->>Rust: 生成 32 bytes Salt
+        Rust->>Rust: Argon2id 派生密钥<br/>(64MB, 3 iterations)
+        Rust->>Rust: 加密主密钥
+        Rust->>DB: 存储配置
+
+        Rust-->>UI: 返回成功
+        UI->>User: 显示"密码设置成功"
+    else 已初始化
+        DB-->>Rust: true
+        Rust-->>UI: 返回"需要解锁"
+        UI->>User: 显示"输入密码解锁"
+    end
+                            </div>
+
+                            <div class="bg-gray-50 rounded-lg p-4 my-4">
+                                <h4 class="font-semibold mb-2">关键步骤</h4>
+                                <ol class="list-decimal ml-6 space-y-2 text-gray-700">
+                                    <li><strong>密码强度验证</strong>: 最短 12 字符，包含大小写、数字、符号（使用 zxcvbn 库）</li>
+                                    <li><strong>Argon2id 配置</strong>: 64MB 内存 + 3 次迭代 + 单线程</li>
+                                    <li><strong>主密钥生成</strong>: 256 bits 随机密钥，使用派生密钥加密</li>
+                                    <li><strong>存储</strong>: Salt 存入 config 表，加密主密钥存入 .usafe/keys/master.key.enc</li>
+                                </ol>
+                            </div>
+
+                            <pre><code class="language-rust">// Argon2id 密钥派生（基于 ADR 0003）
+let config = argon2::Config {
+    variant: argon2::Variant::Argon2id,
+    version: argon2::Version::Version13,
+    mem_cost: 65536,      // 64 MB
+    time_cost: 3,         // 3 iterations
+    lanes: 1,             // single-threaded
+    thread_mode: argon2::ThreadMode::Sequential,
+};
+
+let salt = generate_random_bytes(32);  // 32 bytes
+let derived_key = argon2::hash_raw(
+    password.as_bytes(),
+    &salt,
+    &config
+)?;</code></pre>
+                        </div>
+
+                        <!-- 1.2 File Encryption -->
+                        <div id="enc-1-2" class="mt-8">
+                            <h3>1.2 文件加密流程</h3>
+                            <p class="text-gray-700 my-4">用户在 U-Safe 中新增文件或标记现有文件为"加密"。</p>
+
+                            <div class="mermaid">
+flowchart TD
+    A[用户选择文件加密] --> B{文件是否已在数据库}
+    B -->|否| C[添加文件元数据]
+    B -->|是| D[检查 is_encrypted]
+    C --> E[生成文件 UUID]
+    D -->|已加密| F[提示"已加密"]
+    D -->|未加密| G[开始加密]
+    E --> G
+    G --> H[计算 SHA-256]
+    H --> I[生成加密元数据]
+    I --> J[Argon2id 派生文件密钥]
+    J --> K[64KB 分块加密]
+    K --> L[写入临时文件]
+    L --> M[每块 fsync]
+    M --> N{所有块完成?}
+    N -->|否| K
+    N -->|是| O[原子重命名]
+    O --> P[更新数据库]
+    P --> Q[删除原始文件]
+    Q --> R[完成]
+                            </div>
+
+                            <div class="bg-yellow-50 border-l-4 border-yellow-500 p-4 my-4">
+                                <p class="font-semibold text-yellow-800">⚡ 性能参数（基于 ADR 0003）</p>
+                                <table class="mt-2 text-sm">
+                                    <tr><td class="font-medium">分块大小</td><td>65,536 bytes (64 KB)</td></tr>
+                                    <tr><td class="font-medium">Nonce</td><td>12 bytes per chunk（随机）</td></tr>
+                                    <tr><td class="font-medium">MAC</td><td>16 bytes per chunk（GCM 自动）</td></tr>
+                                    <tr><td class="font-medium">Salt</td><td>32 bytes（每文件独立）</td></tr>
+                                </table>
+                            </div>
+
+                            <pre><code class="language-rust">// 64KB 分块加密
+let cipher = Aes256Gcm::new(&file_key);
+let temp_file = format!("{}.tmp.{}", output_path, timestamp());
+
+for chunk_index in 0..total_chunks {
+    // 1. 读取 64KB 数据
+    let chunk_data = read_chunk(&file_path, chunk_index, 65536)?;
+
+    // 2. 生成 Nonce (12 bytes)
+    let nonce = generate_random_bytes(12);
+    nonce_list.extend_from_slice(&nonce);
+
+    // 3. AES-256-GCM 加密
+    let ciphertext = cipher.encrypt(&nonce, chunk_data.as_ref())?;
+
+    // 4. 提取 MAC (最后 16 bytes)
+    let mac = &ciphertext[ciphertext.len() - 16..];
+    mac_list.extend_from_slice(mac);
+
+    // 5. 写入 + fsync
+    write_chunk(&temp_file, &ciphertext)?;
+    fsync(&temp_file)?;
+}
+
+// 原子重命名
+std::fs::rename(&temp_file, &final_path)?;</code></pre>
+                        </div>
+
+                        <!-- 1.3 File Decryption -->
+                        <div id="enc-1-3" class="mt-8">
+                            <h3>1.3 文件解密流程</h3>
+
+                            <div class="mermaid">
+flowchart TD
+    A[用户打开加密文件] --> B[验证主密码]
+    B -->|失败| C[提示"密码错误"]
+    B -->|成功| D[查询 encryption_meta]
+    D --> E[Argon2id 派生文件密钥]
+    E --> F[分块解密]
+    F --> G[验证 MAC]
+    G -->|失败| H[提示"文件损坏"]
+    G -->|成功| I[解密数据块]
+    I --> J{所有块完成?}
+    J -->|否| F
+    J -->|是| K[合并到内存]
+    K --> L[调用系统应用打开]
+    L --> M[用户关闭]
+    M --> N[删除临时文件]
+    N --> O[清零内存]
+                            </div>
+
+                            <div class="bg-red-50 border-l-4 border-red-500 p-4 my-4">
+                                <p class="font-semibold text-red-800">🔒 安全考虑</p>
+                                <ul class="list-disc ml-6 mt-2 text-gray-700">
+                                    <li>解密数据仅存在于内存和临时文件（用户关闭立即删除）</li>
+                                    <li>临时文件设置严格权限（仅当前用户可读 0o600）</li>
+                                    <li>内存数据使用后立即清零（zeroize crate）</li>
+                                    <li>不在宿主电脑硬盘留下明文缓存</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <!-- 1.4 Password Verification -->
+                        <div id="enc-1-4" class="mt-8">
+                            <h3>1.4 密码验证机制</h3>
+
+                            <div class="mermaid">
+sequenceDiagram
+    participant User as 用户
+    participant UI as 前端
+    participant Rust as Rust 后端
+    participant Memory as 内存缓存
+
+    User->>UI: 输入密码
+    UI->>Rust: verify_password(password)
+    Rust->>Rust: 读取 Salt
+    Rust->>Rust: Argon2id 派生密钥<br/>(~500ms)
+    Rust->>Rust: 尝试解密主密钥
+
+    alt 解密成功
+        Rust->>Memory: 缓存主密钥<br/>(TTL: 15分钟)
+        Rust-->>UI: 返回成功
+        UI->>User: 显示主界面
+    else 解密失败
+        Rust-->>UI: 返回"密码错误"
+        UI->>User: 提示重新输入
+    end
+
+    Note over Memory: 15分钟后自动清除
+    Note over Rust: U盘拔出立即清除
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 my-4">
+                                <div class="bg-green-50 p-4 rounded">
+                                    <h4 class="font-semibold text-green-800 mb-2">✅ 密钥缓存策略</h4>
+                                    <ul class="text-sm space-y-1 text-gray-700">
+                                        <li>• TTL: 15 分钟</li>
+                                        <li>• 过期自动清除</li>
+                                        <li>• U盘拔出立即清零</li>
+                                        <li>• 内存加锁（mlock）</li>
+                                    </ul>
+                                </div>
+                                <div class="bg-orange-50 p-4 rounded">
+                                    <h4 class="font-semibold text-orange-800 mb-2">⚠️ 重试限制</h4>
+                                    <ul class="text-sm space-y-1 text-gray-700">
+                                        <li>• 最多 5 次失败尝试</li>
+                                        <li>• 连续失败锁定 5 分钟</li>
+                                        <li>• 成功后重置计数器</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- 2. Tags -->
+                    <section id="tags" class="mb-12">
+                        <h2>2. 标签管理逻辑</h2>
+
+                        <div id="tag-2-1" class="mt-8">
+                            <h3>2.1 标签创建流程</h3>
+
+                            <div class="mermaid">
+flowchart TD
+    A[用户创建标签] --> B{是否有父标签?}
+    B -->|否| C[创建根标签<br/>parent_tag_id=NULL]
+    B -->|是| D[选择父标签]
+    C --> E[输入标签名称]
+    D --> E
+    E --> F[输入标签颜色]
+    F --> G[验证标签名称]
+    G -->|重名| H[提示"标签已存在"]
+    G -->|有效| I[生成 tag_id UUID]
+    I --> J[计算 tag_level]
+    J --> K[构建 full_path]
+    K --> L[插入 tags 表]
+    L --> M[返回成功]
+                            </div>
+
+                            <div class="bg-blue-50 p-4 rounded my-4">
+                                <h4 class="font-semibold text-blue-800 mb-2">📊 层级示例</h4>
+                                <pre class="text-sm bg-white p-3 rounded mt-2"><code>工作 (tag_level=0, parent_tag_id=NULL, full_path="工作")
+└── 项目A (tag_level=1, parent_tag_id=工作, full_path="工作/项目A")
+    └── 文档 (tag_level=2, parent_tag_id=项目A, full_path="工作/项目A/文档")</code></pre>
+                            </div>
+
+                            <pre><code class="language-sql">-- 创建标签（基于 Database Schema）
+INSERT INTO tags (
+    tag_id, tag_name, tag_color, parent_tag_id,
+    tag_level, full_path, created_at, updated_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?);</code></pre>
+                        </div>
+
+                        <div id="tag-2-2" class="mt-8">
+                            <h3>2.2 标签编辑和删除</h3>
+                            <p class="text-gray-700 my-4">编辑标签名称时，需要更新 full_path 和所有子标签的路径。删除标签会级联删除所有子标签（ON DELETE CASCADE）。</p>
+                        </div>
+
+                        <div id="tag-2-3" class="mt-8">
+                            <h3>2.3 标签批量操作</h3>
+                            <pre><code class="language-rust">// 批量打标签（事务保证）
+fn batch_tag_files(file_ids: &[String], tag_id: &str) -> Result<()> {
+    let tx = db.transaction()?;
+
+    for file_id in file_ids {
+        tx.execute(
+            "INSERT OR IGNORE INTO file_tags (file_id, tag_id, tagged_at)
+             VALUES (?, ?, ?)",
+            params![file_id, tag_id, Utc::now().to_rfc3339()],
+        )?;
+    }
+
+    // 更新标签使用次数
+    tx.execute(
+        "UPDATE tags SET usage_count = usage_count + ? WHERE tag_id = ?",
+        params![file_ids.len(), tag_id],
+    )?;
+
+    tx.commit()
+}</code></pre>
+                        </div>
+                    </section>
+
+                    <!-- 3. Views -->
+                    <section id="views" class="mb-12">
+                        <h2>3. 虚拟视图（影子视图）</h2>
+
+                        <div id="view-3-1" class="mt-8">
+                            <h3>3.1 物理视图 vs 标签视图切换</h3>
+
+                            <div class="mermaid">
+stateDiagram-v2
+    [*] --> 物理视图
+    物理视图 --> 标签视图: 点击"标签视图"
+    标签视图 --> 物理视图: 点击"物理视图"
+
+    state 物理视图 {
+        [*] --> 显示文件夹树
+        显示文件夹树 --> 文件操作
+    }
+
+    state 标签视图 {
+        [*] --> 显示标签列表
+        显示标签列表 --> 点击标签
+        点击标签 --> 显示文件列表
+    }
+                            </div>
+
+                            <table class="my-4">
+                                <thead>
+                                    <tr>
+                                        <th>模式</th>
+                                        <th>显示内容</th>
+                                        <th>操作行为</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td class="font-medium">物理视图</td>
+                                        <td>真实文件夹树状结构</td>
+                                        <td>移动/重命名改变物理路径</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="font-medium">标签视图</td>
+                                        <td>按标签分组聚合</td>
+                                        <td>操作仅影响标签，不改变物理路径</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div id="view-3-2" class="mt-8">
+                            <h3>3.2 标签视图中的文件显示逻辑</h3>
+                            <pre><code class="language-sql">-- 查询标签下的所有文件（包含子标签）
+WITH RECURSIVE tag_tree AS (
+    SELECT tag_id FROM tags WHERE tag_id = '工作的tag_id'
+    UNION ALL
+    SELECT t.tag_id FROM tags t
+    JOIN tag_tree tt ON t.parent_tag_id = tt.tag_id
+)
+SELECT DISTINCT f.*
+FROM files f
+JOIN file_tags ft ON f.file_id = ft.file_id
+WHERE ft.tag_id IN (SELECT tag_id FROM tag_tree);</code></pre>
+                        </div>
+
+                        <div id="view-3-3" class="mt-8">
+                            <h3>3.3 标签视图中的文件操作</h3>
+                            <div class="bg-purple-50 border-l-4 border-purple-500 p-4 my-4">
+                                <p class="font-semibold text-purple-800">🗑️ 删除文件（两种模式）</p>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+                                    <div class="bg-white p-3 rounded">
+                                        <p class="font-medium text-sm">选项 1: 仅移除标签</p>
+                                        <code class="text-xs">DELETE FROM file_tags WHERE file_id=? AND tag_id=?</code>
+                                        <p class="text-xs text-gray-600 mt-2">文件仍存在于物理视图</p>
+                                    </div>
+                                    <div class="bg-white p-3 rounded">
+                                        <p class="font-medium text-sm">选项 2: 永久删除</p>
+                                        <code class="text-xs">DELETE FROM files WHERE file_id=?</code>
+                                        <p class="text-xs text-gray-600 mt-2">需要用户二次确认</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- 4. Files -->
+                    <section id="files" class="mb-12">
+                        <h2>4. 文件操作流程</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 my-4">
+                            <div class="bg-gray-50 p-4 rounded">
+                                <h4 class="font-semibold mb-2">📥 新增文件</h4>
+                                <p class="text-sm text-gray-600">自动加密选项 + 批量打标签</p>
+                            </div>
+                            <div class="bg-gray-50 p-4 rounded">
+                                <h4 class="font-semibold mb-2">🗑️ 删除文件</h4>
+                                <p class="text-sm text-gray-600">标签移除 vs 物理删除（双确认）</p>
+                            </div>
+                            <div class="bg-gray-50 p-4 rounded">
+                                <h4 class="font-semibold mb-2">📦 移动文件</h4>
+                                <p class="text-sm text-gray-600">仅限物理视图 + 路径更新</p>
+                            </div>
+                            <div class="bg-gray-50 p-4 rounded">
+                                <h4 class="font-semibold mb-2">✏️ 重命名文件</h4>
+                                <p class="text-sm text-gray-600">物理文件 + 数据库同步更新</p>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- 5. Errors -->
+                    <section id="errors" class="mb-12">
+                        <h2>5. 错误处理和边界情况</h2>
+                        <div class="space-y-4 my-4">
+                            <div class="bg-red-50 border border-red-200 rounded p-4">
+                                <h4 class="font-semibold text-red-800 mb-2">🔌 U盘意外拔出</h4>
+                                <ul class="text-sm space-y-1 text-gray-700">
+                                    <li>✅ 加密文件原子写入（临时文件 + rename）</li>
+                                    <li>✅ 数据库 WAL 模式（Write-Ahead Logging）</li>
+                                    <li>✅ 每次写入后 fsync</li>
+                                    <li>✅ 内存密钥立即清零</li>
+                                </ul>
+                            </div>
+                            <div class="bg-yellow-50 border border-yellow-200 rounded p-4">
+                                <h4 class="font-semibold text-yellow-800 mb-2">🔑 密码忘记</h4>
+                                <p class="text-sm text-gray-700">❌ 不提供"忘记密码"功能（安全设计）</p>
+                                <p class="text-sm text-gray-700">✅ 可选备份：导出主密钥为 BIP39 恢复词</p>
+                            </div>
+                            <div class="bg-orange-50 border border-orange-200 rounded p-4">
+                                <h4 class="font-semibold text-orange-800 mb-2">💥 文件损坏检测</h4>
+                                <p class="text-sm text-gray-700">启动时扫描所有加密文件的 MAC，标记损坏文件</p>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- 6. Performance -->
+                    <section id="performance" class="mb-12">
+                        <h2>6. 性能优化策略</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 my-4">
+                            <div class="bg-green-50 p-4 rounded">
+                                <h4 class="font-semibold text-green-800 mb-2">⚡ 批量加密</h4>
+                                <pre class="text-xs bg-white p-2 rounded mt-2"><code class="language-rust">use rayon::prelude::*;
+
+file_paths.par_iter()
+    .try_for_each(|path| {
+        encrypt_file(path)
+    })?;</code></pre>
+                            </div>
+                            <div class="bg-blue-50 p-4 rounded">
+                                <h4 class="font-semibold text-blue-800 mb-2">🔍 全文搜索</h4>
+                                <pre class="text-xs bg-white p-2 rounded mt-2"><code class="language-sql">SELECT * FROM tags
+WHERE tag_id IN (
+    SELECT rowid FROM tags_fts
+    WHERE tags_fts MATCH '工作'
+);</code></pre>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- 7. Implementation -->
+                    <section id="implementation" class="mb-12">
+                        <h2>7. 实现清单</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 my-4">
+                            <div>
+                                <h4 class="font-semibold mb-3">Rust 模块划分</h4>
+                                <pre class="text-sm bg-gray-50 p-4 rounded"><code>src/
+├── crypto/         # Argon2id + AES-256-GCM
+├── database/       # 数据库操作
+├── commands/       # Tauri 命令
+└── utils/          # U盘监控 + 密钥管理</code></pre>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold mb-3">React 组件划分</h4>
+                                <pre class="text-sm bg-gray-50 p-4 rounded"><code>src/
+├── views/          # PhysicalView, TagView
+├── components/     # FileList, TagTree
+└── hooks/          # useEncryption, useTags</code></pre>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- References -->
+                    <div class="bg-gray-100 rounded-lg p-6 mt-12">
+                        <h3 class="text-lg font-bold mb-3">📚 参考资料</h3>
+                        <ul class="space-y-2 text-sm">
+                            <li>• <strong>ADR 0003</strong>: <code class="bg-white px-2 py-1 rounded">docs/adr/0003-encryption-strategy.md</code></li>
+                            <li>• <strong>Database Schema</strong>: <code class="bg-white px-2 py-1 rounded">docs/arch/Database_Schema.md</code></li>
+                            <li>• <strong>PRD</strong>: <code class="bg-white px-2 py-1 rounded">docs/prd/PRD.md</code></li>
+                        </ul>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Back to Top Button -->
+    <button id="back-to-top" class="no-print bg-blue-600 text-white p-3 rounded-full shadow-lg hover:bg-blue-700 transition">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path>
+        </svg>
+    </button>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white py-6 mt-12">
+        <div class="container mx-auto px-6 text-center">
+            <p class="text-sm">U-Safe 产品核心逻辑详细设计 | 版本 v1.0 | 2026-03-09</p>
+            <p class="text-xs text-gray-400 mt-2">基于 ADR 0003 (加密方案) + Database Schema (数据库设计)</p>
+        </div>
+    </footer>
+
+    <script>
+        // TOC active state
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                const id = entry.target.getAttribute('id');
+                const tocItem = document.querySelector(`a[href="#${id}"]`);
+                if (entry.isIntersecting) {
+                    document.querySelectorAll('.toc-item').forEach(item => item.classList.remove('active'));
+                    tocItem?.classList.add('active');
+                }
+            });
+        }, { threshold: 0.5 });
+
+        document.querySelectorAll('section[id]').forEach(section => observer.observe(section));
+
+        // Back to top button
+        const backToTop = document.getElementById('back-to-top');
+        window.addEventListener('scroll', () => {
+            if (window.pageYOffset > 300) {
+                backToTop.classList.add('show');
+            } else {
+                backToTop.classList.remove('show');
+            }
+        });
+
+        backToTop.addEventListener('click', () => {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+
+        // Print friendly
+        window.addEventListener('beforeprint', () => {
+            document.querySelector('.toc-sticky').style.position = 'static';
+        });
+
+        window.addEventListener('afterprint', () => {
+            document.querySelector('.toc-sticky').style.position = 'sticky';
+        });
+    </script>
+</body>
+</html>
