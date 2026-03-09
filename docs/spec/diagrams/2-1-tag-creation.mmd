@@ -1,0 +1,14 @@
+flowchart TD
+    A[用户创建标签] --> B{是否有父标签?}
+    B -->|否| C[创建根标签 (parent_tag_id=NULL)]
+    B -->|是| D[选择父标签]
+    C --> E[输入标签名称]
+    D --> E
+    E --> F[输入标签颜色]
+    F --> G[验证标签名称]
+    G -->|重名| H[提示"标签已存在"]
+    G -->|有效| I[生成 tag_id UUID]
+    I --> J[计算 tag_level]
+    J --> K[构建 full_path]
+    K --> L[插入 tags 表]
+    L --> M[返回成功]

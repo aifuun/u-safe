@@ -1,0 +1,23 @@
+flowchart TD
+    A[用户选择文件加密] --> B{文件是否已在数据库}
+    B -->|否| C[添加文件元数据到 files 表]
+    B -->|是| D[检查 is_encrypted 状态]
+    C --> E[生成文件 UUID]
+    D -->|已加密| F[提示文件已加密]
+    D -->|未加密| G[开始加密流程]
+    E --> G
+    G --> H[计算原始文件 SHA-256]
+    H --> I[生成加密元数据]
+    I --> J[Argon2id 派生文件密钥]
+    J --> K[分块加密 64KB/chunk]
+    K --> L[写入临时文件 .tmp.timestamp]
+    L --> M[每块写入后 fsync]
+    M --> N{所有块完成?}
+    N -->|否| K
+    N -->|是| O[原子重命名 temp → final]
+    O --> P[更新 files 表 is_encrypted=1]
+    P --> Q[插入 encryption_meta]
+    Q --> R[删除原始文件]
+    R --> S[加密完成]
+    F --> T[结束]
+    S --> T
