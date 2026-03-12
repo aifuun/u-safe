@@ -3,6 +3,10 @@ name: adr
 description: |
   Create and manage Architecture Decision Records (ADRs) with standardized workflow.
   Handles numbering, formatting, indexing automatically.
+
+  TRIGGER when: User wants to create an ADR ("create adr", "record decision", "document architecture decision"), list ADRs, show a specific ADR, or validate ADR format.
+
+  DO NOT TRIGGER when: User is just asking about existing ADRs conceptually, viewing ADR documentation, or discussing decisions without creating/modifying ADRs.
 argument-hint: "create <title> | list | show <number> | validate <number>"
 allowed-tools: Read, Glob, Grep, Write, Edit
 disable-model-invocation: false

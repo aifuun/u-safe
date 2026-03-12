@@ -32,20 +32,15 @@ During implementation, developers need to know "what's next" without manually re
 
 ## Workflow
 
-### Step 1: Create Todo List
+This is a simple, fast operation (<10 seconds) that navigates your active plan:
 
-**Initialize task navigation tracking** using TaskCreate:
+1. **Locate active plan** in `.claude/plans/active/`
+2. **Parse tasks** from plan markdown
+3. **Identify next** incomplete task
+4. **Extract details** and dependencies
+5. **Display task** with context and progress
 
-```
-Task #1: Locate active plan file
-Task #2: Parse plan for tasks (blocked by #1)
-Task #3: Identify next incomplete task (blocked by #2)
-Task #4: Extract task details and dependencies (blocked by #3)
-Task #5: Display task with context (blocked by #4)
-Task #6: Show progress summary (blocked by #5)
-```
-
-After creating tasks, proceed with task navigation.
+No todo creation needed - this skill executes all steps automatically.
 
 ## Arguments
 
@@ -352,36 +347,13 @@ Great work! This plan is complete.
 /finish-issue #23    # Finish and close issue
 ```
 
-## Task Management
+## Performance
 
-**After each navigation step**, update progress:
+- **Execution time:** <10 seconds
+- **Operations:** File read + parse + format
+- **No external dependencies:** Pure file system operation
 
-```
-Plan located → Update Task #1
-Plan parsed → Update Task #2
-Next task identified → Update Task #3
-Details extracted → Update Task #4
-Task displayed → Update Task #5
-Progress shown → Update Task #6
-```
-
-Provides visibility into navigation process.
-
-## Final Verification
-
-**Before showing task**, verify:
-
-```
-- [ ] All 6 navigation tasks completed
-- [ ] Plan file located
-- [ ] Tasks parsed correctly
-- [ ] Next incomplete task identified
-- [ ] Task details complete
-- [ ] Progress calculated
-- [ ] Output formatted clearly
-```
-
-Missing items indicate incomplete navigation.
+Fast because it's a straightforward file read and parse operation with no complex processing or external API calls.
 
 ## Best Practices
 
@@ -390,6 +362,47 @@ Missing items indicate incomplete navigation.
 3. **Update plan** - Mark tasks complete as you finish them
 4. **Stay focused** - One task at a time
 5. **Context matters** - Read dependencies before starting
+
+## Worktree Support
+
+If the issue was started with `/start-issue` and a worktree was created, the plan file is located in the worktree directory.
+
+### Auto-Detection
+
+**Read plan from worktree** if path is recorded:
+
+```bash
+# Check if plan has worktree metadata
+PLAN_FILE=".claude/plans/active/issue-${ISSUE_NUM}-plan.md"
+WORKTREE_PATH=$(grep "^**Worktree**:" "$PLAN_FILE" | cut -d' ' -f2)
+
+if [[ -n "$WORKTREE_PATH" ]]; then
+  # Use worktree plan path
+  PLAN_FILE="${WORKTREE_PATH}/.claude/plans/active/issue-${ISSUE_NUM}-plan.md"
+fi
+```
+
+### Reading Plan with Worktree
+
+**Always use absolute path** when worktree is detected:
+
+```bash
+# ✅ CORRECT - Absolute worktree path
+Read /Users/woo/dev/ai-dev-117-auto-detect-worktree/.claude/plans/active/issue-117-plan.md
+
+# ❌ WRONG - Relative path or main repo
+Read .claude/plans/active/issue-117-plan.md
+Read /Users/woo/dev/ai-dev/.claude/plans/active/issue-117-plan.md
+```
+
+### Fallback Behavior
+
+If no worktree path found:
+- ✅ Use current working directory
+- ✅ Read from `.claude/plans/active/issue-{N}-plan.md`
+- ✅ Backward compatible
+
+---
 
 ## Related Skills
 

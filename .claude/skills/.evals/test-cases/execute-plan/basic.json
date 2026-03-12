@@ -1,0 +1,23 @@
+{
+  "name": "execute-plan-basic",
+  "skills": ["execute-plan"],
+  "query": "execute plan for issue #23",
+  "files": [],
+  "expected_behavior": [
+    "Loads plan from .claude/plans/active/issue-23-plan.md",
+    "Creates todos from plan tasks",
+    "Executes tasks sequentially",
+    "Validates after each task (tests, linting)",
+    "Marks tasks complete as they finish",
+    "Runs final validation when all tasks done",
+    "Reports completion with deliverables summary",
+    "Prepares for /review phase"
+  ],
+  "assertions": {
+    "plan_loaded": true,
+    "todos_created": true,
+    "all_tasks_completed": true,
+    "files_modified": true,
+    "ready_for_review": true
+  }
+}

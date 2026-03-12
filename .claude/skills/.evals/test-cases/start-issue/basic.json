@@ -1,0 +1,20 @@
+{
+  "name": "start-issue-basic",
+  "skills": ["start-issue"],
+  "query": "start issue #23",
+  "files": [],
+  "expected_behavior": [
+    "Fetches issue #23 details from GitHub",
+    "Creates feature branch: feature/23-{kebab-title}",
+    "Generates implementation plan at .claude/plans/active/issue-23-plan.md",
+    "Creates todo tasks from plan",
+    "Pushes branch to remote origin",
+    "Displays next steps to user"
+  ],
+  "assertions": {
+    "branch_created": "feature/23-*",
+    "plan_exists": true,
+    "todos_created": true,
+    "remote_branch_exists": true
+  }
+}

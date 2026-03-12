@@ -39,7 +39,7 @@ def should_exclude(rel_path: Path) -> bool:
     return any(fnmatch.fnmatch(name, pat) for pat in EXCLUDE_GLOBS)
 
 
-def package_skill(skill_path, output_dir=None):
+def package_skill(skill_path, output_dir=None) -> Path | None:
     """
     Package a skill folder into a .skill file.
 
@@ -108,7 +108,7 @@ def package_skill(skill_path, output_dir=None):
         return None
 
 
-def main():
+def main() -> None:
     if len(sys.argv) < 2:
         print("Usage: python utils/package_skill.py <path/to/skill-folder> [output-directory]")
         print("\nExample:")

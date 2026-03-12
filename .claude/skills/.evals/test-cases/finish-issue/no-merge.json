@@ -1,0 +1,22 @@
+{
+  "name": "finish-issue-no-merge",
+  "skills": ["finish-issue"],
+  "query": "finish issue #23 --no-merge",
+  "files": [],
+  "expected_behavior": [
+    "Validates on feature branch",
+    "Runs final validation",
+    "Commits all changes",
+    "Creates pull request",
+    "Skips automatic merge (--no-merge flag)",
+    "Keeps issue open for manual review",
+    "Provides PR URL for manual merge",
+    "Stays on feature branch"
+  ],
+  "assertions": {
+    "pr_created": true,
+    "pr_merged": false,
+    "issue_closed": false,
+    "on_feature_branch": true
+  }
+}

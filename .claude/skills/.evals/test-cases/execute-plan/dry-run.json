@@ -1,0 +1,21 @@
+{
+  "name": "execute-plan-dry-run",
+  "skills": ["execute-plan"],
+  "query": "execute plan #23 --dry-run",
+  "files": [],
+  "expected_behavior": [
+    "Loads plan from .claude/plans/active/issue-23-plan.md",
+    "Displays workflow preview",
+    "Shows all tasks that would be executed",
+    "Shows validation steps that would run",
+    "Does not modify any files",
+    "Does not create todos",
+    "Exits without execution"
+  ],
+  "assertions": {
+    "plan_loaded": true,
+    "preview_displayed": true,
+    "no_files_modified": true,
+    "no_todos_created": true
+  }
+}

@@ -301,7 +301,7 @@ def generate_html(data: dict, auto_refresh: bool = False, skill_name: str = "") 
     return "".join(html_parts)
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Generate HTML report from run_loop output")
     parser.add_argument("input", help="Path to JSON output from run_loop.py (or - for stdin)")
     parser.add_argument("-o", "--output", default=None, help="Output HTML file (default: stdout)")

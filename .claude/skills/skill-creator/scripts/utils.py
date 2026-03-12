@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Shared utilities for skill-creator scripts."""
 
 from pathlib import Path

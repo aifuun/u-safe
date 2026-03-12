@@ -242,6 +242,11 @@ Saga, Lambda, APIs, queries, transactions
 
 **Key Rules**: `saga.md`, `lambda-typescript-esm.md`, `query-transactions.md`
 
+### Desktop Rules (7)
+Tauri IPC, security, native APIs, state management, window management, updates, performance
+
+**Key Rules**: `tauri-ipc.md`, `tauri-security.md`, `tauri-native-apis.md`, `tauri-state-management.md`
+
 ### Infrastructure Rules (10)
 CDK, Tauri, deployment, secrets, logging, time, URLs
 

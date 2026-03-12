@@ -1,0 +1,20 @@
+{
+  "name": "execute-plan-resume",
+  "skills": ["execute-plan"],
+  "query": "execute plan #23 --resume",
+  "files": [],
+  "expected_behavior": [
+    "Loads plan from .claude/plans/active/issue-23-plan.md",
+    "Detects previously completed tasks",
+    "Displays resume context (task X/Y)",
+    "Continues from last incomplete task",
+    "Executes remaining tasks only",
+    "Validates and completes normally"
+  ],
+  "assertions": {
+    "plan_loaded": true,
+    "resume_detected": true,
+    "skipped_completed_tasks": true,
+    "continued_from_checkpoint": true
+  }
+}

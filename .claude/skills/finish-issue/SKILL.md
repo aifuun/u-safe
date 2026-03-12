@@ -2,433 +2,720 @@
 name: finish-issue
 description: |
   Complete issue workflow - commit, PR, merge, close, cleanup.
-  Automates the entire issue completion lifecycle with quality gates.
-disable-model-invocation: true
+
+  TRIGGER when: User wants to complete/finish an issue ("finish issue #23", "complete issue", "merge and close", "done with issue").
+
+  DO NOT TRIGGER when: User just wants to create issues (use /start-issue), review code (use /review), or manually commit changes.
 user-invocable: true
-argument-hint: "[issue-number] [--keep-branch] [--no-pr] [--force]"
-allowed-tools: Bash(git *), Bash(gh *), Read
+argument-hint: "[issue-number] [--keep-branch] [--no-merge] [--dry-run] [--force]"
 context: fork
-agent: general-purpose
 ---
 
-# Issue Finisher
+# Finish Issue - Complete Issue Lifecycle
 
-Complete the entire workflow for closing an issue with automated quality gates and safety checks.
+> Automates the final phase: commit, PR, merge, close, and cleanup
 
-## Task
+## Overview
 
-Finish issue workflow in 6 automated steps:
-1. **Pre-Finish Validation** - Quality gates (linting, tests, review status)
-2. **Commit & Push** - Commit changes and push to remote
-3. **Create PR** - Generate pull request with context
-4. **Merge PR** - Merge after checks pass
-5. **Close Issue** - Mark issue as done on GitHub
-6. **Cleanup** - Delete branches and review status
+This skill completes the issue lifecycle by automating 6 final steps:
 
-## Live Status Checks
+**What it does:**
+1. **Pre-Finish Validation** - Quality gates (tests, linting, review status)
+2. **Commit & Push** - Commits all changes with semantic message
+3. **Create PR** - Generates pull request with issue context
+4. **Merge PR** - Merges after checks pass (optional)
+5. **Close Issue** - Marks issue as done on GitHub
+6. **Cleanup** - Deletes branches and temporary files
 
-### Current State
-- **Branch**: !`git rev-parse --abbrev-ref HEAD`
-- **Issue Number**: !`git rev-parse --abbrev-ref HEAD | grep -oE '[0-9]+' | head -1 || echo "none"`
-- **Uncommitted Changes**: !`git status --short | wc -l | tr -d ' '` files
-- **Branch Ahead**: !`git rev-list --count @{u}..HEAD 2>/dev/null || echo "not pushed"`
+**Why it's needed:**
+Manually finishing an issue requires 10+ commands (git, gh CLI) and takes 5-10 minutes. This skill automates everything in ~2 minutes with built-in safety checks.
 
-### Quality Status
-- **Tests**: !`if [ -f package.json ]; then npm test &>/dev/null && echo "✅ Passing" || echo "⚠️ Failing"; else echo "No tests"; fi`
-- **Main Sync**: !`git fetch origin &>/dev/null && git merge-base --is-ancestor origin/main HEAD && echo "✅ Synced" || echo "⚠️ Need sync"`
+**When to use:**
+- After completing implementation and code review
+- Ready to merge your feature branch
+- Want automated PR creation and merging
 
-## Commands
+**Three ways to use:**
+1. **Manual**: Run git/gh commands yourself
+2. **Script**: `python .claude/skills/finish-issue/scripts/finish.py 97`
+3. **AI**: Say "finish issue #97" - Claude orchestrates the workflow
 
-**Basic usage**:
+## Arguments
+
 ```bash
-/finish-issue              # Complete current issue (infer from branch)
-/finish-issue #23          # Complete specific issue
+/finish-issue [issue-number] [options]
 ```
 
-**With options**:
+**Common usage:**
 ```bash
-/finish-issue --keep-branch    # Keep branch after merge
-/finish-issue --no-pr          # Close issue without PR
-/finish-issue --force          # Skip validation (use with caution)
+/finish-issue              # Auto-detect from branch
+/finish-issue 97           # Specific issue
+/finish-issue 97 --dry-run # Preview without executing
 ```
 
-Arguments:
-- `[issue-number]` - Optional, inferred from branch name if omitted
-- `--keep-branch` - Don't delete branches after merge
-- `--no-pr` - Close issue without creating PR
-- `--force` - Skip all pre-finish validation checks
+**Options:**
+- `[issue-number]` - Optional, auto-detected from branch if omitted
+- `--keep-branch` - Don't delete branch after merge
+- `--no-merge` - Create PR but don't auto-merge
+- `--dry-run` - Show what would happen without executing
+- `--force` - Skip validation checks (use cautiously)
 
-## Workflow
+## Workflow Steps (AI Orchestration)
 
-Execute: `bash scripts/finish-issue.sh $ARGUMENTS`
-
-### Step 1: Create Todo List
-
-**Initialize progress tracking** using TaskCreate for all workflow steps:
+Copy this checklist when executing:
 
 ```
-Task #1: Pre-finish validation (quality gates)
-Task #2: Commit and push changes (blocked by #1)
-Task #3: Create pull request (blocked by #2)
-Task #4: Merge PR to main (blocked by #3)
-Task #5: Close GitHub issue (blocked by #4)
-Task #6: Cleanup branches (blocked by #5)
+Task Progress:
+- [ ] Step 1: Pre-Finish Validation
+- [ ] Step 2: Commit & Push
+- [ ] Step 3: Create Pull Request
+- [ ] Step 4: Merge Pull Request
+- [ ] Step 5: Close Issue
+- [ ] Step 6: Cleanup
 ```
 
-After creating tasks, proceed with workflow execution.
+Execute these steps in sequence using the Python script or manual commands.
 
-### Step 2: Pre-Finish Validation ⭐
+### Step 0: Issue Number Detection (Multi-Strategy)
 
-**Automated Checks**:
+If no issue number was provided as argument, use the shared detector module:
+
+**Using the detector:**
+```python
+import sys
+sys.path.insert(0, '.claude/skills/_scripts')
+
+from framework.issue_detector import detect_issue_number
+
+# Auto-detect with all 4 strategies + validation
+issue_num = detect_issue_number(check_github=True, required=True)
+# Returns: int (issue number) or raises IssueDetectionError
+```
+
+**Detection strategies (automatic, in order):**
+1. **Extract from branch name** - `feature/137-python-shared-libs` → `137`
+2. **Find single active plan** - If exactly 1 plan in `.claude/plans/active/`
+3. **Extract from worktree path** - `ai-dev-137-python-shared-libs` → `137`
+4. **Ask user** - Fallback prompt if all auto-detection fails
+
+**Python script integration:**
+The `finish.py` script now uses the shared detector instead of its own `extract_issue_number()` function:
 ```bash
-# Run linting and tests
-npm run lint  # Must pass
-npm test      # Must pass
+# Auto-detect (recommended)
+python .claude/skills/finish-issue/scripts/finish.py
+
+# Explicit issue number (still supported)
+python .claude/skills/finish-issue/scripts/finish.py 137
 ```
 
-**Review Status Check**:
-```bash
-# Check if /review was run recently
-if [ -f .claude/.review-status.json ]; then
-  REVIEW_STATUS=$(jq -r '.status' .claude/.review-status.json)
-  REVIEW_TIME=$(jq -r '.timestamp' .claude/.review-status.json)
-  VALID_UNTIL=$(jq -r '.valid_until' .claude/.review-status.json)
-
-  # Check if review expired (90 minutes)
-  if [[ "$CURRENT_TIME" > "$VALID_UNTIL" ]]; then
-    ⚠️  Previous review expired
-    ℹ️  Recommended: Run /review again
-    ❓ Proceed anyway? (Y/n)
-  else
-    ✅ Code review completed
-    - Status: $REVIEW_STATUS
-    - Score: $REVIEW_SCORE/100
-
-    if [ "$REVIEW_STATUS" = "issues_found" ]; then
-      ❌ Blocking issues detected - cannot proceed
-      exit 1
-    fi
-  fi
-else
-  ℹ️  Recommended: Run /review for quality check
-  ❓ Proceed without review? (Y/n)
-fi
+**For AI orchestration:**
+When the user provides no issue number:
+```markdown
+1. Call detector: python -c "import sys; sys.path.insert(0, '.claude/skills/_scripts'); from framework.issue_detector import detect_issue_number; print(detect_issue_number())"
+2. Capture issue number from output
+3. If detection fails and user input needed:
+   - Use AskUserQuestion tool to ask for issue number
+   - Validate issue exists on GitHub: gh issue view {N}
+4. Continue with detected/provided issue number
 ```
 
-**Acceptance Criteria**:
-```bash
-# Extract from issue body
-gh issue view #23 --json body --jq .body | grep -A 20 "Acceptance Criteria"
+### Step 1: Pre-Finish Validation
 
-❓ All acceptance criteria met? (Y/n)
+**Quality gates to check:**
+
+```bash
+# Check review status
+cat .claude/.review-status.json
+
+# Check for uncommitted changes
+git status --porcelain
+
+# Check branch is not main
+git rev-parse --abbrev-ref HEAD
+
+# Verify tests pass (if applicable)
+npm test 2>/dev/null || echo "No tests configured"
+
+# Check synced with main
+python .claude/skills/finish-issue/scripts/check_sync.py
 ```
 
-**Documentation Check**:
+**Using the script:**
 ```bash
-ℹ️  Documentation updated if needed? (README, ADRs, API docs)
-❓ Confirm (Y/n)
+# Validation happens automatically
+python .claude/skills/finish-issue/scripts/finish.py 97
 ```
 
-**Skip validation**: Use `--force` flag
+**Validation checklist:**
+- ✅ Not on main branch
+- ✅ No uncommitted changes
+- ✅ Review status exists (score ≥ 90 recommended)
+- ✅ Tests passing (if applicable)
+- ✅ Branch synced with main
 
-### Step 1: Commit & Push
+**If validation fails:**
+- Commit changes: `git add . && git commit -m "..."`
+- Run review: `/review`
+- Sync branch: `/sync`
+- Override: Use `--force` (not recommended)
+
+### Step 2: Commit & Push
+
+**Auto-commit all changes:**
+
 ```bash
-git add .
-git commit -m "$(cat <<EOF
-feat: implement Issue #23
+# Manual approach
+git add -A
+git commit -m "feat: implement feature (Issue #97)
 
-Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
-EOF
-)"
-git push -u origin <branch>
+Closes #97
+
+Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
+git push
+
+# Script approach (automatic)
+python finish.py 97
 ```
 
-### Step 2: Create PR
+**Commit message format:**
+- Type determined from issue title (feat/fix/docs/test/refactor)
+- Title from GitHub issue
+- Includes "Closes #N"
+- Co-authored by Claude
+
+### Step 3: Create Pull Request
+
+**Create PR with context:**
+
 ```bash
+# Manual approach
 gh pr create \
-  --title "feat: implement Issue #23" \
-  --body "<generated-pr-body>" \
-  --base main
+  --title "feat: implement feature (Issue #97)" \
+  --body "## Summary
+
+Completes issue #97
+
+## Changes
+...
+
+🤖 Generated with Claude Code"
+
+# Script approach (automatic)
+# PR created automatically in finish.py
 ```
 
-### Step 3: Merge PR
+**PR includes:**
+- Issue number in title
+- Summary section
+- Changes description
+- Claude Code attribution
+
+### Step 4: Merge Pull Request
+
+**Merge with squash:**
+
 ```bash
-# Wait for checks or auto-merge
+# Manual approach
 gh pr merge --squash --delete-branch
+
+# Script approach (automatic, unless --no-merge)
+python finish.py 97
+
+# Skip merging
+python finish.py 97 --no-merge
 ```
 
-### Step 4: Close Issue
+**Merge strategy:** Squash commit (clean history)
+
+**Branch deletion:** Automatic (unless `--keep-branch`)
+
+### Step 5: Close Issue
+
+**Close with completion comment:**
+
 ```bash
-gh issue close #23 --comment "✅ Completed in PR #<pr-number>"
+# Manual approach
+gh issue close 97 --comment "✅ Completed in PR #109"
+
+# Script approach (automatic)
+# Issue closed automatically in finish.py
 ```
 
-### Step 5: Cleanup
+### Step 6: Cleanup
+
+**Clean up environment:**
+
 ```bash
+# Manual approach
 git checkout main
-git pull origin main
-git branch -d <feature-branch>
-git push origin --delete <branch>
+git pull
 
-# Remove review status file
+# Delete all workflow state files
+rm -f .claude/.work-issue-state.json
+rm -f .claude/.eval-plan-status.json
 rm -f .claude/.review-status.json
+
+# Script approach (automatic)
+# Cleanup happens automatically in finish.py
 ```
 
-### Execution Time
-```
-Pre-Finish Validation: 1 min
-Commit & Push: 30 sec
-Create PR: 20 sec
-Merge PR: 30 sec (with auto-merge)
-Close Issue: 10 sec
-Cleanup: 10 sec
+**Cleanup actions:**
+- Switch to main branch
+- Pull latest changes
+- **Archive plan file** (IMPORTANT):
+  - Move `.claude/plans/active/issue-{N}-plan.md` → `.claude/plans/archive/`
+  - Preserves history for future reference
+  - Do NOT delete plan files
+- Delete workflow state files:
+  - `.claude/.work-issue-state.json` (workflow progress)
+  - `.claude/.eval-plan-status.json` (plan validation results)
+  - `.claude/.review-status.json` (code review results)
+- Delete all issue-related tasks/todos created during workflow
+- Delete local feature branch (if merged)
+- Remove worktree directory (if used)
 
-Total: ~3-4 minutes
-Manual equivalent: ~15-20 minutes
+**AI Orchestration - Archive Plan File:**
+
+When finishing an issue via AI orchestration, **MUST** archive the plan file (do NOT delete):
+
+```python
+import shutil
+from pathlib import Path
+
+# Archive plan file
+issue_number = 154  # Detected issue number
+plan_file = Path(f".claude/plans/active/issue-{issue_number}-plan.md")
+archive_dir = Path(".claude/plans/archive")
+
+if plan_file.exists():
+    # Ensure archive directory exists
+    archive_dir.mkdir(parents=True, exist_ok=True)
+
+    # Move plan to archive
+    archive_path = archive_dir / plan_file.name
+    shutil.move(str(plan_file), str(archive_path))
+
+    print(f"✅ Plan archived: {archive_path}")
+else:
+    print(f"ℹ️ Plan file not found: {plan_file}")
+```
+
+**CRITICAL**: Do NOT delete plan files. Always move to archive for historical reference.
+
+**AI Orchestration - Cleanup Tasks/Todos:**
+
+When finishing an issue via AI orchestration, **MUST** clean up all tasks created during the workflow:
+
+```python
+# After all other cleanup steps, delete all issue-related todos
+# Use TaskList to get all tasks, then delete them
+
+from typing import List
+
+# Step 1: Get all current tasks
+task_list = TaskList()
+
+# Step 2: Delete each task (set status to deleted)
+for task in task_list:
+    try:
+        TaskUpdate(task_id=task.id, status="deleted")
+    except Exception as e:
+        # Task may already be deleted, continue
+        pass
+
+print("✅ All tasks/todos cleaned up")
+```
+
+**Important:** This cleanup ensures no stale tasks remain after issue completion. All tasks created during phases (start-issue, eval-plan, execute-plan, review, finish-issue) are removed.
+
+## Task Management (AI Orchestration)
+
+When executing via AI orchestration, use TaskCreate/TaskUpdate:
+
+**Create tasks at start:**
+```python
+tasks = [
+    "Pre-Finish Validation",
+    "Commit & Push",
+    "Create Pull Request",
+    "Merge Pull Request",
+    "Close Issue",
+    "Cleanup"
+]
+
+for task in tasks:
+    TaskCreate(
+        subject=f"Step N: {task}",
+        description="...",
+        activeForm=f"{task}ing..."
+    )
+```
+
+**Update during execution:**
+```python
+# Mark task in progress
+TaskUpdate(task_id=1, status="in_progress")
+
+# Execute step
+execute_step_1()
+
+# Mark complete
+TaskUpdate(task_id=1, status="completed")
+
+# Move to next
+TaskUpdate(task_id=2, status="in_progress")
+```
+
+**Final verification:**
+```markdown
+- [ ] All 6 tasks completed
+- [ ] PR merged to main
+- [ ] Issue closed on GitHub
+- [ ] Branches cleaned up
+- [ ] Status files deleted
+- [ ] All issue-related tasks/todos deleted
+- [ ] On main branch
+```
+
+## Three Usage Modes
+
+### Mode 1: Manual Execution
+
+**Run git/gh commands yourself:**
+
+```bash
+# 1. Validate
+git status
+cat .claude/.review-status.json
+
+# 2. Commit
+git add -A
+git commit -m "feat: ..."
+git push
+
+# 3. PR
+gh pr create --title "..." --body "..."
+
+# 4. Merge
+gh pr merge --squash --delete-branch
+
+# 5. Close
+gh issue close 97 --comment "✅ Completed"
+
+# 6. Cleanup
+git checkout main && git pull
+
+# Archive plan file (create directory if needed)
+mkdir -p .claude/plans/archive
+mv .claude/plans/active/issue-97-plan.md .claude/plans/archive/
+
+# Delete state files
+rm -f .claude/.review-status.json
+rm -f .claude/.work-issue-state.json
+rm -f .claude/.eval-plan-status.json
+```
+
+**When to use:**
+- Need full control
+- Complex merge conflicts
+- Non-standard workflow
+
+### Mode 2: Script Execution
+
+**Run Python script:**
+
+```bash
+# Basic
+python .claude/skills/finish-issue/scripts/finish.py 97
+
+# With options
+python finish.py 97 --dry-run      # Preview
+python finish.py 97 --no-merge     # Skip auto-merge
+python finish.py 97 --keep-branch  # Keep branch
+
+# Auto-detect issue from branch
+python finish.py
+```
+
+**When to use:**
+- Want automation
+- Standard workflow
+- Trust validation
+
+### Mode 3: AI Orchestration
+
+**Tell Claude to finish:**
+
+```
+User: "finish issue #97"
+
+Claude:
+1. Creates task list (6 tasks)
+2. Calls: python finish.py 97
+3. Updates tasks as script executes
+4. Reports completion
+```
+
+**When to use:**
+- Prefer conversational interface
+- Want progress tracking
+- Claude handles errors
+
+## Error Handling
+
+**Common errors and solutions:**
+
+**Not on feature branch:**
+```
+❌ Cannot finish from main branch
+
+Fix: git checkout feature/97-...
+```
+
+**Uncommitted changes:**
+```
+❌ Uncommitted changes detected
+
+Fix: git add . && git commit -m "..."
+```
+
+**No review status:**
+```
+⚠️ No review status found
+
+Fix: /review
+Or: python finish.py 97 --force
+```
+
+**PR already exists:**
+```
+⚠️ PR may already exist
+
+Check: gh pr list
+Merge: gh pr merge <number> --squash
+```
+
+**Merge conflicts:**
+```
+❌ Merge conflict detected
+
+Fix:
+1. Sync with main: /sync
+2. Resolve conflicts
+3. Re-run: python finish.py 97
 ```
 
 ## Examples
 
-### Example 1: Standard Completion
+### Example 1: Basic Finish
 
-```bash
-# On branch: feature/23-task-list
-# All work done, tests passing
+**User:** "finish issue #97"
 
-/finish-issue
+**Claude orchestrates:**
+```python
+# 1. Create task list
+create_tasks([...])
 
-# Output:
-# ━━━ Pre-Finish Validation ━━━
-# ✅ Linting passes
-# ✅ Tests passing (24 passed)
-# ✅ Code review completed (Score: 92/100)
-# ✅ Acceptance criteria confirmed
-# ✅ Documentation confirmed
-#
-# ━━━ Step 1: Commit & Push ━━━
-# ✅ Committed 3 files
-# ✅ Pushed to origin/feature/23-task-list
-#
-# ━━━ Step 2: Create PR ━━━
-# ✅ Created PR #45: "feat: implement Issue #23"
-#
-# ━━━ Step 3: Merge PR ━━━
-# ✅ PR #45 merged (squash)
-#
-# ━━━ Step 4: Close Issue ━━━
-# ✅ Closed Issue #23
-#
-# ━━━ Step 5: Cleanup ━━━
-# ✅ Deleted branches
-# ✅ Back on main branch
-#
-# 🎉 Issue #23 completed!
+# 2. Execute script
+run_command("python finish.py 97")
+
+# 3. Update progress
+# Script output shows each step completion
+
+# 4. Report
+"✅ Issue #97 finished successfully!"
 ```
 
-### Example 2: Skip Validation
+**Time:** ~2 minutes
 
+### Example 2: Preview with Dry Run
+
+**User:** "show me what would happen if I finish issue #97"
+
+**Execute:**
 ```bash
-# Quick finish without validation checks
-/finish-issue --force
-
-# Skips:
-# - Linting/test checks
-# - Review status check
-# - Acceptance criteria confirmation
-# - Documentation confirmation
-#
-# Use when: Urgent hotfix, documentation-only changes
+python finish.py 97 --dry-run
 ```
 
-### Example 3: Keep Branch for Reference
-
-```bash
-# Keep branch after merge
-/finish-issue --keep-branch
-
-# Same flow but skips branch deletion
-# Useful for: Reference, backporting, experiments
+**Output:**
 ```
+🔍 DRY RUN - Would execute:
+  1. Commit & Push changes
+  2. Create pull request
+  3. Merge pull request
+  4. Close issue
+  5. Delete branches
+  6. Cleanup
+```
+
+**Time:** <10 seconds
+
+### Example 3: Create PR Without Merging
+
+**User:** "create PR for issue #97 but don't merge yet"
+
+**Execute:**
+```bash
+python finish.py 97 --no-merge
+```
+
+**Result:**
+- ✅ PR created
+- ⏭️  Merge skipped
+- ✅ Issue closed
+- Branch kept for manual review
 
 ## Integration
 
-### Paired with /start-issue
+**Workflow sequence:**
+```
+/start-issue #97    → Branch + plan
+/execute-plan #97   → Implementation
+/review             → Quality check
+/finish-issue #97   → Merge + close (THIS SKILL)
+```
+
+**Or complete lifecycle:**
+```
+/work-issue #97
+  → Calls /start-issue
+  → Calls /eval-plan
+  → Calls /execute-plan
+  → Calls /review
+  → Calls /finish-issue (automatic)
+```
+
+## Best Practices
+
+1. **Always review first** - Run `/review` before finishing
+2. **Check dry-run** - Preview with `--dry-run` if unsure
+3. **Sync before finish** - Run `/sync` to avoid conflicts
+4. **Trust validation** - Fix issues instead of using `--force`
+5. **Use auto-detect** - Let script infer issue from branch
+
+## Performance
+
+- **Validation**: <5 seconds
+- **Commit + Push**: ~10 seconds
+- **PR creation**: ~5 seconds
+- **Merge**: ~30 seconds
+- **Cleanup**: ~5 seconds
+- **Total**: ~1-2 minutes
+
+Fast because:
+- Automated validation (no manual checks)
+- Parallel GitHub operations
+- Efficient git commands
+
+## Worktree Support
+
+If the issue was started with `/start-issue` and a worktree was created, all git operations MUST use the worktree path.
+
+### Auto-Detection
+
+**Read plan metadata** to get worktree path:
+```bash
+PLAN_FILE=".claude/plans/active/issue-${ISSUE_NUM}-plan.md"
+WORKTREE_PATH=$(grep "^**Worktree**:" "$PLAN_FILE" | cut -d' ' -f2)
+```
+
+### Git Operations with Worktree
+
+**All git commands must use `-C` flag** to operate in worktree directory:
 
 ```bash
-# Complete workflow
-/start-issue #23    # Start (30 sec)
-# ... implement ...
-/review             # Quality check (2 min)
-/finish-issue #23   # Finish (3 min)
+# Check status
+git -C ${WORKTREE_PATH} status
 
-# Total managed: ~6 minutes
-# Total manual: ~25-30 minutes
+# Stage changes
+git -C ${WORKTREE_PATH} add .
+
+# Commit
+git -C ${WORKTREE_PATH} commit -m "feat: implement feature"
+
+# Push
+git -C ${WORKTREE_PATH} push origin feature/117-...
+
+# Create PR (gh works from worktree)
+cd ${WORKTREE_PATH} && gh pr create --title "..." --body "..."
+# OR
+gh pr create --repo owner/repo --head feature/117-... --title "..." --body "..."
 ```
 
-### Review Integration
+### Cleanup with Worktree
+
+After merging PR and closing issue:
 
 ```bash
-# Recommended workflow
-/review              # Run code review first
-/finish-issue        # Checks review status automatically
+# 1. Switch back to main repo
+cd ${MAIN_REPO_PATH}  # e.g., /Users/woo/dev/ai-dev
 
-# Review status tracked in .claude/.review-status.json
-# Valid for 90 minutes after review completion
+# 2. Remove worktree
+git worktree remove ${WORKTREE_PATH}
+# OR (if worktree has uncommitted changes)
+git worktree remove --force ${WORKTREE_PATH}
+
+# 3. Delete local branch (already deleted remotely)
+git branch -D feature/117-...
+
+# 4. Pull latest main
+git checkout main
+git pull origin main
 ```
 
-### Workflow Chain
+### Fallback Behavior
 
-```
-/start-issue → Implementation → /review → /finish-issue
-    ↓              ↓               ↓           ↓
-  Branch         Code           Quality     Complete
-  + Plan         Changes        Check       & Close
-```
+If no worktree path found:
+- ✅ Use standard git commands (current directory)
+- ✅ No `-C` flag needed
+- ✅ Backward compatible with traditional workflow
 
-## Safety Features
-
-**Pre-flight Checks**:
-- ✅ All changes committed
-- ✅ Branch synced with main
-- ✅ Issue exists and is open
-- ✅ Automated tests passing
-- ✅ Review status checked
-
-**Quality Gates**:
-- ✅ Linting passes
-- ✅ Tests passing
-- ✅ Code review (recommended)
-- ✅ Acceptance criteria met
-- ✅ Documentation updated
-
-**Rollback Protection**:
-- Creates backup before deletion
-- Can restore: `git checkout -b <branch> backup/<branch>`
-- Backup cleanup: 7 days (automated)
-
-## Error Handling
-
-### Tests Failing
-```
-❌ Error: Tests failing
-
-Failed: 2 tests in src/components/TaskList.test.tsx
-
-Options:
-1. Fix tests and retry
-2. Skip with --force (not recommended)
-3. Cancel (Ctrl+C)
-```
-
-### Review Status Issues
-```
-⚠️ Warning: Review status expired
-
-Last review: 2 hours ago (90 min limit)
-
-Recommended: Run /review again
-Or proceed with: /finish-issue --force
-```
-
-### Already on Main Branch
-```
-⚠️ Error: Not on a feature branch
-
-Current: main
-Expected: feature/* or fix/*
-
-Options:
-1. Specify issue: /finish-issue #23
-2. Checkout branch: git checkout feature/23-*
-```
-
-### PR Already Exists
-```
-ℹ️ PR #45 already exists
-
-Status: Open, passing checks
-
-Will merge existing PR and continue.
-```
-
-## Commit Message Format
-
-Follows conventional commits:
-```
-feat: implement Issue #23 - Task list component
-
-- Add TaskList component with drag-drop
-- Implement completion flow
-- Add comprehensive tests
-
-Closes #23
-
-Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
-```
-
-## Advanced Options
-
-### Dry Run
-```bash
-# Preview actions without executing
-/finish-issue --dry-run
-
-# Shows what would happen
-```
-
-### Custom Commit Message
-```bash
-# Override default message
-/finish-issue --message "feat: complete task list
-
-Added drag-drop and real-time sync"
-```
-
-### Skip Specific Steps
-```bash
-/finish-issue --no-commit   # Already committed
-/finish-issue --no-push     # Testing locally
-/finish-issue --no-pr       # Direct merge (dangerous)
-```
-
-## Task Management
-
-**After each step completion**, update task status:
-
-```
-Use TaskUpdate to mark task as completed:
-- Step 2 done → Update Task #1
-- Step 3 done → Update Task #2
-- Step 4 done → Update Task #3
-- Step 5 done → Update Task #4
-- Step 6 done → Update Task #5
-- Step 7 done → Update Task #6
-```
-
-This provides real-time progress visibility in Claude Code UI.
-
-## Final Verification
-
-**Before declaring success**, verify all critical items:
-
-```
-Quick checklist:
-- [ ] All 6 tasks completed
-- [ ] PR merged to main
-- [ ] Issue closed on GitHub
-- [ ] Branches deleted (unless --keep-branch)
-- [ ] Review status cleaned up
-- [ ] No errors during workflow
-```
-
-If any item fails, troubleshoot and retry before completion.
+**Note**: The skill should automatically detect worktree presence and adjust git commands accordingly.
 
 ---
 
-**Related**:
-- [start-issue](../start-issue/SKILL.md) - Start issue workflow
-- [review](../review/SKILL.md) - Code quality review
-- [sync](../sync/SKILL.md) - Sync with main branch
+## Final Verification
 
-**Version**: 2.1.0
-**Status**: ADR-001 Section 4 Compliant
-**Last Updated**: 2026-03-05
+**Critical checks before completion:**
+
+```
+- [ ] Plan file archived (not deleted) to .claude/plans/archive/
+- [ ] All 3 state files deleted (.work-issue-state, .eval-plan-status, .review-status)
+- [ ] All todos cleaned up (TaskUpdate status="deleted")
+- [ ] Worktree removed (if used)
+- [ ] On main branch and up to date
+```
+
+Missing items indicate incomplete cleanup.
+
+## Workflow Skills Requirements
+
+This is a **workflow skill** and must follow the standard pattern:
+
+1. **TaskCreate** at start - Create todo list for progress tracking
+2. **TaskUpdate** during execution - Mark tasks in_progress → completed
+3. **Verification checklist** - Final validation before completion
+
+**See**: [WORKFLOW_PATTERNS.md](../WORKFLOW_PATTERNS.md) for complete implementation guide
+
+---
+
+## Related Skills
+
+- **/start-issue** - Phase 1: Begin issue workflow
+- **/eval-plan** - Phase 1.5: Validate plan
+- **/execute-plan** - Phase 2: Implementation
+- **/review** - Phase 2.5: Quality check
+- **/work-issue** - Complete lifecycle (calls this skill)
+- **/sync** - Sync branch with main
+
+---
+
+**Version:** 3.0.0
+**Pattern:** Workflow Orchestrator (AI-guided + Script)
+**Compliance:** ADR-001 ✅ | ADR-003 ✅ | WORKFLOW_PATTERNS ✅
+**Last Updated:** 2026-03-11
+**Changelog:**
+- v3.0.0: Complete rewrite with Python script + AI orchestration
+- v2.0.0: Added workflow pattern compliance
+- v1.0.0: Initial release

@@ -9,7 +9,7 @@ import re
 import yaml
 from pathlib import Path
 
-def validate_skill(skill_path):
+def validate_skill(skill_path) -> tuple[bool, str]:
     """Basic validation of a skill"""
     skill_path = Path(skill_path)
 

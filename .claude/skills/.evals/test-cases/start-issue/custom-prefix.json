@@ -1,0 +1,18 @@
+{
+  "name": "start-issue-custom-prefix",
+  "skills": ["start-issue"],
+  "query": "start issue #48 --branch-prefix fix",
+  "files": [],
+  "expected_behavior": [
+    "Fetches issue #48 details from GitHub",
+    "Creates feature branch with custom prefix: fix/48-{kebab-title}",
+    "Generates implementation plan",
+    "Creates todo tasks from plan",
+    "Pushes branch to remote origin"
+  ],
+  "assertions": {
+    "branch_created": "fix/48-*",
+    "plan_exists": true,
+    "remote_branch_exists": true
+  }
+}

@@ -44,6 +44,30 @@ Keeping branches in sync with main prevents merge conflicts, ensures compatibili
 
 ## Workflow
 
+Copy this checklist to track progress:
+
+**For Feature Branches (7 steps):**
+```
+Task Progress:
+- [ ] Step 1: Auto-commit uncommitted changes
+- [ ] Step 2: Fetch latest from remote
+- [ ] Step 3: Check for potential conflicts
+- [ ] Step 4: Merge main into feature branch
+- [ ] Step 5: Resolve conflicts if any
+- [ ] Step 6: Run tests to verify
+- [ ] Step 7: Push synced branch
+```
+
+**For Main Branch (5 steps):**
+```
+Task Progress:
+- [ ] Step 1: Auto-commit uncommitted changes
+- [ ] Step 2: Fetch latest from remote
+- [ ] Step 3: Pull and merge origin/main
+- [ ] Step 4: Resolve conflicts if any
+- [ ] Step 5: Push to remote
+```
+
 ### Step 1: Create Todo List
 
 **Initialize sync tracking** using TaskCreate:
@@ -157,55 +181,18 @@ If conflicts detected, guide the user:
 - src/types.ts (1 conflict)
 - package-lock.json (auto-resolve recommended)
 
-## Resolution Steps
+Quick resolution steps:
+1. git status     # See conflicted files
+2. Edit files, remove conflict markers (<<<<<<<, =======, >>>>>>>)
+3. git add <files>
+4. git commit -m "resolve: merge conflicts"
+5. npm test       # Verify resolution
 
-1. **Review conflicts:**
-   ```bash
-   git status  # See conflicted files
-   git diff    # See conflict markers
-   ```
-
-2. **Edit conflicted files:**
-   - Look for `<<<<<<<`, `=======`, `>>>>>>>` markers
-   - Choose which changes to keep
-   - Remove conflict markers
-   - Combine changes if needed
-
-3. **Stage resolved files:**
-   ```bash
-   git add src/auth.ts
-   git add src/types.ts
-   ```
-
-4. **Complete merge:**
-   ```bash
-   git commit -m "resolve: merge conflicts from main"
-   ```
-
-5. **Verify resolution:**
-   ```bash
-   npm run lint    # Check syntax
-   npm test        # Run tests
-   ```
-
-## Special Cases
-
-**package-lock.json conflicts:**
-```bash
-# Usually safe to regenerate
-git checkout --theirs package-lock.json
-npm install
-git add package-lock.json
-```
-
-**Binary file conflicts:**
-```bash
-# Choose one version
-git checkout --ours path/to/file   # Keep your version
-# OR
-git checkout --theirs path/to/file # Take main's version
-git add path/to/file
-```
+See [CONFLICT-HANDLING.md](CONFLICT-HANDLING.md) for:
+- Detailed resolution steps
+- Special cases (package-lock.json, binary files)
+- Common conflict patterns
+- Prevention tips
 ```
 
 ### 6. Post-Merge Testing
@@ -337,16 +324,9 @@ When already on main branch, the workflow is simpler:
    git push origin main
    ```
 
-**Why this is simpler:**
-- No need for extensive testing (main should already be tested)
-- Usually fast-forward merge (no conflicts)
-- No need to preview conflicts in advance
-- Direct push to origin/main
+**Why simpler:** Usually fast-forward merge, no conflicts, no testing needed.
 
-**When to use:**
-- After making commits directly on main (not recommended workflow, but happens)
-- To update local main with latest remote changes
-- When you need to sync main before creating a new feature branch
+**When to use:** Update local main with latest remote changes.
 
 ## Error Handling
 
@@ -391,70 +371,20 @@ Next steps:
 
 ## Usage Examples
 
-### Example 1: Daily Sync
+**Example 1: Daily Sync (feature branch)**
+- User: "sync my branch with main"
+- Flow: Fetch → Merge → Test → Push
+- Result: ✅ Branch synced successfully (~1 min)
 
-**User says:**
-> "sync my branch with main"
+**Example 2: Sync with Conflicts**
+- User: "pull latest changes from main"
+- Flow: Fetch → Merge → ⚠️ Conflicts → Resolve → Test → Push
+- Result: ✅ Conflicts resolved (~5-10 min)
 
-**What happens:**
-1. Check current branch (e.g., feature/23-auth)
-2. Fetch latest from origin/main
-3. Preview conflicts (none)
-4. Merge origin/main → feature/23-auth
-5. Run tests (pass)
-6. Push to origin/feature/23-auth
-7. ✅ Branch synced successfully
-
-**Time:** ~1 minute
-
-### Example 2: Sync with Conflicts
-
-**User says:**
-> "pull latest changes from main"
-
-**What happens:**
-1. Fetch origin/main
-2. Preview shows conflicts in src/auth.ts
-3. Merge origin/main → feature/23-auth
-4. ⚠️ Conflicts detected
-5. Guide user through resolution
-6. User edits, stages, commits
-7. Run tests (pass)
-8. Push to remote
-9. ✅ Conflicts resolved, synced
-
-**Time:** ~5-10 minutes
-
-### Example 3: Sync Before PR
-
-**User says:**
-> "make sure my branch is up to date before creating the PR"
-
-**What happens:**
-1. Fetch latest
-2. Check commits: branch 5 behind, 8 ahead
-3. Merge main
-4. Auto-merge successful
-5. Run full test suite
-6. Push synced branch
-7. ✅ Ready for PR
-
-**Time:** ~2 minutes
-
-### Example 4: Sync Main Branch
-
-**User says:**
-> "sync" (while on main branch)
-
-**What happens:**
-1. Detect current branch: main
-2. Fetch origin/main
-3. Pull and merge origin/main
-4. Fast-forward merge (no conflicts)
-5. Push to origin/main (if there were local commits)
-6. ✅ Main branch synced
-
-**Time:** ~30 seconds
+**Example 3: Sync Main Branch**
+- User: "sync" (on main branch)
+- Flow: Fetch → Fast-forward merge → Push
+- Result: ✅ Main synced (~30 sec)
 
 ## Best Practices
 
@@ -516,6 +446,16 @@ Provides real-time visibility of sync progress.
 ```
 
 Missing items indicate incomplete sync.
+
+## Workflow Skills Requirements
+
+This is a **workflow skill** and must follow the standard pattern:
+
+1. **TaskCreate** at start - Create todo list for progress tracking
+2. **TaskUpdate** during execution - Mark tasks in_progress → completed
+3. **Verification checklist** - Final validation before completion
+
+**See**: [WORKFLOW_PATTERNS.md](../WORKFLOW_PATTERNS.md) for complete implementation guide
 
 ## Related Skills
 

@@ -18,9 +18,11 @@ This skill handles the complete workflow to start working on a GitHub issue:
 **What it does:**
 1. Fetches issue details from GitHub (or creates new issue with `--create`)
 2. Creates a feature branch with smart naming: `feature/{number}-{kebab-case-title}`
-3. Generates an implementation plan from the issue body
-4. Syncs with main branch and sets up dependencies
-5. Shows clear next steps to begin coding
+3. **Creates git worktree** for parallel development: `{repo}-{number}-{title}` (NEW)
+4. **Switches to worktree directory** for isolated development environment (NEW)
+5. Generates an implementation plan from the issue body
+6. Syncs with main branch and sets up dependencies
+7. Shows clear next steps to begin coding
 
 **Why it's needed:**
 Starting work on an issue involves many manual steps (fetch issue, create branch, push, write plan, sync). This skill automates the entire flow in ~30 seconds, ensuring consistency and saving 5-10 minutes of manual work.
@@ -50,11 +52,173 @@ $ARGUMENTS = "[issue-number] [options]" or "--create \"title\" [options]"
 - `--create "title"` - Create new issue and start work
 - `--label bug,P0` - Add labels when creating (use with --create)
 - `--no-plan` - Skip plan generation
+- `--no-worktree` - Skip worktree creation (use traditional branch switching) (NEW)
 - `--branch-prefix fix` - Use custom prefix instead of "feature"
 - `--dry-run` - Preview actions without executing
 - `--force` - Override safety checks
 
+## AI Execution Instructions
+
+**CRITICAL: Worktree creation and task management**
+
+When executing `/start-issue`, AI MUST follow this pattern:
+
+### Step 1: Create 9 Workflow Tasks
+
+```python
+tasks = [
+    TaskCreate(
+        subject="Validate environment",
+        description="Check not on feature branch, no uncommitted changes, gh authenticated",
+        activeForm="Validating environment..."
+    ),
+    TaskCreate(
+        subject="Fetch or create issue",
+        description="Use gh issue view or gh issue create",
+        activeForm="Fetching issue details..."
+    ),
+    TaskCreate(
+        subject="Prepare branch name",
+        description="Convert title to kebab-case: feature/{N}-{title}",
+        activeForm="Preparing branch name..."
+    ),
+    TaskCreate(
+        subject="Create git worktree + branch",
+        description="Create worktree in ../{repo}-{N}-{title} unless --no-worktree",
+        activeForm="Creating worktree..."
+    ),
+    TaskCreate(
+        subject="Push branch to remote",
+        description="Push new branch with -u flag",
+        activeForm="Pushing branch..."
+    ),
+    TaskCreate(
+        subject="Generate implementation plan",
+        description="Create .claude/plans/active/issue-{N}-plan.md in worktree",
+        activeForm="Generating plan..."
+    ),
+    TaskCreate(
+        subject="Create todo list from plan",
+        description="Parse plan tasks and create todos with TaskCreate",
+        activeForm="Creating todos..."
+    ),
+    TaskCreate(
+        subject="Sync and setup",
+        description="Fetch origin, merge main, npm install if needed",
+        activeForm="Syncing with main..."
+    ),
+    TaskCreate(
+        subject="Report success with worktree info",
+        description="Show next steps with CRITICAL worktree path instructions",
+        activeForm="Finalizing setup..."
+    )
+]
+```
+
+### Step 2: Worktree Creation Logic
+
+**Default behavior** (unless --no-worktree):
+```python
+# MUST create worktree in parent directory
+worktree_dir = f"../{repo_name}-{issue_number}-{kebab_title}"
+
+# Create worktree AND branch atomically
+Bash(f'git worktree add "{worktree_dir}" -b "{branch_name}"')
+
+# Switch to worktree directory
+Bash(f'cd "{worktree_dir}"')
+
+# Push branch to remote
+Bash(f'git -C "{worktree_dir}" push -u origin "{branch_name}"')
+```
+
+**Critical**:
+- Worktree directory is in PARENT of main repo (not inside it)
+- Branch creation happens WITH worktree (not separately)
+- All subsequent operations use worktree path
+
+### Step 3: Plan Generation in Worktree
+
+```python
+# MUST write plan to worktree, not main repo
+plan_file = f"{worktree_dir}/.claude/plans/active/issue-{issue_number}-plan.md"
+
+# Plan MUST include worktree metadata
+plan_content = f"""
+# Issue #{issue_number}: {title}
+
+**GitHub**: {issue_url}
+**Branch**: {branch_name}
+**Worktree**: {worktree_dir}  # CRITICAL - for subsequent skills
+**Started**: {date}
+
+...
+"""
+
+Write(plan_file, plan_content)
+```
+
+### Step 4: Success Message Format
+
+**MUST show worktree path prominently**:
+```python
+print(f"""
+🎉 Ready to work on Issue #{issue_number}!
+
+Worktree created: {worktree_dir}
+Branch: {branch_name}
+
+IMPORTANT CONTEXT FOR CLAUDE:
+
+All subsequent operations for issue #{issue_number} MUST use the worktree path:
+  {worktree_dir}
+
+DO NOT use relative paths or the main repository directory.
+Always use absolute paths with the worktree directory shown above.
+
+Examples of CORRECT usage:
+  Read: Read {worktree_dir}/.claude/plans/active/issue-{issue_number}-plan.md
+  Edit: Edit {worktree_dir}/.claude/skills/...
+  Git: git -C {worktree_dir} status
+
+Examples of INCORRECT usage (DO NOT DO THIS):
+  ❌ Read .claude/plans/active/issue-{issue_number}-plan.md
+  ❌ Edit /Users/woo/dev/ai-dev/.claude/skills/...
+  ❌ git status  # Missing -C flag
+""")
+```
+
+### Step 5: Task Updates During Execution
+
+```python
+# Mark each task in_progress before execution
+TaskUpdate(tasks[0], status="in_progress")
+validate_environment()
+TaskUpdate(tasks[0], status="completed")
+
+TaskUpdate(tasks[1], status="in_progress")
+issue = fetch_issue(issue_number)
+TaskUpdate(tasks[1], status="completed")
+
+# ... continue for all 9 tasks
+```
+
 ## Workflow Steps
+
+Copy this checklist to track progress:
+
+```
+Task Progress:
+- [ ] Step 1: Validate environment
+- [ ] Step 2: Fetch or create issue
+- [ ] Step 3: Prepare branch name
+- [ ] Step 4: Create git worktree + branch (unless --no-worktree)
+- [ ] Step 5: Push branch to remote
+- [ ] Step 6: Generate implementation plan
+- [ ] Step 7: Create todo list from plan
+- [ ] Step 8: Sync and setup
+- [ ] Step 9: Report success with worktree info
+```
 
 Execute these steps in sequence:
 
@@ -83,7 +247,7 @@ gh issue create --title "$TITLE" --label "$LABELS" --body "$BODY"
 
 Parse the `--create "title"` and optional `--label`, `--body` from arguments.
 
-### 3. Create Feature Branch
+### 3. Prepare Branch Name
 
 Generate branch name from issue title:
 - Convert to kebab-case: "Fix Login Bug" → "fix-login-bug"
@@ -92,13 +256,63 @@ Generate branch name from issue title:
 
 Check if branch exists remotely; if yes, show options (checkout existing, delete and recreate, use different prefix).
 
-Create and push branch:
+**No branch creation yet** - the branch will be created by worktree in Step 4.
+
+### 4. Create Git Worktree (unless --no-worktree)
+
+Create an isolated worktree directory AND branch in one atomic operation:
+
+**Default behavior** (create worktree + branch):
 ```bash
-git checkout -b "$BRANCH_NAME"
+WORKTREE_DIR="../${REPO_NAME}-${ISSUE_NUMBER}-${KEBAB_TITLE}"
+git worktree add "$WORKTREE_DIR" -b "$BRANCH_NAME"  # Creates branch AND worktree
+cd "$WORKTREE_DIR"
+git push -u origin "$BRANCH_NAME"  # Push new branch to remote
+```
+
+**Worktree naming convention:**
+- Pattern: `{repo-name}-{issue-number}-{kebab-title}`
+- Example: `ai-dev-116-fix-start-issue`
+- Location: Parent directory of main repo
+
+**If --no-worktree flag is set:**
+```bash
+# Fallback: checkout branch in current directory
+git checkout "$BRANCH_NAME"
+```
+
+**Why use worktrees?**
+- ✅ **Parallel development** - Work on multiple issues simultaneously
+- ✅ **Clean main directory** - Original repo stays on main branch
+- ✅ **Isolated environments** - Each issue in separate directory
+- ✅ **No branch conflicts** - Switch between issues instantly
+
+**After worktree creation:**
+- Switch to worktree directory: `cd $WORKTREE_DIR`
+- Worktree path is recorded in plan metadata (see Step 6)
+- Subsequent operations use worktree path automatically
+- Use `git worktree list` to see all active worktrees
+
+### 5. Push Branch to Remote
+
+After worktree + branch creation, push to remote:
+
+```bash
+cd "$WORKTREE_DIR"  # Already in worktree
 git push -u origin "$BRANCH_NAME"
 ```
 
-### 4. Generate Implementation Plan (unless --no-plan)
+**Why push immediately?**
+- ✅ Branch is tracked remotely
+- ✅ Enables PR creation later
+- ✅ Backup of branch created
+- ✅ Team can see active work
+
+**If --no-worktree** (fallback to traditional branch):
+- Branch already pushed in create_branch()
+- Skip this step
+
+### 6. Generate Implementation Plan (unless --no-plan)
 
 Create `.claude/plans/active/issue-{number}-plan.md` with:
 
@@ -108,6 +322,7 @@ Create `.claude/plans/active/issue-{number}-plan.md` with:
 
 **GitHub**: [link]
 **Branch**: {branch-name}
+**Worktree**: {worktree-path} (if created)
 **Started**: {date}
 
 ## Context
@@ -134,7 +349,7 @@ Create `.claude/plans/active/issue-{number}-plan.md` with:
 
 **Why generate plans:** Plans create a single source of truth, make progress trackable, and give Claude context about the full scope of work.
 
-### 5. Create Todo List from Plan
+### 7. Create Todo List from Plan
 
 Parse the plan's `## Tasks` section and create Claude Code todos:
 
@@ -147,7 +362,7 @@ For each task in plan:
 
 **Example:** Plan with "Read legacy skill", "Create SKILL.md", "Add LICENSE.txt" becomes 3 linked todos.
 
-### 6. Sync and Setup
+### 8. Sync and Setup
 
 Ensure working directory is ready:
 ```bash
@@ -159,21 +374,63 @@ If `package.json` exists and `node_modules` is stale, run `npm install`.
 
 Optionally run quick health check (don't block on failure).
 
-### 7. Report Success
+### 9. Report Success
 
-Show clear next steps:
+Show clear next steps with worktree information:
+
+**If worktree was created:**
+```
+🎉 Ready to work on Issue #{number}!
+
+Worktree created: {worktree-path}
+Branch: {branch-name}
+
+IMPORTANT CONTEXT FOR CLAUDE:
+
+All subsequent operations for issue #{number} MUST use the worktree path:
+  {worktree-path}
+
+DO NOT use relative paths or the main repository directory.
+Always use absolute paths with the worktree directory shown above.
+
+Examples of CORRECT usage:
+  Read: Read {worktree-path}/.claude/plans/active/issue-{number}-plan.md
+  Edit: Edit {worktree-path}/.claude/skills/...
+  Write: Write {worktree-path}/src/...
+  Git: git -C {worktree-path} status
+  Git: git -C {worktree-path} add .
+  Git: git -C {worktree-path} commit -m "..."
+
+Examples of INCORRECT usage (DO NOT DO THIS):
+  ❌ Read .claude/plans/active/issue-{number}-plan.md  # Wrong - relative path
+  ❌ Edit /Users/woo/dev/ai-dev/.claude/skills/...     # Wrong - main repo
+  ❌ git status                                         # Wrong - no -C flag
+
+Next steps:
+  1. Review plan: cat {worktree-path}/.claude/plans/active/issue-{number}-plan.md
+  2. Get first task: /next
+  3. Start coding (use worktree path for all operations)!
+  4. When done: /finish-issue #{number}
+
+Current status:
+  Main repo: {main-repo-path} (still on main branch)
+  Worktree: {worktree-path} (on {branch-name})
+  Plan: {worktree-path}/.claude/plans/active/issue-{number}-plan.md
+```
+
+**If --no-worktree was used:**
 ```
 🎉 Ready to work on Issue #{number}!
 
 Next steps:
-  1. Review plan: cat {plan-file}
+  1. Review plan: cat .claude/plans/active/issue-{number}-plan.md
   2. Get first task: /next
   3. Start coding!
   4. When done: /finish-issue #{number}
 
 Current status:
   Branch: {branch-name}
-  Plan: {plan-file}
+  Plan: .claude/plans/active/issue-{number}-plan.md
 ```
 
 ## Error Handling
@@ -326,11 +583,12 @@ Fast because:
 ```
 Step 1 done (Environment validated) → Use TaskUpdate if created
 Step 2 done (Issue fetched) → Update task status
-Step 3 done (Branch created) → Update task status
-Step 4 done (Plan generated) → Update task status
-Step 5 done (Todos created) → Update task status
-Step 6 done (Environment synced) → Update task status
-Step 7 done (Success reported) → Mark workflow complete
+Step 3 done (Branch created without checkout) → Update task status
+Step 4 done (Worktree created) → Update task status
+Step 5 done (Plan generated) → Update task status
+Step 6 done (Todos created) → Update task status
+Step 7 done (Environment synced) → Update task status
+Step 8 done (Success reported) → Mark workflow complete
 ```
 
 This provides real-time visibility of progress.
@@ -340,19 +598,34 @@ This provides real-time visibility of progress.
 **Quick checklist before completion:**
 
 ```
-- [ ] Branch created and pushed
-- [ ] Plan file exists (unless --no-plan)
+- [ ] Branch created and pushed (without checkout)
+- [ ] Worktree created (unless --no-worktree)
+- [ ] Plan file exists in worktree (unless --no-plan)
+- [ ] Worktree path recorded in plan metadata
 - [ ] Todo list created from plan
 - [ ] Synced with origin/main
-- [ ] Ready message displayed
-- [ ] User knows next steps
+- [ ] Ready message displayed with worktree info
+- [ ] User knows to use worktree path for operations
 ```
 
 If any critical item missing, troubleshoot before declaring success.
 
+## Workflow Skills Requirements
+
+This is a **workflow skill** and must follow the standard pattern:
+
+1. **TaskCreate** at start - Create todo list for progress tracking
+2. **TaskUpdate** during execution - Mark tasks in_progress → completed
+3. **Verification checklist** - Final validation before completion
+
+**See**: [WORKFLOW_PATTERNS.md](../WORKFLOW_PATTERNS.md) for complete implementation guide
+
 ## Related Skills
 
-- **/finish-issue** - Complete issue workflow (pairs with this)
+- **/eval-plan** - Validate plan before execution (Phase 1.5 - recommended next step)
+- **/execute-plan** - Execute implementation plan (Phase 2 after eval-plan)
+- **/finish-issue** - Complete issue workflow (Phase 4 - final step)
+- **/work-issue** - Complete lifecycle with checkpoints (calls this skill)
 - **/issue** - Issue management (list, view, close)
 - **/plan** - Custom planning (if auto-plan isn't enough)
 - **/next** - Get next task from plan
@@ -361,4 +634,5 @@ If any critical item missing, troubleshoot before declaring success.
 
 **Version:** 2.1.0
 **Pattern:** Tool-Reference (guides Claude through workflow)
-**Compliance:** ADR-001 Section 4 ✅
+**Compliance:** ADR-001 ✅ | WORKFLOW_PATTERNS.md ✅
+**Last Updated:** 2026-03-11

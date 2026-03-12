@@ -4,6 +4,9 @@ description: |
   Sync skills between projects - bidirectional copy with version detection.
   TRIGGER when: user wants to sync skills ("update skills from X", "sync skills", "pull skills from framework", "push skills to project").
   DO NOT TRIGGER when: user wants to update pillars/rules/workflow (use respective update-* skills), or just wants to read skill docs.
+allowed-tools: Bash(cp *), Bash(mkdir *), Bash(ls *), Bash(find *), Bash(test *), Bash(cat *), Bash(wc *), Bash(stat *), Bash(git *), Read, Write, Glob, Grep, Edit
+disable-model-invocation: false
+user-invocable: true
 ---
 
 # Update Skills - Skills Synchronization
@@ -113,6 +116,60 @@ Sync only specific skills:
 - Comma-separated list
 - Only syncs specified skills
 - Ignores others
+
+### 5. Smart Filter (--filter-config) - NEW
+
+Apply intelligent filtering based on tech stack configuration:
+
+```bash
+# Used by /update-framework meta-skill
+/update-skills --from ~/dev/ai-dev --filter-config <target>/.claude/framework-config.json
+```
+
+**What it does:**
+1. Reads filter config from `.claude/framework-config.json`
+2. Applies exclude list for skills not relevant to tech stack
+3. Shows filter summary in analysis
+
+**Filter Configuration Format:**
+
+```json
+{
+  "filterConfig": {
+    "skills": {
+      "include": ["*"],  // Usually sync all skills
+      "exclude": []      // Rarely exclude skills
+    }
+  }
+}
+```
+
+**Filter Logic:**
+
+```
+For each skill directory:
+1. Check if skill name in exclude list
+   → Skip if excluded
+2. Apply normal NEW/NEWER/SAME logic
+```
+
+**Example - Minimal Project:**
+
+Without filter: 16 skills synced
+With filter (exclude deployment skills): ~14 skills synced
+
+```
+📋 Smart Filter Active
+⏭️  Excluding: deploy-prod (deployment skill)
+⏭️  Excluding: hotfix (deployment skill)
+
+Result: 14 skills synced (2 excluded)
+```
+
+**Note:**
+- Skills are usually synced completely (no filtering)
+- Filtering mainly used for specialized deployment skills
+- Typically called by `/update-framework` meta-skill
 
 ## Version Detection
 
@@ -225,6 +282,12 @@ Rollback available: .claude/skills/adr.backup-2026-03-06/
 
 ```
 .claude/skills/
+├── README.md                 ✅ Synced (skills system guide)
+├── WORKFLOW_PATTERNS.md      ✅ Synced (workflow requirements)
+├── PYTHON_GUIDE.md           ✅ Synced (development guide)
+├── _shared/                  ✅ Synced (shared utilities)
+│   ├── *.py
+│   └── tests/
 ├── skill-name/
 │   ├── SKILL.md              ✅ Synced (entire directory)
 │   ├── LICENSE.txt           ✅ Synced
@@ -240,7 +303,10 @@ Rollback available: .claude/skills/adr.backup-2026-03-06/
 └── plans/                    ❌ Not synced (project-specific)
 ```
 
-**Note:** Entire skill directories are synced, not just SKILL.md.
+**Note:**
+- Entire skill directories are synced, not just SKILL.md
+- Root-level documentation (README, WORKFLOW_PATTERNS, PYTHON_GUIDE) is synced to preserve framework knowledge
+- Shared utilities and tests are synced for cross-skill compatibility
 
 ## Usage Examples
 
@@ -345,34 +411,10 @@ Please check:
 
 ## Best Practices
 
-1. **Always dry-run first:**
-```bash
-/update-skills --from ~/dev/ai-dev --dry-run
-/update-skills --from ~/dev/ai-dev
-```
-
-2. **Selective updates for safety:**
-```bash
-# Update only specific skills you trust
-/update-skills --from ~/dev/ai-dev --skills adr,status
-```
-
-3. **Framework as source of truth:**
-```bash
-# In projects: pull from framework
-/update-skills --from ~/dev/ai-dev
-
-# In framework: pull innovations from projects
-/update-skills --from ~/projects/my-app --skills custom-skill
-```
-
-4. **Document custom skills:**
-Before pushing to framework, ensure:
-- [ ] Complete YAML frontmatter
-- [ ] Detailed documentation (200+ lines)
-- [ ] Comprehensive examples
-- [ ] No project-specific hardcoded paths
-- [ ] LICENSE.txt included
+1. **Always dry-run first:** Test with `--dry-run` before applying changes
+2. **Selective updates:** Use `--skills` flag to update only specific skills
+3. **Framework as source of truth:** Projects pull from framework, framework pulls innovations from projects
+4. **Document custom skills:** Ensure complete YAML frontmatter, 200+ lines docs, examples, no hardcoded paths, LICENSE.txt
 
 ## Integration
 
@@ -424,6 +466,16 @@ Provides real-time visibility of sync progress.
 ```
 
 Missing items indicate incomplete sync.
+
+## Workflow Skills Requirements
+
+This is a **workflow skill** and must follow the standard pattern:
+
+1. **TaskCreate** at start - Create todo list for progress tracking
+2. **TaskUpdate** during execution - Mark tasks in_progress → completed
+3. **Verification checklist** - Final validation before completion
+
+**See**: [WORKFLOW_PATTERNS.md](../WORKFLOW_PATTERNS.md) for complete implementation guide
 
 ## Related Skills
 

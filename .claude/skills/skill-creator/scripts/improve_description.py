@@ -190,7 +190,7 @@ Please respond with only the new description text in <new_description> tags, not
     return description
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Improve a skill description based on eval results")
     parser.add_argument("--eval-results", required=True, help="Path to eval results JSON (from run_eval.py)")
     parser.add_argument("--skill-path", required=True, help="Path to skill directory")

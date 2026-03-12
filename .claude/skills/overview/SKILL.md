@@ -167,31 +167,41 @@ Full 5-tab HTML report saved to `docs/reports/`:
 
 ## Usage
 
-**Default (both terminal + HTML)**:
+**Default (terminal output)**:
 ```bash
 /overview
+# or directly: ./script/overview.py
 ```
 
-**Terminal only** (faster):
+**HTML report**:
 ```bash
-/overview --text-only
+/overview --format=html
+# or: ./script/overview.py --format=html
 ```
 
-**HTML only** (shareable report):
+**JSON output**:
 ```bash
-/overview --html-only
+/overview --format=json
+# or: ./script/overview.py --format=json
 ```
 
-**Generate without opening**:
+**Save to file**:
 ```bash
-/overview --no-open
+./script/overview.py --format=json --output=status.json
+./script/overview.py --format=html --output=report.html
+```
+
+**Generate HTML without opening**:
+```bash
+./script/overview.py --format=html --no-open
 ```
 
 ## Flags
 
-- `--text-only` - Skip HTML generation, terminal only
-- `--html-only` - Skip terminal output, generate HTML only
-- `--no-open` - Don't auto-open HTML in browser
+- `--format=terminal|html|json` - Output format (default: terminal)
+- `--output=FILE` - Save output to file (optional)
+- `--no-open` - Don't auto-open HTML reports in browser
+- `--project-root=DIR` - Specify project root (default: current directory)
 
 ## Integration
 
@@ -304,25 +314,25 @@ Display collected status information in terminal format with health score and re
 
 ### Task #6: Generate HTML Report
 
-**Execute the modular overview script:**
+**Execute the Python overview script:**
 
 ```bash
-.claude/skills/overview/script/overview.sh
+.claude/skills/overview/script/overview.py --format=html
 ```
 
 This will:
-1. Collect all overview data using modular collectors
-2. Display terminal output
-3. Generate comprehensive HTML report
+1. Collect all overview data using Python collectors (Phase 3, ADR-003)
+2. Calculate health score using Python health calculator (Phase 4, ADR-003)
+3. Generate comprehensive HTML report using Python formatter (Phase 4, ADR-003)
 4. Save to `docs/reports/<project-name>-overview-<timestamp>.html`
 
 **Available options:**
-- `--text-only` - Skip HTML, terminal only (faster)
-- `--html-only` - Generate HTML without terminal output
+- `--format=terminal|html|json` - Output format (default: terminal)
+- `--output=FILE` - Save to specific file
 - `--no-open` - Generate HTML but don't open browser
 - `--help` - Show usage information
 
-**Note:** The modular version is in `.claude/skills/overview/script/` with separated concerns for easier maintenance and testing.
+**Note:** Fully migrated to Python per ADR-003 (Phases 3-4 complete). All data collection, health calculation, and formatting use Python modules with type hints and comprehensive docstrings.
 
 Provides visibility into status collection progress.
 
@@ -356,6 +366,8 @@ Missing items indicate incomplete overview collection.
 
 ---
 
-**Version:** 2.1.0
+**Version:** 3.0.0
 **Pattern:** Tool-Reference (displays status information)
-**Compliance:** ADR-001 Section 4 ✅
+**Compliance:**
+- ADR-001 Section 4 ✅ (Official skill patterns)
+- ADR-003 ✅ (Python-only policy - Phases 3-4 complete)

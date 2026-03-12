@@ -4,6 +4,9 @@ description: |
   Sync Pillars between projects - bidirectional copy with smart filtering.
   TRIGGER when: user wants to sync Pillars ("update pillars from X", "sync pillars", "pull pillars from framework", "push pillars to project").
   DO NOT TRIGGER when: user wants to update rules/skills/workflow (use respective update-* skills), or just wants to read Pillar docs.
+allowed-tools: Bash(cp *), Bash(mkdir *), Bash(ls *), Bash(find *), Bash(test *), Bash(cat *), Bash(git *), Read, Write, Glob, Grep, Edit
+disable-model-invocation: false
+user-invocable: true
 ---
 
 # Update Pillars - Project Pillar Synchronization
@@ -379,6 +382,16 @@ Provides real-time visibility of sync progress.
 ```
 
 Missing items indicate incomplete sync.
+
+## Workflow Skills Requirements
+
+This is a **workflow skill** and must follow the standard pattern:
+
+1. **TaskCreate** at start - Create todo list for progress tracking
+2. **TaskUpdate** during execution - Mark tasks in_progress → completed
+3. **Verification checklist** - Final validation before completion
+
+**See**: [WORKFLOW_PATTERNS.md](../WORKFLOW_PATTERNS.md) for complete implementation guide
 
 ## Related Skills
 

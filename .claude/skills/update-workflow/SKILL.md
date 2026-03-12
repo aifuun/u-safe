@@ -4,6 +4,9 @@ description: |
   Sync workflow documentation between projects - CLAUDE.md and .claude/workflow/ files.
   TRIGGER when: user wants to sync workflow docs ("update workflow from X", "sync workflow", "pull workflow from framework", "push workflow to project").
   DO NOT TRIGGER when: user wants to update pillars/rules/skills (use respective update-* skills), or just wants to read workflow docs.
+allowed-tools: Bash(cp *), Bash(mkdir *), Bash(ls *), Bash(find *), Bash(test *), Bash(cat *), Bash(git *), Read, Write, Glob, Grep, Edit
+disable-model-invocation: false
+user-invocable: true
 ---
 
 # Update Workflow - Workflow Documentation Synchronization
@@ -371,6 +374,16 @@ Provides real-time visibility of sync progress.
 ```
 
 Missing items indicate incomplete sync.
+
+## Workflow Skills Requirements
+
+This is a **workflow skill** and must follow the standard pattern:
+
+1. **TaskCreate** at start - Create todo list for progress tracking
+2. **TaskUpdate** during execution - Mark tasks in_progress → completed
+3. **Verification checklist** - Final validation before completion
+
+**See**: [WORKFLOW_PATTERNS.md](../WORKFLOW_PATTERNS.md) for complete implementation guide
 
 ## Related Skills
 

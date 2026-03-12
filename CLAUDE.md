@@ -29,13 +29,13 @@ ai-dev/ (THIS REPO)              Your Projects
 **Initialize a new project:**
 ```bash
 # Minimal project (Pillars A, B, K)
-./scripts/init-project.sh --profile=minimal --name=my-library
+python3 scripts/init-project.py --profile=minimal --name=my-library
 
 # Backend project (Pillars A, B, K, M, Q, R)
-./scripts/init-project.sh --profile=node-lambda --name=my-api
+python3 scripts/init-project.py --profile=node-lambda --name=my-api
 
 # Full-stack project (All 7 Pillars)
-./scripts/init-project.sh --profile=react-aws --name=my-app
+python3 scripts/init-project.py --profile=react-aws --name=my-app
 ```
 
 **Or copy manually:**
@@ -63,10 +63,10 @@ cp -r framework/.prot-template/ your-project/.prot/
 |-----------|--------|---------|
 | **Pillars (18)** | 🔄 P0 | Architecture extraction in progress |
 | **Commands (18)** | ✅ Complete | Ready for use in `.claude-template/commands/` |
-| **Skills (13)** | ✅ Complete | Issue lifecycle, framework sync, ADR management |
 | **Rules (40+)** | ✅ Complete | Organized by category, fully documented |
 | **Profiles (3)** | ✅ Complete | minimal, node-lambda, react-aws |
-| **Init Script** | ✅ Complete | `scripts/init-project.sh` works perfectly |
+| **Init Script** | ✅ Complete | `scripts/init-project.py` (Python) |
+| **Evaluation System** | ✅ Phase 1 | 8 test cases, Anthropic-compliant format |
 
 ## 🚀 How to Use This Framework
 
@@ -74,13 +74,13 @@ cp -r framework/.prot-template/ your-project/.prot/
 
 ```bash
 # Minimal project - Pillars A, B, K (learning/POC)
-./scripts/init-project.sh --profile=minimal --name=my-library
+python3 scripts/init-project.py --profile=minimal --name=my-library
 
 # Node Lambda - Pillars A, B, K, M, Q, R (backend/API)
-./scripts/init-project.sh --profile=node-lambda --name=my-api
+python3 scripts/init-project.py --profile=node-lambda --name=my-api
 
 # React AWS - All 7 Pillars (full-stack)
-./scripts/init-project.sh --profile=react-aws --name=my-app
+python3 scripts/init-project.py --profile=react-aws --name=my-app
 ```
 
 **What happens**:
@@ -126,7 +126,6 @@ ai-dev/
 │   ├── .claude-template/         # → Installed to .claude/
 │   │   ├── commands/             # 20+ workflow commands
 │   │   ├── rules/                # 40+ technical rules
-│   │   ├── skills/               # Custom workflow automation (optional)
 │   │   └── workflow/             # Planning templates
 │   ├── .prot-template/           # → Installed to .prot/
 │   │   └── pillars/              # 18 coding standards
@@ -138,19 +137,6 @@ ai-dev/
 │
 ├── scripts/                      # Automation Scripts
 │   └── init-project.sh           # ✅ Project initialization (chosen approach)
-│
-├── examples/                     # Complete Runnable Examples
-│   ├── minimal-example/          # Beginner: 3 Pillars (A, B, K)
-│   │   ├── src/                  # User management library
-│   │   ├── tests/                # 24 passing tests
-│   │   └── docs/EXAMPLE.md       # Pattern explanation
-│   ├── node-lambda-example/      # Intermediate: 6 Pillars (Backend)
-│   │   ├── src/patterns/         # Saga, idempotency
-│   │   └── tests/                # Integration tests
-│   └── react-aws-example/        # Advanced: 7 Pillars (Full-stack)
-│       ├── packages/frontend/    # React + Zustand
-│       ├── packages/backend/     # Lambda + API Gateway
-│       └── infrastructure/       # AWS CDK
 │
 ├── cli/                          # CLI Tool (Optional)
 │   └── src/                      # 📋 Not necessary (script works well)
@@ -206,82 +192,6 @@ ai-dev/
 
 ---
 
-## 🎨 Skills System (Custom Workflows)
-
-Skills extend the framework with project-specific automation. This project uses 13 custom skills for issue lifecycle, framework management, and workflow automation.
-
-### 🔥 High Frequency Skills (Daily Use)
-
-| Skill | Purpose | Usage |
-|-------|---------|-------|
-| **next** | Get next task from active plan | `/next` |
-| **adr** | Create Architecture Decision Records | `/adr create "title"` |
-| **overview** | Project status and metrics | `/overview` |
-| **sync** | Sync branch with main | `/sync` |
-
-### 📅 Issue Lifecycle Management
-
-| Skill | Purpose | Usage |
-|-------|---------|-------|
-| **start-issue** | Begin work on GitHub issue | `/start-issue #23` |
-| **finish-issue** | Complete issue workflow | `/finish-issue #23` |
-
-**Complete workflow**:
-```bash
-/start-issue #23    # → Create branch, generate plan, setup env
-/next               # → Get first task from plan
-# ... implement feature ...
-/sync               # → Sync with main branch
-/finish-issue #23   # → Commit, PR, merge, close issue
-```
-
-### 🔧 Framework Management
-
-| Skill | Purpose | Usage |
-|-------|---------|-------|
-| **update-framework** | Sync all framework components | `/update-framework --from <path>` |
-| **update-pillars** | Sync Pillars only | `/update-pillars --from <path>` |
-| **update-rules** | Sync Rules only | `/update-rules --from <path>` |
-| **update-workflow** | Sync Workflow only | `/update-workflow --from <path>` |
-| **update-skills** | Sync Skills only | `/update-skills --from <path>` |
-
-**Example - One-command framework update**:
-```bash
-# Update entire framework from ai-dev repo
-/update-framework --from ~/dev/ai-dev
-
-# Or selective updates
-/update-pillars --from ~/dev/ai-dev --pillars A,B,K
-/update-rules --from ~/dev/ai-dev --categories core,architecture
-```
-
-### 🛠️ Skill Development
-
-| Skill | Purpose | Usage |
-|-------|---------|-------|
-| **skill-creator** | Create and optimize skills | `/skill-creator` |
-
-**Features**:
-- Create new skills from templates
-- Modify existing skills
-- Run performance evaluations
-- Optimize skill triggers
-
-### Skills vs Commands
-
-| Aspect | Commands | Skills |
-|--------|----------|--------|
-| **Location** | `.claude-template/commands/` | `.claude/skills/` |
-| **Scope** | Framework-wide, generic | Project-specific |
-| **Customization** | Template-based | Fully customizable |
-| **Invocation** | `*command-name` | `/skill-name` |
-| **Examples** | `*plan`, `*review` | `/start-issue`, `/adr` |
-
-👉 **Skills location**: `.claude/skills/`
-👉 **Skills documentation**: `.claude/skills/README.md`
-
----
-
 ```
 Strategy Layer (40 min)   → MVP Planning
     ↓ Link
@@ -318,20 +228,6 @@ framework/
 ├── .claude-template/              # Claude Code workflow templates
 │   ├── commands/                  # 20+ workflow commands
 │   ├── rules/                     # 40+ technical rules (by category)
-│   ├── skills/                    # Custom workflow automation (13 skills)
-│   │   ├── start-issue/           # Issue lifecycle: start
-│   │   ├── finish-issue/          # Issue lifecycle: complete
-│   │   ├── next/                  # Task navigation
-│   │   ├── adr/                   # Architecture Decision Records
-│   │   ├── sync/                  # Branch synchronization
-│   │   ├── overview/              # Project status
-│   │   ├── update-framework/      # Framework sync (meta-skill)
-│   │   ├── update-pillars/        # Pillars sync
-│   │   ├── update-rules/          # Rules sync
-│   │   ├── update-workflow/       # Workflow sync
-│   │   ├── update-skills/         # Skills sync
-│   │   ├── skill-creator/         # Skill development tool
-│   │   └── README.md              # Skills documentation
 │   ├── workflow/                  # Planning and execution guides
 │   ├── WORKFLOW.md                # Quick start entry point
 │   └── README.md                  # Full documentation
@@ -359,10 +255,10 @@ framework/
 |----------|---------|------|
 | **WORKFLOW.md** | Entry point for Claude Code | [framework/.claude-template/WORKFLOW.md](framework/.claude-template/WORKFLOW.md) |
 | **Commands Guide** | All 20+ commands documented | [framework/.claude-template/commands/](framework/.claude-template/commands/) |
-| **Skills Guide** | 13 custom skills for workflow automation | [.claude/skills/README.md](.claude/skills/README.md) |
 | **Rules Index** | 40+ rules organized by category | [framework/.claude-template/rules/](framework/.claude-template/rules/) |
 | **Pillars Guide** | 18 deep-dive standards | [framework/.prot-template/](framework/.prot-template/) |
 | **Profiles** | Smart template presets | [framework/profiles/README.md](framework/profiles/README.md) |
+| **Evaluation System** | Skill quality assurance | [.claude/skills/.evals/README.md](.claude/skills/.evals/README.md) |
 | **Architecture** | Complete system design | [FRAMEWORK_DESIGN.md](FRAMEWORK_DESIGN.md) |
 
 ---
@@ -375,15 +271,15 @@ framework/
 
 ```bash
 # Building a library or learning framework basics
-./scripts/init-project.sh --profile=minimal --name=my-library
+python3 scripts/init-project.py --profile=minimal --name=my-library
 # → Pillars: A (Types), B (Validation), K (Testing)
 
 # Building a serverless API
-./scripts/init-project.sh --profile=node-lambda --name=my-api
+python3 scripts/init-project.py --profile=node-lambda --name=my-api
 # → Pillars: A, B, K + M (Saga), Q (Idempotency), R (Logs)
 
 # Building a full-stack web app
-./scripts/init-project.sh --profile=react-aws --name=my-app
+python3 scripts/init-project.py --profile=react-aws --name=my-app
 # → Pillars: All 7 (A, B, K, L, M, Q, R)
 ```
 
@@ -422,57 +318,6 @@ vim framework/.claude-template/rules/category/new-rule.md
 
 # Create profiles for new tech stacks
 vim framework/profiles/python-fastapi.json
-```
-
-### Use Case 5: Daily Development with Skills
-
-```bash
-# Start your day - check project status
-/overview
-
-# Pick up work from GitHub
-/start-issue #42
-# → Creates branch: feature/42-add-auth
-# → Generates implementation plan
-# → Sets up environment
-
-# Get next task from plan
-/next
-# → Shows: "Task #1: Install OAuth packages"
-
-# Work on the task...
-# Periodically sync with main
-/sync
-
-# Record architectural decisions
-/adr create "Use OAuth 2.0 with PKCE flow"
-
-# When done, complete the issue
-/finish-issue #42
-# → Commits changes
-# → Creates PR
-# → Merges to main
-# → Closes issue
-```
-
-### Use Case 6: Cross-Project Framework Management
-
-```bash
-# Working on multiple projects using the framework
-# Keep them all in sync with one command
-
-# Update project A from framework source
-cd ~/projects/project-a
-/update-framework --from ~/dev/ai-dev
-
-# Update project B (selective sync)
-cd ~/projects/project-b
-/update-pillars --from ~/dev/ai-dev --pillars A,B,K
-/update-rules --from ~/dev/ai-dev --categories core,architecture
-
-# Push framework improvements back to source
-cd ~/dev/ai-dev
-/update-framework --to ~/projects/project-a
 ```
 
 ---

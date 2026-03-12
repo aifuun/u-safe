@@ -4,6 +4,9 @@ description: |
   Sync entire framework (Pillars, Rules, Workflow, Skills) in one command - meta-skill orchestrating all update-* skills.
   TRIGGER when: user wants complete framework sync ("update framework from X", "sync entire framework", "pull all from framework", "upgrade framework").
   DO NOT TRIGGER when: user wants specific components only (use /update-pillars, /update-rules, /update-workflow, /update-skills), or just wants to read framework docs.
+allowed-tools: Bash(cp *), Bash(mkdir *), Bash(ls *), Bash(find *), Bash(test *), Bash(cat *), Bash(git *), Bash(gh *), Read, Write, Glob, Grep, Edit
+disable-model-invocation: false
+user-invocable: true
 ---
 
 # Update Framework - Complete Framework Synchronization Meta-Skill
@@ -15,11 +18,12 @@ Sync all framework components (Pillars, Rules, Workflow, Skills) between project
 This meta-skill orchestrates all 4 update-* skills for complete framework synchronization:
 
 **What it does:**
+0. (NEW) Conducts tech stack questionnaire for intelligent filtering
 1. Calls update-pillars, update-rules, update-workflow, update-skills in sequence
 2. Aggregates analysis from all 4 components
-3. Shows unified diff preview
+3. Shows unified diff preview (with filter summary)
 4. Confirms once before syncing everything
-5. Executes all 4 syncs with progress updates
+5. Executes all 4 syncs with smart filtering
 6. Reports comprehensive summary
 
 **Why it's needed:**
@@ -31,14 +35,151 @@ Monthly framework upgrades require syncing 4 components. Running 4 separate comm
 - Complete framework sync needed
 - Cross-project consistency enforcement
 
+## AI Execution Instructions
+
+**CRITICAL: Task creation and skill delegation**
+
+When executing `/update-framework`, AI MUST follow this pattern:
+
+### Step 1: Create 7 Subtasks
+
+```python
+# Create all 7 tasks at the start
+tasks = {
+    "profile": TaskCreate(
+        subject="Detect tech stack profile",
+        description="Load profile from .framework-install or run questionnaire",
+        activeForm="Detecting profile..."
+    ),
+    "validate": TaskCreate(
+        subject="Validate source and target paths",
+        description="Verify ai-dev and target project exist",
+        activeForm="Validating paths..."
+    ),
+    "pillars": TaskCreate(
+        subject="Sync Pillars via update-pillars",
+        description="Call /update-pillars with profile filters",
+        activeForm="Syncing Pillars..."
+    ),
+    "rules": TaskCreate(
+        subject="Sync Rules via update-rules",
+        description="Call /update-rules with category filters",
+        activeForm="Syncing Rules..."
+    ),
+    "workflow": TaskCreate(
+        subject="Sync Workflow via update-workflow",
+        description="Call /update-workflow",
+        activeForm="Syncing Workflow..."
+    ),
+    "skills": TaskCreate(
+        subject="Sync Skills via update-skills",
+        description="Call /update-skills",
+        activeForm="Syncing Skills..."
+    ),
+    "summary": TaskCreate(
+        subject="Report comprehensive summary",
+        description="Aggregate results and display stats",
+        activeForm="Generating summary..."
+    )
+}
+```
+
+### Step 2: Execute with Status Updates
+
+```python
+# Profile detection
+TaskUpdate(tasks["profile"], "in_progress")
+profile = detect_profile_from_framework_install(target_path)
+TaskUpdate(tasks["profile"], "completed")
+
+# Path validation
+TaskUpdate(tasks["validate"], "in_progress")
+validate_paths(source, target)
+TaskUpdate(tasks["validate"], "completed")
+
+# Call update-pillars sub-skill
+TaskUpdate(tasks["pillars"], "in_progress")
+Skill("update-pillars", args=f"--to {target} --pillars {profile.pillars}")
+TaskUpdate(tasks["pillars"], "completed")
+
+# Call update-rules sub-skill
+TaskUpdate(tasks["rules"], "in_progress")
+Skill("update-rules", args=f"--to {target} --categories {profile.categories}")
+TaskUpdate(tasks["rules"], "completed")
+
+# Call update-workflow sub-skill
+TaskUpdate(tasks["workflow"], "in_progress")
+Skill("update-workflow", args=f"--to {target}")
+TaskUpdate(tasks["workflow"], "completed")
+
+# Call update-skills sub-skill
+TaskUpdate(tasks["skills"], "in_progress")
+Skill("update-skills", args=f"--to {target}")
+TaskUpdate(tasks["skills"], "completed")
+
+# Summary
+TaskUpdate(tasks["summary"], "in_progress")
+print_summary(results)
+TaskUpdate(tasks["summary"], "completed")
+```
+
+### Step 3: DO NOT Use Direct rsync
+
+**❌ WRONG - Do not do this:**
+```python
+rsync -av framework/.prot-template/pillars/ ../target/.prot/pillars/
+rsync -av framework/.claude-template/rules/ ../target/.claude/rules/
+rm -rf ../target/.claude/rules/backend  # Manual cleanup
+```
+
+**✅ CORRECT - Delegate to sub-skills:**
+```python
+Skill("update-pillars", args="--to ../target --pillars A,B,K,L")
+Skill("update-rules", args="--to ../target --categories core,arch,frontend")
+Skill("update-workflow", args="--to ../target")
+Skill("update-skills", args="--to ../target")
+```
+
+**Why**: Sub-skills handle filtering, validation, error handling, and backups correctly.
+
 ## Workflow
+
+### Step 0: Profile-Based Filtering (Auto-Detection)
+
+**Before syncing, auto-detect the target project's profile** to filter irrelevant components.
+
+**How it works:**
+1. **Auto-detect profile** from `.framework-install` file in target project
+2. **Load profile configuration** from `framework/profiles/{profile}.json`
+3. **Extract rules list** from profile's `rules` array
+4. **Filter during sync** - only copy rules that match the profile
+5. **Fallback to questionnaire** if `.framework-install` not found
+
+**Supported profiles:**
+- `minimal` - 3 Pillars (A, B, K), ~15 rules - For learning/POC projects
+- `node-lambda` - 6 Pillars (A, B, K, M, Q, R), ~20 rules - Backend/serverless
+- `react-aws` - 7 Pillars (A, B, K, L, M, Q, R), ~25 rules - Full-stack web apps
+
+**Example results:**
+- Minimal profile: **52 items synced** (frontend/backend/infrastructure rules filtered out)
+- Node-lambda profile: **77 items synced** (frontend rules filtered out)
+- React-aws profile: **89 items synced** (all rules included)
+
+**Benefits:**
+- ✅ **No repetitive questions** - Profile already known from init-project
+- ✅ **Consistent filtering** - Same rules every time based on profile
+- ✅ **Automatic** - Works without user interaction
+- ✅ **Fallback available** - Questionnaire still used if config missing
+
+**See**: [PROFILE_FILTERING.md](PROFILE_FILTERING.md) for profile detection logic and examples.
 
 ### Step 1: Create Todo List
 
 **Initialize sync tracking** using TaskCreate:
 
 ```
-Task #1: Validate source and target paths
+Task #0: Tech stack questionnaire (if needed)
+Task #1: Validate source and target paths (blocked by #0)
 Task #2: Aggregate component analysis (blocked by #1)
 Task #3: Show unified diff preview (blocked by #2)
 Task #4: Execute all component syncs (blocked by #3)
@@ -69,43 +210,33 @@ Sync Order (dependency-optimized):
 | **Workflow** | CLAUDE.md + workflow templates | /update-workflow |
 | **Skills** | All skills (.claude/skills/) | /update-skills |
 
-## Sync Modes
+## Usage
 
-### 1. Pull Framework (--from)
+### Push Framework to Target Project
 
-Pull entire framework from source project to current project:
+**Must run from ai-dev framework directory.**
+
+Push entire framework from ai-dev to target project:
 
 ```bash
-/update-framework --from ~/dev/ai-dev
-/update-framework --from ~/dev/ai-dev --dry-run
-/update-framework --from ~/dev/ai-dev --skip skills
+# Must be in ai-dev directory
+cd ~/dev/ai-dev
+
+# Push to target project
+/update-framework ../target-project
+/update-framework ../target-project --dry-run
+/update-framework ../target-project --skip skills
 ```
 
 **What happens:**
-1. Validate source path has framework components
-2. Call all 4 update-* skills with --from flag
-3. Aggregate analysis results
-4. Show unified summary table
-5. Confirm once
-6. Execute all 4 syncs with progress updates
-
-### 2. Push Framework (--to)
-
-Push entire framework from current project to target project:
-
-```bash
-/update-framework --to ~/projects/my-app
-/update-framework --to ~/projects/my-app --dry-run
-/update-framework --to ~/projects/my-app --only pillars,rules
-```
-
-**What happens:**
-1. Validate target path exists
-2. Call all 4 update-* skills with --to flag
-3. Aggregate analysis results
-4. Show what will be pushed
-5. Confirm once
-6. Execute all 4 syncs
+0. **Validate working directory** - must be in ai-dev framework
+1. Auto-detect profile from target project's `.framework-install`
+2. Load profile configuration and extract rules list
+3. Call all 4 update-* skills with target path and filter config
+4. Aggregate analysis results (with filter summary)
+5. Show what will be pushed
+6. Confirm once
+7. Execute all 4 syncs with smart filtering
 
 ### 3. Dry Run Mode (--dry-run)
 
@@ -138,106 +269,45 @@ Sync only specific components:
 
 **Note:** Cannot use both --skip and --only together.
 
+### 5. Reconfigure Tech Stack (--reconfigure)
+
+Update tech stack configuration and regenerate filters:
+
+```bash
+/update-framework --to ../u-safe --reconfigure
+/update-framework --from ~/dev/ai-dev --reconfigure
+```
+
+**What happens:**
+1. Ignore existing `.claude/framework-config.json`
+2. Show tech stack questionnaire again
+3. Generate new filter configuration based on new answers
+4. Save updated config
+5. Apply new filters during sync
+
+**When to use:**
+- Project tech stack changed (e.g., migrated from Vue to React)
+- Added/removed cloud services (e.g., started using AWS)
+- Want to adjust which rules are synced
+- Initial config was incorrect
+
 ## Orchestration Logic
 
 **How meta-skill delegates to component skills:**
 
 ```
-For each enabled component:
-1. Call respective update-* skill with flags
-   - update-pillars --from <source> --dry-run
-   - update-rules --from <source> --dry-run
-   - update-workflow --from <source> --dry-run
-   - update-skills --from <source> --dry-run
-
-2. Capture analysis output from each skill
-
-3. Aggregate into unified summary:
-   ┌────────────┬─────┬─────┬──────┬──────────┐
-   │ Component  │ New │ Upd │ Same │ Action   │
-   ├────────────┼─────┼─────┼──────┼──────────┤
-   │ Pillars    │  0  │  2  │   3  │ Update 2 │
-   │ Rules      │  1  │  3  │  36  │ Update 4 │
-   │ Workflow   │  1  │  1  │   3  │ Update 2 │
-   │ Skills     │  2  │  1  │  10  │ Update 3 │
-   └────────────┴─────┴─────┴──────┴──────────┘
-
+1. Call all 4 update-* skills with --dry-run flags
+2. Capture and aggregate analysis from each skill
+3. Show unified summary table with new/updated/unchanged counts
 4. If NOT dry-run, confirm once
-
-5. If confirmed, execute actual sync:
-   - update-pillars --from <source>
-   - update-rules --from <source>
-   - update-workflow --from <source>
-   - update-skills --from <source>
-
-6. Collect results and report summary
+5. Execute all 4 syncs with filter configuration
+6. Report comprehensive summary
 ```
 
-## Analysis Output
+**Sync order (dependency-aware):**
+- Pillars → Rules → Workflow → Skills
 
-```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📥 Framework Sync: Pulling from ~/dev/ai-dev
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-🔍 Analyzing components...
-
-┌────────────┬─────┬─────┬──────┬──────────┐
-│ Component  │ New │ Upd │ Same │ Action   │
-├────────────┼─────┼─────┼──────┼──────────┤
-│ Pillars    │  0  │  2  │   3  │ Update 2 │
-│ Rules      │  1  │  3  │  36  │ Update 4 │
-│ Workflow   │  1  │  1  │   3  │ Update 2 │
-│ Skills     │  2  │  1  │  10  │ Update 3 │
-└────────────┴─────┴─────┴──────┴──────────┘
-
-📊 Overall Summary:
-- New items: 4
-- Updated items: 7
-- Unchanged: 52
-- Total to sync: 11 items
-
-⏱️  Estimated time: 30 seconds
-
-Proceed with framework sync? (y/n)
-```
-
-## Execution Output
-
-```
-[User confirms with 'y']
-
-━━━ Step 1/4: Syncing Pillars ━━━
-✅ Updated Pillar A (Nominal Types)
-✅ Updated Pillar K (Testing)
-
-━━━ Step 2/4: Syncing Rules ━━━
-✅ Updated core/workflow.md
-✅ Updated architecture/clean-architecture.md
-✅ Updated backend/lambda.md
-✅ Added languages/go.md
-
-━━━ Step 3/4: Syncing Workflow ━━━
-✅ Updated CLAUDE.md
-✅ Added .claude/workflow/TIER.md
-
-━━━ Step 4/4: Syncing Skills ━━━
-✅ Added create-issues skill
-✅ Added start-issue skill
-✅ Updated review skill
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-✅ Framework sync complete!
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Updated:
-- 2 Pillars
-- 4 Rules
-- 2 Workflow files
-- 3 Skills
-
-Total: 11 items synced in 28 seconds
-```
+**See**: [ADVANCED.md](ADVANCED.md) for complete delegation flow, output examples, and partial failure recovery.
 
 ## Usage Examples
 
@@ -246,12 +316,46 @@ Total: 11 items synced in 28 seconds
 **User says:**
 > "update framework from ai-dev"
 
-**What happens:**
-1. Call all 4 update-* skills with --from ~/dev/ai-dev --dry-run
-2. Aggregate: 11 items to sync (2 Pillars, 4 Rules, 2 Workflow, 3 Skills)
-3. Confirm once
-4. Execute all 4 syncs
-5. Report: "Updated 11 items in 28 seconds"
+**What happens (with 7-task progress tracking):**
+
+```
+🚀 Starting framework sync...
+
+Task Progress:
+✅ Task 1/7: Detect tech stack profile (profile: tauri-react)
+✅ Task 2/7: Validate source and target paths
+⏳ Task 3/7: Syncing Pillars via update-pillars...
+   Launching skill: update-pillars
+   ✅ Synced 4 Pillars (A, B, K, L)
+✅ Task 3/7: Complete
+
+⏳ Task 4/7: Syncing Rules via update-rules...
+   Launching skill: update-rules
+   ✅ Synced 25 rules (core, architecture, languages, frontend, desktop)
+✅ Task 4/7: Complete
+
+⏳ Task 5/7: Syncing Workflow via update-workflow...
+   Launching skill: update-workflow
+   ✅ Synced 6 workflow files
+✅ Task 5/7: Complete
+
+⏳ Task 6/7: Syncing Skills via update-skills...
+   Launching skill: update-skills
+   ✅ Synced 18 skills
+✅ Task 6/7: Complete
+
+✅ Task 7/7: Report comprehensive summary
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Summary
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ Pillars: 4 synced
+✅ Rules: 25 synced (15 filtered by profile)
+✅ Workflow: 6 synced
+✅ Skills: 18 synced
+
+Total: 53 items synced in 28 seconds
+```
 
 **Time:** ~30 seconds
 
@@ -483,6 +587,16 @@ Missing items indicate incomplete meta-sync.
 | **Time** | ~2 minutes | ~30 seconds |
 | **Complexity** | Must remember 4 | Simple, memorable |
 | **Use case** | Fine-grained | Complete sync |
+
+## Workflow Skills Requirements
+
+This is a **workflow skill** and must follow the standard pattern:
+
+1. **TaskCreate** at start - Create todo list for progress tracking
+2. **TaskUpdate** during execution - Mark tasks in_progress → completed
+3. **Verification checklist** - Final validation before completion
+
+**See**: [WORKFLOW_PATTERNS.md](../WORKFLOW_PATTERNS.md) for complete implementation guide
 
 ## Related Skills
 

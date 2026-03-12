@@ -4,6 +4,9 @@ description: |
   Sync technical rules between projects - bidirectional copy with category filtering.
   TRIGGER when: user wants to sync rules ("update rules from X", "sync rules", "pull rules from framework", "push rules to project").
   DO NOT TRIGGER when: user wants to update pillars/skills/workflow (use respective update-* skills), or just wants to read rule docs.
+allowed-tools: Bash(cp *), Bash(mkdir *), Bash(ls *), Bash(find *), Bash(test *), Bash(cat *), Bash(git *), Read, Write, Glob, Grep, Edit
+disable-model-invocation: false
+user-invocable: true
 ---
 
 # Update Rules - Technical Rules Synchronization
@@ -129,6 +132,69 @@ Sync only specific categories:
 - `backend` - Lambda, saga, API design
 - `infrastructure` - AWS CDK, secrets, monitoring
 - `development` - Performance, security
+
+### 5. Smart Filter (--filter-config) - NEW
+
+Apply intelligent filtering based on tech stack configuration:
+
+```bash
+# Used by /update-framework meta-skill
+/update-rules --from ~/dev/ai-dev --filter-config <target>/.claude/framework-config.json
+```
+
+**What it does:**
+1. Reads filter config from `.claude/framework-config.json`
+2. Applies include/exclude patterns based on tech stack
+3. Filters by categories, specific files, and glob patterns
+4. Shows filter summary in analysis
+
+**Filter Configuration Format:**
+
+```json
+{
+  "filterConfig": {
+    "rules": {
+      "include_categories": ["core", "architecture", "frontend", "languages"],
+      "include_files": ["infrastructure/tauri-stack.md"],
+      "exclude_patterns": [
+        "backend/lambda-*.md",
+        "infrastructure/aws-*.md",
+        "infrastructure/cdk-*.md"
+      ]
+    }
+  }
+}
+```
+
+**Filter Logic:**
+
+```
+For each rule file:
+1. Check if category in include_categories
+   → Skip if not included
+2. Check if file matches include_files
+   → Include if matched
+3. Check if file matches exclude_patterns
+   → Exclude if matched (takes precedence)
+4. Apply normal NEW/NEWER/SAME logic
+```
+
+**Example - Tauri Project:**
+
+Without filter: 43 rules synced
+With filter: ~25 rules synced (excludes AWS/Lambda rules)
+
+```
+📋 Smart Filter Active (Tauri + React + No Cloud)
+⏭️  Excluding: backend/lambda-* (3 files)
+⏭️  Excluding: infrastructure/aws-* (5 files)
+⏭️  Excluding: infrastructure/cdk-* (3 files)
+✅ Including: infrastructure/tauri-stack.md
+
+Result: 25 rules synced (18 excluded as not relevant)
+```
+
+**Note:** Typically called by `/update-framework` meta-skill, not directly by users.
 
 ## Comparison Logic
 
@@ -378,6 +444,16 @@ Provides real-time visibility of sync progress.
 ```
 
 Missing items indicate incomplete sync.
+
+## Workflow Skills Requirements
+
+This is a **workflow skill** and must follow the standard pattern:
+
+1. **TaskCreate** at start - Create todo list for progress tracking
+2. **TaskUpdate** during execution - Mark tasks in_progress → completed
+3. **Verification checklist** - Final validation before completion
+
+**See**: [WORKFLOW_PATTERNS.md](../WORKFLOW_PATTERNS.md) for complete implementation guide
 
 ## Related Skills
 

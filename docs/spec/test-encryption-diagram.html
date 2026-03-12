@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试：文件加密流程图</title>
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'neutral',
+            logLevel: 'debug'  // 启用调试日志
+        });
+    </script>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 { color: #333; }
+        .test-case {
+            margin: 30px 0;
+            padding: 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+        }
+        .test-case h2 {
+            color: #1976d2;
+            margin-top: 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Mermaid 图表测试</h1>
+
+    <div class="test-case">
+        <h2>测试 1：简单流程图（验证基础语法）</h2>
+        <div class="mermaid">
+flowchart TD
+    A[开始] --> B[结束]
+        </div>
+    </div>
+
+    <div class="test-case">
+        <h2>测试 2：带中文的流程图</h2>
+        <div class="mermaid">
+flowchart TD
+    A[用户选择文件] --> B{检查状态}
+    B -->|是| C[继续]
+    B -->|否| D[停止]
+        </div>
+    </div>
+
+    <div class="test-case">
+        <h2>测试 3：完整的文件加密流程图（原始版本）</h2>
+        <div class="mermaid">
+flowchart TD
+    A[用户选择文件加密] --> B{文件是否已在数据库}
+    B -->|否| C[添加文件元数据]
+    B -->|是| D[检查 is_encrypted]
+    C --> E[生成文件 UUID]
+    D -->|已加密| F[提示"已加密"]
+    D -->|未加密| G[开始加密]
+    E --> G
+    G --> H[计算 SHA-256]
+    H --> I[生成加密元数据]
+    I --> J[Argon2id 派生文件密钥]
+    J --> K[64KB 分块加密]
+    K --> L[写入临时文件]
+    L --> M[每块 fsync]
+    M --> N{所有块完成?}
+    N -->|否| K
+    N -->|是| O[原子重命名]
+    O --> P[更新数据库]
+    P --> Q[删除原始文件]
+    Q --> R[完成]
+        </div>
+    </div>
+
+    <script>
+        // 在控制台显示是否有错误
+        window.addEventListener('load', () => {
+            console.log('Page loaded. Check for Mermaid errors above.');
+        });
+
+        // 捕获 Mermaid 错误
+        window.addEventListener('error', (e) => {
+            console.error('Error detected:', e);
+        });
+    </script>
+</body>
+</html>
