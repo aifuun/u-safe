@@ -60,6 +60,71 @@ Manually finishing an issue requires 10+ commands (git, gh CLI) and takes 5-10 m
 - `--dry-run` - Show what would happen without executing
 - `--force` - Skip validation checks (use cautiously)
 
+## AI Execution Instructions
+
+**CRITICAL: Immediate Issue Detection**
+
+When `/finish-issue` is invoked, AI MUST follow this pattern:
+
+### Step 1: Detect Issue Number Immediately
+
+**Before creating any tasks or introducing the skill**, determine which issue to finish:
+
+```python
+# Priority 1: Check if issue number provided as argument
+if args:
+    issue_num = args  # Use explicit argument
+else:
+    # Priority 2: Check conversation context/memory for active issue
+    # Look for recently mentioned issue numbers in conversation
+    # Example patterns to detect:
+    # - "issue #158"
+    # - "working on issue 158"
+    # - "just completed #158"
+    # - Recent /start-issue, /execute-plan, /review commands with issue number
+
+    if issue_in_context:
+        issue_num = detected_issue_from_context
+    else:
+        # Priority 3: Use issue detector (branch name, active plan, worktree)
+        try:
+            import sys
+            sys.path.insert(0, '.claude/skills/_scripts')
+            from framework.issue_detector import detect_issue_number
+            issue_num = detect_issue_number(check_github=True, required=False)
+        except:
+            issue_num = None
+
+        # Priority 4: Ask user if all detection fails
+        if not issue_num:
+            issue_num = AskUserQuestion(
+                questions=[{
+                    "question": "Which issue should I finish?",
+                    "header": "Issue Number",
+                    "options": [
+                        {"label": "Enter manually", "description": "Type the issue number"}
+                    ],
+                    "multiSelect": false
+                }]
+            )
+```
+
+**What NOT to do:**
+- ❌ Don't introduce the skill with overview text
+- ❌ Don't show "Complete issue workflow - commit, PR, merge..." preamble
+- ❌ Don't wait for user to specify issue if context already has it
+
+**Expected behavior:**
+1. Skill invoked → Immediately detect issue number
+2. If recent context mentions issue (like issue #158 just worked on) → Use it
+3. If no context → Try auto-detection from branch/plan
+4. If detection fails → Ask user "Which issue should I finish?"
+5. Once issue number determined → Create tasks and execute
+
+### Step 2: Create Task List and Execute
+
+**After** issue number is determined, proceed with normal workflow:
+
 ## Workflow Steps (AI Orchestration)
 
 Copy this checklist when executing:

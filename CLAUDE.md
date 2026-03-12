@@ -89,6 +89,29 @@ python3 scripts/init-project.py --profile=react-aws --name=my-app
 3. Installs `.prot/` (pillar documentation)
 4. Creates `package.json`, `tsconfig.json`, etc.
 5. Marks installation in `.framework-install`
+6. **Configures permissions for work-issue auto mode** (skip with `--no-configure-permissions`)
+
+**Permission Configuration:**
+
+The `--configure-permissions` flag (enabled by default) sets up `.claude/settings.json` with required permissions for seamless work-issue auto mode execution:
+
+- ✅ All git operations (add, commit, push, checkout, branch, fetch, merge, worktree)
+- ✅ GitHub CLI operations (gh issue, gh pr)
+- ✅ Profile-specific operations (npm test/lint/build for Node.js, pytest for Python)
+
+**Result:** `work-issue --auto` runs without permission prompts.
+
+**Manual configuration** (for existing projects):
+```bash
+# Configure current project
+/configure-permissions
+
+# Configure target project
+/configure-permissions ../u-safe
+
+# Preview changes
+/configure-permissions --dry-run
+```
 
 ### Option 2: Manual Copy (Existing Projects)
 

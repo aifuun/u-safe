@@ -41,10 +41,10 @@ Monthly framework upgrades require syncing 4 components. Running 4 separate comm
 
 When executing `/update-framework`, AI MUST follow this pattern:
 
-### Step 1: Create 7 Subtasks
+### Step 1: Create 7 or 8 Subtasks
 
 ```python
-# Create all 7 tasks at the start
+# Create all tasks at the start
 tasks = {
     "profile": TaskCreate(
         subject="Detect tech stack profile",
@@ -82,6 +82,14 @@ tasks = {
         activeForm="Generating summary..."
     )
 }
+
+# Add permissions task by default (unless --without-permission-enable flag set)
+if not without_permission_enable:
+    tasks["permissions"] = TaskCreate(
+        subject="Configure permissions via configure-permissions",
+        description="Call /configure-permissions to set up work-issue auto mode",
+        activeForm="Configuring permissions..."
+    )
 ```
 
 ### Step 2: Execute with Status Updates
@@ -116,6 +124,12 @@ TaskUpdate(tasks["workflow"], "completed")
 TaskUpdate(tasks["skills"], "in_progress")
 Skill("update-skills", args=f"--to {target}")
 TaskUpdate(tasks["skills"], "completed")
+
+# Call configure-permissions sub-skill by default (unless --without-permission-enable flag set)
+if not without_permission_enable and "permissions" in tasks:
+    TaskUpdate(tasks["permissions"], "in_progress")
+    Skill("configure-permissions", args=f"{target}")
+    TaskUpdate(tasks["permissions"], "completed")
 
 # Summary
 TaskUpdate(tasks["summary"], "in_progress")
@@ -290,6 +304,39 @@ Update tech stack configuration and regenerate filters:
 - Added/removed cloud services (e.g., started using AWS)
 - Want to adjust which rules are synced
 - Initial config was incorrect
+
+### 6. Configure Permissions (Default Behavior)
+
+**Permission configuration is ENABLED BY DEFAULT** after framework sync:
+
+```bash
+# Default: permissions configured automatically
+/update-framework ../target-project
+/update-framework --from ~/dev/ai-dev
+
+# Opt-out: skip permission configuration
+/update-framework ../target-project --without-permission-enable
+/update-framework --from ~/dev/ai-dev --without-permission-enable
+```
+
+**What happens by default:**
+1. Complete framework sync (Pillars, Rules, Workflow, Skills)
+2. Automatically call `/configure-permissions` skill
+3. Configure `.claude/settings.json` with required permissions
+4. Show permission summary in final report
+
+**Configured permissions:**
+- ✅ All git operations (add, commit, push, checkout, branch, fetch, merge, worktree)
+- ✅ All gh CLI operations (issue, pr)
+- ✅ Profile-specific operations (npm test/lint/build for Node.js projects, pytest for Python projects)
+
+**When to skip (--without-permission-enable):**
+- Already configured permissions manually
+- Using custom permission setup
+- Testing framework sync without modifying settings
+
+**Result:**
+After configuration, `work-issue --auto` runs without permission prompts.
 
 ## Orchestration Logic
 
