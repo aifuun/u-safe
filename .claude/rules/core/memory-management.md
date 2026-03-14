@@ -1,7 +1,7 @@
 ---
 paths:
   - .claude/MEMORY.md
-  - docs/architecture/ADR/
+  - docs/ADRs/
 ---
 
 # Memory Management Rule
@@ -29,10 +29,10 @@ Strict rules to prevent MEMORY.md from bloating. MEMORY.md is ONLY an ADR index.
 **Only two operations are allowed**:
 
 ### 1. Add New ADR Link (When Closing Major Issue)
-- Create ADR file: `docs/architecture/ADR/NNN-decision-title.md`
+- Create ADR file: `docs/ADRs/NNN-decision-title.md`
 - Add one line to MEMORY.md ADR Index:
   ```markdown
-  - [NNN-decision-title.md](../docs/architecture/ADR/NNN-decision-title.md) - Brief decision
+  - [NNN-decision-title.md](../docs/ADRs/NNN-decision-title.md) - Brief decision
   ```
 - **Frequency**: When closing architectural issues only (rare)
 - **Example**: `#138` (mock DB) → ADR-006 created → added to MEMORY.md
@@ -46,7 +46,7 @@ Strict rules to prevent MEMORY.md from bloating. MEMORY.md is ONLY an ADR index.
 | Type | Location | Examples |
 |------|----------|----------|
 | **Current task progress** | `.claude/plans/active/#XXX.md` | Steps, blockers, next actions |
-| **Architecture decisions** | `docs/architecture/ADR/NNN-*.md` | Full decision context + rationale |
+| **Architecture decisions** | `docs/ADRs/NNN-*.md` | Full decision context + rationale |
 | **Architecture index** | `.claude/MEMORY.md` | ADR links only (THIS FILE) |
 | **Workflow rules** | `.claude/rules/workflow.md` | Git flow, three-layer architecture |
 | **Development guide** | `.claude/WORKFLOW.md` | Commands, templates, quick start |
@@ -71,7 +71,7 @@ Strict rules to prevent MEMORY.md from bloating. MEMORY.md is ONLY an ADR index.
    → No changes to MEMORY.md
 
 2. Issue #140 complete with major architectural decision
-   → Create ADR: docs/architecture/ADR/010-new-decision.md
+   → Create ADR: docs/ADRs/010-new-decision.md
    → Update MEMORY.md:
       - Add ADR link to "Recent Architectural Decisions" section
       - Update timestamp: 2026-01-12

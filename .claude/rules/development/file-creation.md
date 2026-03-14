@@ -25,7 +25,7 @@ Read, Glob, Grep, LSP, Bash (read-only commands)
 |----------|---------|----------|
 | `.claude/plans/active/` | Feature plans, issue analysis | `#145-remove-intentid.md` |
 | `.claude/plans/archive/` | Completed plans | `feature-123-*.md` |
-| `docs/architecture/ADR/` | Architecture Decision Records | `ADR-006-*.md` |
+| `docs/ADRs/` | Architecture Decision Records | `ADR-006-*.md` |
 | `app/src/**/*.ts(x)` | Application code | Components, services, adapters |
 | `infra/lambda/**/*.mjs` | Lambda functions | Handler code |
 | `scripts/` | Utility scripts | `sync-env.sh`, `deploy.sh` |
@@ -74,7 +74,7 @@ Need to create a file?
 │  └─ YES → .claude/plans/archive/
 │
 ├─ Is it an architecture decision?
-│  └─ YES → docs/architecture/ADR/
+│  └─ YES → docs/ADRs/
 │
 ├─ Is it application code?
 │  └─ YES → app/src/**/ (proper module structure)
@@ -114,7 +114,7 @@ Write('ANALYSIS_RESULTS.md', content)
 ### When Creating ADR
 ```typescript
 // ✅ CORRECT
-Write('docs/architecture/ADR/007-decision-name.md', content)
+Write('docs/ADRs/007-decision-name.md', content)
 
 // ❌ WRONG
 Write('ADR_DRAFT.md', content)

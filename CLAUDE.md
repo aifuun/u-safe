@@ -44,11 +44,9 @@ Tauri 2.0 + Rust (后端) + React 18 + TailwindCSS (前端) + SQLite
 
 位置: `docs/ADRs/` (唯一位置，不要在别处创建)
 
-⚠️ 已知问题: `docs/adr/` 中也有 ADR 文件，待合并 (Issue #14)
-
 | # | 标题 | 位置 |
 |---|------|------|
-| 0001 | Record Architecture Decisions | `docs/adr/` ⚠️ 待迁移 |
-| 0002 | Technical Stack | `docs/adr/` ⚠️ 待迁移 |
-| 0003 | Encryption Strategy | `docs/adr/` ⚠️ 待迁移 |
 | 001 | Design Token System (CSS Variables) | `docs/ADRs/` |
+| 002 | Record Architecture Decisions | `docs/ADRs/` |
+| 003 | Technical Stack | `docs/ADRs/` |
+| 004 | Encryption Strategy | `docs/ADRs/` |

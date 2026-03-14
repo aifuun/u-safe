@@ -1186,7 +1186,7 @@ src/
 
 ## 8. 参考资料
 
-- **ADR 0003**: `docs/adr/0003-encryption-strategy.md` (加密方案)
+- **ADR 004**: `docs/ADRs/004-encryption-strategy.md` (加密方案)
 - **Database Schema**: `docs/arch/Database_Schema.md` (数据库设计)
 - **PRD**: `docs/prd/PRD.md` (产品需求)
 - **Rust Crypto**: https://docs.rs/aes-gcm/ (AES-GCM), https://docs.rs/argon2/ (Argon2id)
