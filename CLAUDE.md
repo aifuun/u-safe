@@ -29,7 +29,16 @@ Tauri 2.0 + Rust (后端) + React 18 + TailwindCSS (前端) + SQLite
 ## 编码规范
 
 - **Rules**: `.claude/rules/` — 按文件路径自动触发，无需手动查找
-- **Pillars**: 18 个深度编码标准，Rules 中有链接指向对应 Pillar
+- **Pillars**: `.prot/pillars/` — 18 个深度编码标准 (200-300 行/个)，Rules 中有链接指向对应 Pillar
+
+### Pillars 概览
+
+| 象限 | Pillars | 与 U-Safe 关联 |
+|------|---------|---------------|
+| **Q1 数据完整性** | A 名义类型, B 校验, C Mock, D 状态机 | 类型安全、加密数据校验 |
+| **Q2 流程并发** | E 编排, F 并发, Q 幂等 | 加密流程编排 |
+| **Q3 结构边界** | G 追踪, H 策略, I 防火墙, J 局部性, K 测试, L 无头 | React/Rust 分层架构 |
+| **Q4 韧性可观测** | M Saga, N 上下文, O 异步, P 熔断, R 可观测 | 错误恢复、日志 |
 
 ## ADRs
 
