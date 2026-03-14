@@ -20,6 +20,10 @@
 ## 文档
 
 - [产品需求文档 (PRD)](./docs/prd/PRD.md)
+- [核心逻辑规格](./docs/spec/PRD_Core_Logic.md)
+- [数据库设计](./docs/spec/Database_Schema.md)
+- [UI/UX 设计系统](./docs/spec/UI_UX_Design_System.md)
+- [MVP 定义](./docs/roadmap/MVP_Definition.md)
 
 ## 开发状态
 

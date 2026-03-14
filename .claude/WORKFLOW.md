@@ -86,7 +86,7 @@ See [workflow/MAIN.md](./workflow/MAIN.md#4-phase-workflow-system) for full deta
 ## 🔗 Directory Structure
 
 ```
-.claude-template/
+.claude/
 ├── WORKFLOW.md (this file)          # Navigation hub
 ├── workflow/MAIN.md                 # 📖 Comprehensive guide
 ├── workflow/Phase-A-Documentation.md # Define what to build
@@ -124,5 +124,4 @@ See [workflow/MAIN.md](./workflow/MAIN.md#4-phase-workflow-system) for full deta
 ---
 
 **Framework Version**: AI_DEV v1.0
-**Based on**: yorutsuke-v2-3 workflow system
-**Last Updated**: 2026-02-25
+**Last Updated**: 2026-03-14

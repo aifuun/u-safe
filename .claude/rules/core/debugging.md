@@ -5,39 +5,34 @@
 ## 排查顺序
 
 ```
-1. 本地 Logs → 2. 云端 Logs → 3. 模拟代码流程 → 4. 最小复现
+1. 控制台日志 → 2. Tauri DevTools → 3. 模拟代码流程 → 4. 最小复现
 ```
 
-### 1. 本地 Logs
+### 1. 控制台日志
 
-```bash
-# 查看今日日志
-cat ~/.yorutsuke/logs/$(date +%Y-%m-%d).jsonl | tail -50 | jq .
-
-# 按 traceId 追踪完整链路
-cat ~/.yorutsuke/logs/$(date +%Y-%m-%d).jsonl | jq 'select(.traceId == "trace-xxx")'
-
-# 查看所有错误
-cat ~/.yorutsuke/logs/$(date +%Y-%m-%d).jsonl | jq 'select(.level == "error")'
+**前端 (React)**:
+```typescript
+console.log('[encrypt:start]', { fileId, fileSize });
+console.error('[encrypt:failed]', { fileId, error });
 ```
 
-### 2. 云端 Logs
-
-```bash
-# CloudWatch Lambda 日志
-aws logs tail /aws/lambda/yorutsuke-instant-processor-dev --follow --profile dev
-
-# 按 traceId 搜索
-aws logs filter-log-events \
-  --log-group-name /aws/lambda/yorutsuke-instant-processor-dev \
-  --filter-pattern '"trace-xxx"' --profile dev
+**后端 (Rust)**:
+```rust
+log::info!("[encrypt:start] file_id={}, size={}", file_id, size);
+log::error!("[encrypt:failed] file_id={}, err={}", file_id, err);
 ```
+
+### 2. Tauri DevTools
+
+- 前端: 浏览器开发者工具 (F12)
+- 后端: Rust `RUST_LOG=debug` 环境变量
+- IPC: 检查 invoke 调用和事件传递
 
 ### 3. 模拟代码流程
 
 - 用 LSP `goToDefinition` / `incomingCalls` 追踪调用链
-- 检查 `STATE_TRANSITION` 日志确认状态机转换
-- 添加临时 `logger.debug()` 缩小范围
+- 检查状态机转换日志
+- 添加临时 `log::debug!()` 或 `console.log()` 缩小范围
 
 ### 4. 最小复现
 
@@ -46,5 +41,5 @@ aws logs filter-log-events \
 ## 黄金法则
 
 1. **先看日志** - 日志比直觉可靠
-2. **用 traceId 串联** - 跨系统追踪同一请求
-3. **检查状态机** - 很多 bug 是状态转换问题
+2. **前后端分层排查** - 先确认问题在 React 还是 Rust
+3. **检查 IPC 边界** - 很多 bug 是前后端数据传递问题

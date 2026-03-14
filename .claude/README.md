@@ -15,7 +15,7 @@ This directory contains:
 ### 1. Copy to Your Project
 
 ```bash
-cp -r .claude-template/ your-project/.claude/
+cp -r .claude/ your-project/.claude/
 ```
 
 ### 2. Customize
@@ -416,7 +416,7 @@ Example workflow:
 
 ### Framework Navigation
 - **[Root README](../../README.md)** - Project overview and quick start
-- **[Pillars System](./.prot-template/README.md)** - AI_DEV_PROT v15 coding standards
+- **Pillars System** - AI_DEV_PROT v15 coding standards
 - **[Profile System](../profiles/README.md)** - Tech stack configurations
 
 ### Implementation Guides
@@ -430,19 +430,7 @@ Example workflow:
 - **workflow/quick-reference.md** - Quick command reference
 - **rules/INDEX.md** - Complete rules catalog
 
-## Version History
-
-- **v1.0** (2025-02-05): Initial framework extraction from yorutsuke-v2-3
-  - 18 commands
-  - 40 rules (33 existing + 7 new)
-  - 13 workflow guides
-  - 5 planning templates
-  - ADR-aligned architecture rules
-  - TypeScript-First language rules
-  - AWS-First infrastructure rules
-
 ---
 
 **Framework**: AI_DEV v1.0
-**Based on**: yorutsuke-v2-3 workflow system
 **License**: MIT

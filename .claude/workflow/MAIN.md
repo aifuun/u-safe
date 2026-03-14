@@ -593,5 +593,4 @@ Add to issue:
 ---
 
 **Framework Version**: AI_DEV v1.0
-**Based on**: yorutsuke-v2-3 workflow system
-**Last Updated**: 2026-02-05
+**Last Updated**: 2026-03-14
