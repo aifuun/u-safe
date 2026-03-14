@@ -171,7 +171,7 @@
 
 - [ ] **创建 ADR** (如果满足条件):
   - 条件: 重要架构决策，影响多个模块
-  - 文件: `docs/architecture/ADR/NNN-title.md`
+  - 文件: `docs/ADRs/NNN-title.md`
   - 格式: Status, Context, Decision, Consequences
   - 链接: 添加到 `.claude/MEMORY.md` 的 ADR section
 
@@ -327,7 +327,7 @@ git diff development...HEAD --name-only
 | 文档 | 用途 |
 |------|------|
 | `.prot/checklists/DEVELOPMENT_CHECKLIST.md` | 通用 Pillars 检查 (Phase 3: Post-Code Review) |
-| `docs/architecture/ADR/` | 架构决策记录 |
+| `docs/ADRs/` | 架构决策记录 |
 | `docs/design/` | Design system 规范 |
 | `.claude/rules/design-system.md` | Design system 集成规则 |
 | `TEST.md` | 测试指南 |

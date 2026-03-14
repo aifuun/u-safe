@@ -20,7 +20,7 @@ This skill provides comprehensive code review by:
 1. Runs quality gates (types, tests, linting)
 2. Validates architecture patterns (dynamically detected)
 3. Checks Pillar compliance (based on project profile)
-4. Verifies ADR compliance (scans docs/adr/)
+4. Verifies ADR compliance (scans docs/ADRs/)
 5. Identifies security vulnerabilities
 6. Detects performance issues
 7. Writes review status for /finish-issue integration
@@ -32,7 +32,7 @@ Manual code review is time-consuming and inconsistent. This skill automates qual
 - No hardcoded assumptions
 - Reads project profile to determine which Pillars to check
 - Scans architecture rules from .claude/rules/architecture/
-- Discovers ADRs from docs/adr/
+- Discovers ADRs from docs/ADRs/
 - Different projects → different checks
 
 ## Workflow Steps
@@ -146,7 +146,7 @@ Example checks (if enabled):
 
 ```
 Process:
-1. Scan docs/adr/ (or docs/ADRs/) for all *.md files
+1. Scan docs/ADRs/ (or docs/ADRs/) for all *.md files
 2. Extract ADR number, title, and requirements
 3. Identify which ADRs are relevant to changed code
 4. Check compliance for each relevant ADR
@@ -163,7 +163,7 @@ Example (project-specific):
    Fix: import { createStore } from 'zustand/vanilla'
 
 When no ADRs found:
-  ℹ️ No ADRs in docs/adr/ - skip ADR checks
+  ℹ️ No ADRs in docs/ADRs/ - skip ADR checks
 ```
 
 **Key point:** ADR checks are 100% project-specific. Different projects have different ADRs.
@@ -211,7 +211,7 @@ Generate a structured review report:
 ## Configuration Detected
 - Profile: react-aws (7 Pillars enabled)
 - Architecture: Clean Architecture + Layer Boundaries
-- ADRs: 3 found in docs/adr/
+- ADRs: 3 found in docs/ADRs/
 
 ## Quality Gates
 ✅ TypeScript compiles without errors

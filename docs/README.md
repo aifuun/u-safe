@@ -60,7 +60,7 @@
 
 ### A. 需求分析阶段
 
-> *"Claude，请阅读 `docs/spec/PRD_Core_Logic.md`。我现在要设计'影子存储'的隐藏逻辑，请结合 `docs/adr/` 中的安全原则，给出 Rust 层的实现思路。"*
+> *"Claude，请阅读 `docs/spec/PRD_Core_Logic.md`。我现在要设计'影子存储'的隐藏逻辑，请结合 `docs/ADRs/` 中的安全原则，给出 Rust 层的实现思路。"*
 
 ### B. 代码生成阶段
 
@@ -74,7 +74,7 @@
 
 ## 📝 5. 决策记录 (ADR) 规范
 
-所有的重大技术决策必须记录在 `docs/adr/NNNN-title.md` 中。
+所有的重大技术决策必须记录在 `docs/ADRs/NNN-title.md` 中。
 
 - **状态流**：`Proposed` (提议中) → `Accepted` (已接受) → `Superseded` (已废弃/替代)。
 - **Claude 提示**：若发现代码实现与 ADR 冲突，请优先遵循 ADR 或向开发者发起询问。

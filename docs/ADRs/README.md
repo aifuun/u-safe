@@ -9,9 +9,12 @@ This directory contains Architecture Decision Records (ADRs) for U-Safe. ADRs do
 | # | Title | Status | Date |
 |---|-------|--------|------|
 | [001](./001-design-token-system-css-variables.md) | Design Token System with CSS Variables | Accepted | 2026-03-12 |
+| [002](./002-record-architecture-decisions.md) | Record Architecture Decisions | Accepted | 2025-01-01 |
+| [003](./003-technical-stack.md) | Technical Stack Selection | Accepted | 2025-01-01 |
+| [004](./004-encryption-strategy.md) | Encryption Strategy | Accepted | 2025-01-01 |
 
-**Total ADRs**: 1
-**Last Updated**: 2026-03-12
+**Total ADRs**: 4
+**Last Updated**: 2026-03-14
 
 ## Status Definitions
 

@@ -1302,8 +1302,8 @@ When implementing any component, verify:
 ### Internal References
 
 - **PRD**: `docs/spec/PRD_Core_Logic.md`
-- **Architecture**: `docs/adr/0002-technical-stack.md`
-- **Security**: `docs/adr/0003-encryption-strategy.md`
+- **Architecture**: `docs/ADRs/003-technical-stack.md`
+- **Security**: `docs/ADRs/004-encryption-strategy.md`
 - **Database**: `docs/arch/Database_Schema.md`
 
 ---

@@ -658,8 +658,8 @@ pub fn initialize_database(conn: &Connection) -> Result<()> {
 
 ## 参考资料
 
-- **ADR 0002**: 技术栈选型 (`docs/adr/0002-technical-stack.md`)
-- **ADR 0003**: 加密方案选型 (`docs/adr/0003-encryption-strategy.md`)
+- **ADR 003**: 技术栈选型 (`docs/ADRs/003-technical-stack.md`)
+- **ADR 004**: 加密方案选型 (`docs/ADRs/004-encryption-strategy.md`)
 - **PRD**: 产品需求文档 (`docs/prd/PRD.md`)
 - **SQLite 文档**: https://www.sqlite.org/docs.html
 - **SQLite FTS5**: https://www.sqlite.org/fts5.html

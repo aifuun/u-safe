@@ -44,7 +44,9 @@ Tauri 2.0 + Rust (后端) + React 18 + TailwindCSS (前端) + SQLite
 
 位置: `docs/ADRs/` (唯一位置，不要在别处创建)
 
-| # | 标题 | 内容 |
+| # | 标题 | 位置 |
 |---|------|------|
-| 001 | Official Skill Patterns | Skill 结构标准 |
-| 002 | Skill Creation Workflow | `/skill-creator` + 简化测试 |
+| 001 | Design Token System (CSS Variables) | `docs/ADRs/` |
+| 002 | Record Architecture Decisions | `docs/ADRs/` |
+| 003 | Technical Stack | `docs/ADRs/` |
+| 004 | Encryption Strategy | `docs/ADRs/` |
