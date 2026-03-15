@@ -55,14 +55,12 @@ Manual plan review misses systematic issues like architecture violations, missin
 /eval-plan #23          # Evaluate specific issue's plan
 /eval-plan --strict     # Fail on recommendations (not just blocking)
 /eval-plan --json       # Output JSON only (for automation)
-/eval-plan --mode=auto  # Auto-fix minor issues when score ≥90 (used by work-issue --auto)
 ```
 
 **Options:**
 - `[issue-number]` - Optional, inferred from branch if omitted
 - `--strict` - Treat recommendations as blocking issues
 - `--json` - Output JSON format only (no human-readable summary)
-- `--mode=auto` - Enable auto-fix mode for minor issues (requires score ≥90)
 
 ## AI Execution Instructions
 
@@ -140,92 +138,6 @@ with open(".claude/.eval-plan-status.json", "w") as f:
     json.dump(status, f, indent=2)
 ```
 
-### Step 4.5: Auto-Fix (if --mode=auto and score ≥90)
-
-**CRITICAL**: Apply auto-fixes when in auto mode with passing score:
-
-```python
-def auto_fix_if_applicable(mode, score, issues, plan_content, plan_file):
-    """
-    自动修复微小问题（仅在 auto 模式且分数 ≥90 时）
-    """
-    # 检查是否启用自动修复
-    if mode != "auto" or score < 90:
-        return plan_content, []  # 不修复
-
-    # 分类问题：微小 vs 重大
-    minor_issues = [i for i in issues if i.category in AUTO_FIXABLE]
-    major_issues = [i for i in issues if i.category not in AUTO_FIXABLE]
-
-    if not minor_issues:
-        return plan_content, []  # 无需修复
-
-    # 应用修复
-    fixes_applied = []
-    content = plan_content
-
-    try:
-        for issue in minor_issues:
-            fixer = FIXERS[issue.category]
-            content, fix_log = fixer(content, issue)
-            fixes_applied.append(fix_log)
-
-        # 写入修复后的计划
-        Write(plan_file, content)
-
-        # 重新评估（可选，验证修复效果）
-        new_score = evaluate_plan(content)
-
-        return content, fixes_applied, new_score
-
-    except Exception as e:
-        # 优雅降级：修复失败，返回原内容
-        log.error(f"Auto-fix failed: {e}")
-        return plan_content, [], score
-
-# 修复器定义
-AUTO_FIXABLE = {
-    "missing_todo",
-    "incomplete_test",
-    "format_issue",
-    "missing_file_ref",
-    "logic_gap"
-}
-
-FIXERS = {
-    "missing_todo": lambda content, issue: add_todo_comment(content, issue),
-    "incomplete_test": lambda content, issue: expand_test_description(content, issue),
-    "format_issue": lambda content, issue: fix_task_numbering(content),
-    "missing_file_ref": lambda content, issue: add_file_path(content, issue),
-    "logic_gap": lambda content, issue: insert_missing_step(content, issue)
-}
-```
-
-**Usage in eval-plan:**
-```python
-# After Step 3: Evaluation complete
-score, issues = evaluate_plan(plan_content)
-
-# Step 4: Write initial status file
-write_status_file(score, issues)
-
-# Step 4.5: Auto-fix if applicable
-if mode == "auto" and score >= 90:
-    fixed_content, fixes, new_score = auto_fix_if_applicable(
-        mode, score, issues, plan_content, plan_file
-    )
-
-    # Update status file with auto-fix results
-    update_status_file({
-        "score": new_score,
-        "score_before_autofix": score,
-        "auto_fixes_applied": fixes
-    })
-
-    # Report auto-fixes to user
-    report_auto_fixes(fixes, score, new_score)
-```
-
 ### Step 5: Task Updates
 
 ```python
@@ -249,8 +161,6 @@ Task Progress:
 - [ ] Step 6: Check task clarity
 - [ ] Step 7: Generate scored report
 - [ ] Step 8: Write status file
-- [ ] Step 9: Auto-fix minor issues (if --mode=auto and score ≥90)
-- [ ] Step 10: Report results
 ```
 
 Execute these steps in sequence using TaskCreate/TaskUpdate for progress tracking.
@@ -552,139 +462,6 @@ After evaluation, write `.claude/.eval-plan-status.json`:
 
 **Validity:** 90 minutes from evaluation
 
-## Auto-Fix Mode (NEW in v1.1.0)
-
-**Purpose**: Automatically fix minor issues when score ≥90 in `--mode=auto`, enabling seamless continuation to execute-plan.
-
-### When Auto-Fix Triggers
-
-```
-Conditions (ALL must be true):
-1. Mode is --mode=auto (set by work-issue --auto)
-2. Score ≥ 90 (passing threshold)
-3. Issues are classified as "minor" (fixable)
-```
-
-### Auto-Fixable Issue Types
-
-| Issue Type | Description | Example Fix |
-|------------|-------------|-------------|
-| **missing_todo** | Task mentions TODO but no TODO comment | Add `<!-- TODO: ... -->` comment |
-| **incomplete_test** | "Add tests" without specifics | Add "Add unit tests (80% coverage): normal case, error case, edge cases" |
-| **format_issue** | Task numbering gaps, inconsistent formatting | Renumber tasks 1→2→4→5 to 1→2→3→4 |
-| **missing_file_ref** | "Update SKILL.md" without path | Add full path `.claude/skills/eval-plan/SKILL.md` |
-| **logic_gap** | Missing obvious steps between tasks | Insert missing intermediate task |
-
-### Non-Auto-Fixable Issues (Manual Review Required)
-
-| Issue Type | Why Not Auto-Fixed | Action |
-|------------|-------------------|--------|
-| **architecture_violation** | Requires redesign | Stop at checkpoint |
-| **missing_acceptance_criteria** | Requires PO/user input | Stop at checkpoint |
-| **circular_dependency** | Requires re-planning | Stop at checkpoint |
-| **security_issue** | Requires expert review | Stop at checkpoint |
-| **performance_concern** | Requires benchmarking | Stop at checkpoint |
-
-### Auto-Fix Workflow
-
-```
-1. eval-plan runs → Score = 92/100
-2. Detect mode = auto (from --mode=auto argument)
-3. Score ≥ 90 → Trigger auto-fix
-4. Classify issues:
-   - 2 × missing_todo → AUTO-FIX
-   - 1 × format_issue → AUTO-FIX
-   - 1 × suggestion (non-blocking) → SKIP
-5. Apply fixes to plan file
-6. Re-evaluate → New score = 95/100
-7. Write status file with fix log
-8. Report auto-fixes to user
-9. Continue to execute-plan (seamless)
-```
-
-### Status File with Auto-Fix
-
-Extended `.claude/.eval-plan-status.json`:
-
-```json
-{
-  "timestamp": "2026-03-13T08:30:00Z",
-  "issue_number": 177,
-  "status": "approved",
-  "score": 95,
-  "score_before_autofix": 92,
-  "auto_fixes_applied": [
-    {
-      "type": "missing_todo",
-      "task": "Task 5",
-      "description": "Added TODO comment for error handling",
-      "before": "添加错误处理",
-      "after": "添加错误处理\n<!-- TODO: Handle network errors, validation errors -->"
-    },
-    {
-      "type": "format_issue",
-      "description": "Renumbered tasks 1,2,4,5 → 1,2,3,4"
-    }
-  ],
-  "issues_count": {
-    "blocking": 0,
-    "recommendations": 0,
-    "suggestions": 1
-  }
-}
-```
-
-### Auto-Fix Example
-
-**Before (Score 88/100):**
-```markdown
-## Tasks
-
-1. 分析 eval-plan 结构
-2. 添加自动修复逻辑
-4. 添加错误处理  ← Gap in numbering
-5. 更新文档  ← No file path specified
-```
-
-**Auto-Fixes Applied:**
-1. Format issue: Renumber task 4→3, task 5→4
-2. Missing file ref: "更新文档" → "更新 `.claude/skills/eval-plan/SKILL.md`"
-
-**After (Score 95/100):**
-```markdown
-## Tasks
-
-1. 分析 eval-plan 结构
-2. 添加自动修复逻辑
-3. 添加错误处理
-4. 更新 `.claude/skills/eval-plan/SKILL.md`
-```
-
-### Graceful Degradation
-
-**If auto-fix fails:**
-```python
-try:
-    fixed_content, fixes = auto_fix_plan(content, issues)
-    write_plan(fixed_content)
-except AutoFixError as e:
-    log.error(f"Auto-fix failed: {e}")
-    # Fall back to interactive mode
-    return prompt_user_checkpoint()
-```
-
-**Fallback behavior:**
-- Show original evaluation results
-- Prompt user for action (continue/edit/stop)
-- Preserve original plan file
-- Log failure reason
-
-### Performance
-
-- **Auto-fix time**: < 10 seconds
-- **Total eval-plan time**: 40-70 seconds (was 30-60 seconds)
-- **Impact**: +10 seconds for auto-fix, saves 5-60 minutes of manual editing
-
 ## Approval Thresholds
 
 ### ✅ Approved (Score > 90)
@@ -893,10 +670,7 @@ This is a **workflow skill** and must follow the standard pattern:
 
 ---
 
-**Version:** 1.1.0
+**Version:** 1.0.0
 **Pattern:** Analysis skill (validates before execution)
 **Compliance:** ADR-001 ✅ | WORKFLOW_PATTERNS.md ✅
-**Last Updated:** 2026-03-13
-**Changelog:**
-- v1.1.0: Added auto-fix mode for minor issues when score ≥90 (Issue #177)
-- v1.0.0: Initial release with 5-dimension evaluation
+**Last Updated:** 2026-03-11

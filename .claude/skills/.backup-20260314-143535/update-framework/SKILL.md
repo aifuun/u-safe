@@ -63,7 +63,7 @@ tasks = {
     ),
     "rules": TaskCreate(
         subject="Sync Rules via update-rules",
-        description="Call /update-rules with profile-based filters",
+        description="Call /update-rules with category filters",
         activeForm="Syncing Rules..."
     ),
     "workflow": TaskCreate(
@@ -112,7 +112,7 @@ TaskUpdate(tasks["pillars"], "completed")
 
 # Call update-rules sub-skill
 TaskUpdate(tasks["rules"], "in_progress")
-Skill("update-rules", args=f"--to {target} --profile {profile.name}")
+Skill("update-rules", args=f"--to {target} --categories {profile.categories}")
 TaskUpdate(tasks["rules"], "completed")
 
 # Call update-workflow sub-skill
@@ -149,7 +149,7 @@ rm -rf ../target/.claude/rules/backend  # Manual cleanup
 **✅ CORRECT - Delegate to sub-skills:**
 ```python
 Skill("update-pillars", args="--to ../target --pillars A,B,K,L")
-Skill("update-rules", args="--to ../target --profile nextjs-aws")
+Skill("update-rules", args="--to ../target --categories core,arch,frontend")
 Skill("update-workflow", args="--to ../target")
 Skill("update-skills", args="--to ../target")
 ```
@@ -170,14 +170,14 @@ Skill("update-skills", args="--to ../target")
 5. **Fallback to questionnaire** if `.framework-install` not found
 
 **Supported profiles:**
-- `tauri` - 4 Pillars (A, B, K, L), 23 rules - Desktop apps (Tauri + React)
-- `tauri-aws` - TBD Pillars, TBD rules - Desktop + cloud backend
-- `nextjs-aws` - 15 Pillars (full-stack), 30 rules - Full-stack web apps (Next.js + AWS)
+- `minimal` - 3 Pillars (A, B, K), ~15 rules - For learning/POC projects
+- `node-lambda` - 6 Pillars (A, B, K, M, Q, R), ~20 rules - Backend/serverless
+- `react-aws` - 7 Pillars (A, B, K, L, M, Q, R), ~25 rules - Full-stack web apps
 
-**Actual results (from Issue #162):**
-- u-safe (tauri): 46 rules → 23 rules ✅ (50% reduction, 100% compliance)
-- buffer (nextjs-aws): 43 rules → 30 rules ✅ (30% reduction, 100% compliance)
-- Zero incorrect rules after profile-aware sync
+**Example results:**
+- Minimal profile: **52 items synced** (frontend/backend/infrastructure rules filtered out)
+- Node-lambda profile: **77 items synced** (frontend rules filtered out)
+- React-aws profile: **89 items synced** (all rules included)
 
 **Benefits:**
 - ✅ **No repetitive questions** - Profile already known from init-project
@@ -369,7 +369,7 @@ After configuration, `work-issue --auto` runs without permission prompts.
 🚀 Starting framework sync...
 
 Task Progress:
-✅ Task 1/7: Detect tech stack profile (profile: tauri)
+✅ Task 1/7: Detect tech stack profile (profile: tauri-react)
 ✅ Task 2/7: Validate source and target paths
 ⏳ Task 3/7: Syncing Pillars via update-pillars...
    Launching skill: update-pillars
@@ -378,7 +378,7 @@ Task Progress:
 
 ⏳ Task 4/7: Syncing Rules via update-rules...
    Launching skill: update-rules
-   ✅ Synced 23 rules (tauri profile, 23 filtered)
+   ✅ Synced 25 rules (core, architecture, languages, frontend, desktop)
 ✅ Task 4/7: Complete
 
 ⏳ Task 5/7: Syncing Workflow via update-workflow...
@@ -396,13 +396,12 @@ Task Progress:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Summary
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Profile: tauri
 ✅ Pillars: 4 synced
-✅ Rules: 23 synced (23 filtered by profile)
+✅ Rules: 25 synced (15 filtered by profile)
 ✅ Workflow: 6 synced
 ✅ Skills: 18 synced
 
-Total: 51 items synced in 28 seconds
+Total: 53 items synced in 28 seconds
 ```
 
 **Time:** ~30 seconds
@@ -414,11 +413,10 @@ Total: 51 items synced in 28 seconds
 
 **What happens:**
 1. `/update-framework --to ~/projects/new-app`
-2. Detect profile: nextjs-aws (from .framework-install)
-3. Aggregate: 38 NEW items to push
-4. Confirm once
-5. Execute all 4 pushes with profile-based filtering
-6. Report: "Pushed 38 items (nextjs-aws profile)"
+2. Aggregate: 38 NEW items to push
+3. Confirm once
+4. Execute all 4 pushes
+5. Report: "Pushed 38 items"
 
 **Time:** ~45 seconds
 
@@ -593,7 +591,7 @@ Would you like to retry failed components? (y/n)
 
 **When to use individual update-* skills:**
 - ✅ Only need specific component
-- ✅ Need fine-grained filtering (--pillars, --profile, etc.)
+- ✅ Need fine-grained filtering (--pillars, --categories, etc.)
 - ✅ Testing updates incrementally
 - ✅ Debugging sync issues
 
