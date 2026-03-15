@@ -3,6 +3,7 @@ name: sync
 description: |
   Sync branch with main - fetch, merge, resolve conflicts, test, push. Works on both feature branches and main branch.
   TRIGGER when: user wants to sync with main ("sync with main", "merge main into my branch", "update from main", "pull latest changes", "sync").
+version: "2.3.0"
   DO NOT TRIGGER when: user wants to create branches (use /start-issue), or finish work (use /finish-issue).
 ---
 

@@ -3,6 +3,7 @@ name: next
 description: |
   Get next task from active implementation plan - shows task details, progress, and dependencies.
   TRIGGER when: user wants next task ("what's next", "next task", "what should I work on", "get next").
+version: "2.1.0"
   DO NOT TRIGGER when: user wants to create plans (use /plan), start issues (use /start-issue), or view all tasks (use task list).
 ---
 

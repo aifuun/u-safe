@@ -4,6 +4,7 @@ description: |
   Sync Pillars between projects - bidirectional copy with smart filtering.
   TRIGGER when: user wants to sync Pillars ("update pillars from X", "sync pillars", "pull pillars from framework", "push pillars to project").
   DO NOT TRIGGER when: user wants to update rules/skills/workflow (use respective update-* skills), or just wants to read Pillar docs.
+version: "2.1.0"
 allowed-tools: Bash(cp *), Bash(mkdir *), Bash(ls *), Bash(find *), Bash(test *), Bash(cat *), Bash(git *), Read, Write, Glob, Grep, Edit
 disable-model-invocation: false
 user-invocable: true

@@ -1,0 +1,19 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 跨平台字体栈 */
+:root {
+  /* 系统字体 - macOS/Windows/Linux 兼容 */
+  --font-family-system: -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    'Microsoft YaHei', '微软雅黑', sans-serif;
+
+  /* 等宽字体 - 代码/日志显示 */
+  --font-family-mono: 'SF Mono', Monaco, 'Cascadia Code', 'Courier New', monospace;
+}
+
+body {
+  font-family: var(--font-family-system);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}

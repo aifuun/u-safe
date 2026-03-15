@@ -2,6 +2,7 @@
 name: finish-issue
 description: |
   Complete issue workflow - commit, PR, merge, close, cleanup.
+version: "3.0.0"
 
   TRIGGER when: User wants to complete/finish an issue ("finish issue #23", "complete issue", "merge and close", "done with issue").
 

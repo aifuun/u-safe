@@ -2,6 +2,7 @@
 name: worktree
 description: |
   Manage git worktrees for parallel issue development - list, switch, clean, and prune.
+version: "1.0.0"
 
   TRIGGER when: User wants to list worktrees, switch between worktrees, clean up worktrees, or manage worktrees ("list worktrees", "/worktree", "switch to worktree", "clean worktrees").
 

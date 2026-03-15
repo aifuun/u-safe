@@ -1,0 +1,26 @@
+{
+  "skill_name": "start-issue",
+  "evals": [
+    {
+      "id": 0,
+      "name": "basic-start-existing-issue",
+      "prompt": "hey can you start working on issue #37 from github? i think it's about project cleanup. just need to get the branch set up and a plan generated so i can start coding",
+      "expected_output": "Branch created (feature/37-*), plan file created at .claude/plans/active/issue-37-plan.md with tasks extracted from issue body, synced with main, ready message displayed",
+      "files": []
+    },
+    {
+      "id": 1,
+      "name": "create-new-issue-on-fly",
+      "prompt": "ok so i found a bug - the login button is misaligned on mobile. can you create an issue for this and start working on it? label it as bug and P1",
+      "expected_output": "New issue created on GitHub with title about login button alignment, labeled bug+P1, branch created, plan generated, ready to work",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "bugfix-custom-prefix",
+      "prompt": "start issue #48 but use 'fix' as the branch prefix instead of feature since it's a bugfix",
+      "expected_output": "Branch created as fix/48-* (not feature/48-*), plan generated, synced, ready message",
+      "files": []
+    }
+  ]
+}

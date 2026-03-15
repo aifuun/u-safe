@@ -4,6 +4,7 @@ description: |
   Start working on a GitHub issue with automated branch creation and planning.
   TRIGGER when: user wants to begin work on an issue (e.g., "start issue #23", "begin working on #45", "work on that bug", "let's tackle the auth issue").
   Also trigger when user mentions starting, picking up, or beginning any GitHub issue by number or description.
+version: "2.1.0"
   DO NOT TRIGGER when: user just wants to view/list issues (use /issue instead), or close/finish issues (use /finish-issue).
 ---
 
