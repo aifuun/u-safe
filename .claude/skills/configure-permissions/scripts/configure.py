@@ -15,74 +15,84 @@ from typing import Dict, List, Optional, Tuple
 
 
 # Permission templates by profile
+# Base permissions (shared by all profiles)
+BASE_PERMISSIONS = [
+    # File operation tools (for execute-plan implementation)
+    {"tool": "Read", "prompt": "*"},
+    {"tool": "Write", "prompt": "*"},
+    {"tool": "Edit", "prompt": "*"},
+    {"tool": "Glob", "prompt": "*"},
+    {"tool": "Grep", "prompt": "*"},
+    # Task management tools (for progress tracking)
+    {"tool": "TaskCreate", "prompt": "*"},
+    {"tool": "TaskUpdate", "prompt": "*"},
+    {"tool": "TaskList", "prompt": "*"},
+    {"tool": "TaskGet", "prompt": "*"},
+    # Git write operations
+    {"tool": "Bash", "prompt": "git add *"},
+    {"tool": "Bash", "prompt": "git commit *"},
+    {"tool": "Bash", "prompt": "git push *"},
+    {"tool": "Bash", "prompt": "git checkout *"},
+    {"tool": "Bash", "prompt": "git branch *"},
+    {"tool": "Bash", "prompt": "git fetch *"},
+    {"tool": "Bash", "prompt": "git merge *"},
+    {"tool": "Bash", "prompt": "git worktree *"},
+    {"tool": "Bash", "prompt": "git rebase *"},
+    {"tool": "Bash", "prompt": "git reset *"},
+    {"tool": "Bash", "prompt": "git stash *"},
+    # Git read operations (for execute-plan validation)
+    {"tool": "Bash", "prompt": "git status *"},
+    {"tool": "Bash", "prompt": "git diff *"},
+    {"tool": "Bash", "prompt": "git log *"},
+    # GitHub CLI
+    {"tool": "Bash", "prompt": "gh issue *"},
+    {"tool": "Bash", "prompt": "gh pr *"},
+    {"tool": "Bash", "prompt": "gh api *"},
+    {"tool": "Bash", "prompt": "gh auth *"},
+]
+
 PERMISSION_TEMPLATES = {
-    "minimal": [
-        # File operation tools (for execute-plan implementation)
-        {"tool": "Read", "prompt": "*"},
-        {"tool": "Write", "prompt": "*"},
-        {"tool": "Edit", "prompt": "*"},
-        {"tool": "Glob", "prompt": "*"},
-        {"tool": "Grep", "prompt": "*"},
-        # Task management tools (for progress tracking)
-        {"tool": "TaskCreate", "prompt": "*"},
-        {"tool": "TaskUpdate", "prompt": "*"},
-        {"tool": "TaskList", "prompt": "*"},
-        {"tool": "TaskGet", "prompt": "*"},
-        # Git write operations
-        {"tool": "Bash", "prompt": "git add *"},
-        {"tool": "Bash", "prompt": "git commit *"},
-        {"tool": "Bash", "prompt": "git push *"},
-        {"tool": "Bash", "prompt": "git checkout *"},
-        {"tool": "Bash", "prompt": "git branch *"},
-        {"tool": "Bash", "prompt": "git fetch *"},
-        {"tool": "Bash", "prompt": "git merge *"},
-        {"tool": "Bash", "prompt": "git worktree *"},
-        {"tool": "Bash", "prompt": "git rebase *"},
-        {"tool": "Bash", "prompt": "git reset *"},
-        {"tool": "Bash", "prompt": "git stash *"},
-        # Git read operations (for execute-plan validation)
-        {"tool": "Bash", "prompt": "git status *"},
-        {"tool": "Bash", "prompt": "git diff *"},
-        {"tool": "Bash", "prompt": "git log *"},
-        # GitHub CLI
-        {"tool": "Bash", "prompt": "gh issue *"},
-        {"tool": "Bash", "prompt": "gh pr *"},
-        {"tool": "Bash", "prompt": "gh api *"},
-        {"tool": "Bash", "prompt": "gh auth *"},
-    ],
-    "node-lambda": [
-        # Includes minimal + npm + AWS CLI
+    "tauri": [
+        # Desktop app (local) - Base + npm + Tauri
+        *BASE_PERMISSIONS,
         {"tool": "Bash", "prompt": "npm test"},
         {"tool": "Bash", "prompt": "npm run lint"},
         {"tool": "Bash", "prompt": "npm run build"},
         {"tool": "Bash", "prompt": "npm install"},
         {"tool": "Bash", "prompt": "npm ci"},
-        {"tool": "Bash", "prompt": "aws *"},
-        {"tool": "Bash", "prompt": "cdk *"},
-    ],
-    "react-aws": [
-        # Includes node-lambda + React tools
-        {"tool": "Bash", "prompt": "npm start"},
         {"tool": "Bash", "prompt": "npm run dev"},
-    ],
-    "tauri-react": [
-        # Includes react-aws + Tauri CLI
         {"tool": "Bash", "prompt": "cargo *"},
         {"tool": "Bash", "prompt": "tauri *"},
         {"tool": "Bash", "prompt": "npm run tauri *"},
     ],
+    "tauri-aws": [
+        # Desktop + cloud - tauri + AWS CLI
+        *BASE_PERMISSIONS,
+        {"tool": "Bash", "prompt": "npm test"},
+        {"tool": "Bash", "prompt": "npm run lint"},
+        {"tool": "Bash", "prompt": "npm run build"},
+        {"tool": "Bash", "prompt": "npm install"},
+        {"tool": "Bash", "prompt": "npm ci"},
+        {"tool": "Bash", "prompt": "npm run dev"},
+        {"tool": "Bash", "prompt": "cargo *"},
+        {"tool": "Bash", "prompt": "tauri *"},
+        {"tool": "Bash", "prompt": "npm run tauri *"},
+        {"tool": "Bash", "prompt": "aws *"},
+        {"tool": "Bash", "prompt": "cdk *"},
+    ],
     "nextjs-aws": [
-        # Includes react-aws + Next.js CLI
+        # Web full-stack - Base + npm + Next.js + AWS
+        *BASE_PERMISSIONS,
+        {"tool": "Bash", "prompt": "npm test"},
+        {"tool": "Bash", "prompt": "npm run lint"},
+        {"tool": "Bash", "prompt": "npm run build"},
+        {"tool": "Bash", "prompt": "npm install"},
+        {"tool": "Bash", "prompt": "npm ci"},
+        {"tool": "Bash", "prompt": "npm run dev"},
         {"tool": "Bash", "prompt": "next *"},
         {"tool": "Bash", "prompt": "npm run next *"},
-    ],
-    "python-fastapi": [
-        # Includes minimal + pytest + pip
-        {"tool": "Bash", "prompt": "pytest *"},
-        {"tool": "Bash", "prompt": "python -m pytest *"},
-        {"tool": "Bash", "prompt": "python -m *"},
-        {"tool": "Bash", "prompt": "pip install *"},
-        {"tool": "Bash", "prompt": "uvicorn *"},
+        {"tool": "Bash", "prompt": "aws *"},
+        {"tool": "Bash", "prompt": "cdk *"},
     ],
 }
 
@@ -111,54 +121,33 @@ def detect_profile(target_path: Path) -> str:
 
                 # Tauri project
                 if "@tauri-apps/cli" in deps or "tauri" in deps:
-                    return "tauri-react"
+                    # Check if has AWS dependencies
+                    if "aws-cdk-lib" in deps or "@aws-sdk" in str(deps):
+                        return "tauri-aws"
+                    return "tauri"
 
                 # Next.js project
                 if "next" in deps:
                     return "nextjs-aws"
 
-                # React project with AWS
-                if "react" in deps and ("aws-sdk" in deps or "@aws-sdk" in deps):
-                    return "react-aws"
-
-                # Lambda project
-                if "@aws-cdk/aws-lambda" in deps or "aws-lambda" in pkg.get("keywords", []):
-                    return "node-lambda"
-
-                # Generic Node.js
-                return "node-lambda"
+                # Default to nextjs-aws for Node.js projects
+                return "nextjs-aws"
         except Exception:
             pass
 
-    # Check for Python projects
-    pyproject = target_path / "pyproject.toml"
-    if pyproject.exists():
-        return "python-fastapi"
-
-    # Default to minimal
-    return "minimal"
+    # Default to tauri (simplest profile)
+    return "tauri"
 
 
 def get_permissions_for_profile(profile: str) -> List[Dict[str, str]]:
-    """Get all permissions for a given profile (including inherited)."""
-    # Profile inheritance hierarchy
-    hierarchy = {
-        "minimal": ["minimal"],
-        "node-lambda": ["minimal", "node-lambda"],
-        "react-aws": ["minimal", "node-lambda", "react-aws"],
-        "tauri-react": ["minimal", "node-lambda", "react-aws", "tauri-react"],
-        "nextjs-aws": ["minimal", "node-lambda", "react-aws", "nextjs-aws"],
-        "python-fastapi": ["minimal", "python-fastapi"],
-    }
+    """Get all permissions for a given profile."""
+    # Each profile now contains all its permissions directly
+    if profile in PERMISSION_TEMPLATES:
+        return PERMISSION_TEMPLATES[profile]
 
-    profiles = hierarchy.get(profile, ["minimal"])
-    permissions = []
-
-    for p in profiles:
-        if p in PERMISSION_TEMPLATES:
-            permissions.extend(PERMISSION_TEMPLATES[p])
-
-    return permissions
+    # Fallback to tauri if unknown profile
+    print(f"   ⚠️  Unknown profile '{profile}', using 'tauri' as fallback")
+    return PERMISSION_TEMPLATES["tauri"]
 
 
 def prompt_exists(prompts: List[Dict[str, str]], target: Dict[str, str]) -> bool:
@@ -229,9 +218,42 @@ def create_backup(settings_file: Path) -> Optional[Path]:
         return None
 
 
+def load_template(template_name: str, target_path: Path) -> Optional[Dict]:
+    """
+    Load permission template from file.
+
+    Args:
+        template_name: Template name (without .json extension)
+        target_path: Project root path
+
+    Returns:
+        Template dict or None if not found
+    """
+    # Check project-specific templates first
+    project_template = target_path / ".claude" / "permission-templates" / f"{template_name}.json"
+    if project_template.exists():
+        try:
+            with open(project_template) as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"   ⚠️  Error loading project template: {e}", file=sys.stderr)
+
+    # Check framework templates
+    framework_template = target_path / "framework" / ".claude-template" / "permission-templates" / f"{template_name}.json"
+    if framework_template.exists():
+        try:
+            with open(framework_template) as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"   ⚠️  Error loading framework template: {e}", file=sys.stderr)
+
+    return None
+
+
 def configure_permissions(
     target_path: str = ".",
     profile: Optional[str] = None,
+    template: Optional[str] = None,
     dry_run: bool = False
 ) -> int:
     """
@@ -240,6 +262,7 @@ def configure_permissions(
     Args:
         target_path: Path to project directory
         profile: Override profile detection
+        template: Use permission template (all, safe, minimal, read-only, or custom name)
         dry_run: Preview changes without applying
 
     Returns:
@@ -259,14 +282,58 @@ def configure_permissions(
 
     settings_file = claude_dir / "settings.json"
 
-    # Step 1: Detect profile
-    detected_profile = profile or detect_profile(target)
+    # Step 1: Determine permission source (template or profile)
     print(f"📋 Configuring permissions for work-issue auto mode\n")
-    print(f"1. Detecting profile...")
-    print(f"   ✅ Profile: {detected_profile}" + (" (detected)" if not profile else " (specified)"))
+
+    if template:
+        # Template mode
+        print(f"1. Loading permission template...")
+        print(f"   Template: {template}")
+
+        template_data = load_template(template, target)
+        if not template_data:
+            print(f"   ❌ Template not found: {template}", file=sys.stderr)
+            print(f"   Searched:", file=sys.stderr)
+            print(f"     - .claude/permission-templates/{template}.json", file=sys.stderr)
+            print(f"     - framework/.claude-template/permission-templates/{template}.json", file=sys.stderr)
+            return 1
+
+        # Extract permissions from template
+        if "permissions" not in template_data or "bash" not in template_data["permissions"]:
+            print(f"   ❌ Invalid template format", file=sys.stderr)
+            print(f"   Expected: {{'permissions': {{'bash': {{'prompts': [...]}}}}}}", file=sys.stderr)
+            return 1
+
+        bash_perms = template_data["permissions"]["bash"]
+        new_permissions = []
+
+        # Add tool permissions (always required)
+        for perm in BASE_PERMISSIONS:
+            if perm["tool"] != "Bash":
+                new_permissions.append(perm)
+
+        # Add bash prompts from template
+        for prompt in bash_perms.get("prompts", []):
+            new_permissions.append({"tool": "Bash", "prompt": prompt})
+
+        print(f"   ✅ Loaded {len(bash_perms.get('prompts', []))} bash permissions")
+        if "blocked" in bash_perms and bash_perms["blocked"]:
+            print(f"   ✅ Blocked {len(bash_perms['blocked'])} destructive operations")
+
+    else:
+        # Profile mode (current behavior)
+        detected_profile = profile or detect_profile(target)
+        print(f"1. Detecting profile...")
+        print(f"   ✅ Profile: {detected_profile}" + (" (detected)" if not profile else " (specified)"))
+
+        # Generate permissions from profile
+        print(f"\n2. Generating permission templates...")
+        new_permissions = get_permissions_for_profile(detected_profile)
+        print(f"   ✅ Generated {len(new_permissions)} permissions")
 
     # Step 2: Load or create settings
-    print(f"\n2. Loading settings.json...")
+    step_num = 2 if template else 3
+    print(f"\n{step_num}. Loading settings.json...")
     existing_settings = {}
     if settings_file.exists():
         try:
@@ -280,13 +347,9 @@ def configure_permissions(
         print(f"   ℹ️  Creating new settings.json")
         existing_settings = {}
 
-    # Step 3: Generate permission templates
-    print(f"\n3. Generating permission templates...")
-    new_permissions = get_permissions_for_profile(detected_profile)
-    print(f"   ✅ Generated {len(new_permissions)} permissions")
-
-    # Step 4: Merge permissions
-    print(f"\n4. Merging permissions...")
+    # Step 3: Merge permissions
+    step_num = 3 if template else 4
+    print(f"\n{step_num}. Merging permissions...")
     updated_settings, added_count, existing_count = merge_permissions(
         existing_settings.copy(), new_permissions
     )
@@ -294,8 +357,9 @@ def configure_permissions(
     if existing_count > 0:
         print(f"   ✅ Preserved {existing_count} existing permissions")
 
-    # Step 5: Validate
-    print(f"\n5. Validating configuration...")
+    # Step 4: Validate
+    step_num = 4 if template else 5
+    print(f"\n{step_num}. Validating configuration...")
     valid, error = validate_settings(updated_settings)
     if not valid:
         print(f"   ❌ Validation failed: {error}", file=sys.stderr)
@@ -315,17 +379,21 @@ def configure_permissions(
         print(f"\n✅ Dry run complete - no changes written")
         return 0
 
-    # Step 6: Create backup
+    # Step 5: Create backup
     if settings_file.exists():
-        print(f"\n6. Creating backup...")
+        step_num = 5 if template else 6
+        print(f"\n{step_num}. Creating backup...")
         backup_file = create_backup(settings_file)
         if backup_file:
             print(f"   ✅ Backup: {backup_file.name}")
         else:
             print(f"   ⚠️  Backup failed (continuing anyway)")
 
-    # Step 7: Write updated settings
-    step_num = 7 if settings_file.exists() else 6
+    # Step 6: Write updated settings
+    if settings_file.exists():
+        step_num = 6 if template else 7
+    else:
+        step_num = 5 if template else 6
     print(f"\n{step_num}. Writing updated settings...")
     try:
         with open(settings_file, "w") as f:
@@ -358,7 +426,39 @@ def main():
     parser.add_argument(
         "--profile",
         choices=list(PERMISSION_TEMPLATES.keys()),
-        help="Override profile detection"
+        help="Override profile detection (profile mode)"
+    )
+    parser.add_argument(
+        "--all",
+        action="store_const",
+        const="all",
+        dest="template",
+        help="Use 'all' template (full automation)"
+    )
+    parser.add_argument(
+        "--safe",
+        action="store_const",
+        const="safe",
+        dest="template",
+        help="Use 'safe' template (except critical operations)"
+    )
+    parser.add_argument(
+        "--minimal",
+        action="store_const",
+        const="minimal",
+        dest="template",
+        help="Use 'minimal' template (basic operations)"
+    )
+    parser.add_argument(
+        "--read-only",
+        action="store_const",
+        const="read-only",
+        dest="template",
+        help="Use 'read-only' template (no modifications)"
+    )
+    parser.add_argument(
+        "--template",
+        help="Use custom template by name"
     )
     parser.add_argument(
         "--dry-run",
@@ -368,8 +468,19 @@ def main():
 
     args = parser.parse_args()
 
+    # Check for conflicting arguments
+    if args.template and args.profile:
+        print("❌ Error: Cannot use both --template and --profile flags", file=sys.stderr)
+        print("   Template mode and profile mode are mutually exclusive", file=sys.stderr)
+        sys.exit(1)
+
     try:
-        sys.exit(configure_permissions(args.target, args.profile, args.dry_run))
+        sys.exit(configure_permissions(
+            args.target,
+            profile=args.profile,
+            template=args.template,
+            dry_run=args.dry_run
+        ))
     except KeyboardInterrupt:
         print("\n\n⚠️  Cancelled by user", file=sys.stderr)
         sys.exit(130)

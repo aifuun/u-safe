@@ -15,31 +15,25 @@ Configure Claude Code permissions to enable seamless work-issue auto mode execut
 
 ## Overview
 
-This skill configures `.claude/settings.json` with required permissions for work-issue auto mode.
-
-**Two modes available:**
-
-1. **Profile-aware mode** (default) - Detects project type and applies appropriate permissions
-2. **Template mode** (NEW) - Use pre-defined or custom permission templates
+This skill configures `.claude/settings.json` with required permissions for work-issue auto mode:
 
 **What it does:**
 1. **Reads or creates** `.claude/settings.json`
-2. **Detects project profile** (tauri, tauri-aws, nextjs-aws) OR **loads permission template**
-3. **Generates permissions** based on profile or template
+2. **Detects project profile** (minimal, node-lambda, react-aws, tauri-react, nextjs-aws)
+3. **Generates permission templates** based on profile
 4. **Merges permissions smartly** without overwriting existing config
 5. **Creates backup** before modification
 6. **Validates structure** to ensure correctness
 7. **Reports changes** clearly
 
 **Why it's needed:**
-Without pre-configured permissions, work-issue auto mode stops at every bash command to ask for approval, defeating the purpose of automation. This skill pre-configures the required permissions for seamless execution.
+Without pre-configured permissions, work-issue auto mode stops at every bash command to ask for approval, defeating the purpose of automation. This skill pre-configures the minimal required permissions for seamless execution.
 
 **When to use:**
 - After `/update-framework` to configure target project
 - During project initialization with `init-project.py --configure-permissions`
 - When setting up work-issue auto mode for the first time
 - After changing project profile
-- When you want different permission levels (full, safe, minimal, read-only)
 
 ## Arguments
 
@@ -49,34 +43,15 @@ Without pre-configured permissions, work-issue auto mode stops at every bash com
 
 **Common usage:**
 ```bash
-# Profile-aware mode (default)
-/configure-permissions              # Configure current project (auto-detect profile)
+/configure-permissions              # Configure current project
 /configure-permissions ../u-safe    # Configure target project
 /configure-permissions --dry-run    # Preview changes without applying
-
-# Template mode (NEW in v2.0.0)
-/configure-permissions --all        # Full automation (everything)
-/configure-permissions --safe       # Safe automation (recommended)
-/configure-permissions --minimal    # Basic operations only
-/configure-permissions --read-only  # No modifications
-
-# Custom templates
-/configure-permissions --template=my-custom-template
-
-# Combine with other flags
-/configure-permissions --safe --dry-run
-/configure-permissions --all ../other-project
 ```
 
 **Options:**
 - `[target-path]` - Optional, defaults to current directory
 - `--dry-run` - Preview changes without modifying files
-- `--profile <name>` - Override profile detection (tauri, tauri-aws, nextjs-aws)
-- `--all` - Use 'all' template (full automation)
-- `--safe` - Use 'safe' template (except critical operations) - **recommended**
-- `--minimal` - Use 'minimal' template (basic operations)
-- `--read-only` - Use 'read-only' template (no modifications)
-- `--template <name>` - Use custom template by name
+- `--profile <name>` - Override profile detection (minimal, node-lambda, react-aws, tauri-react, nextjs-aws)
 
 ## Workflow
 
@@ -140,7 +115,7 @@ After creating tasks, proceed with configuration execution.
 }
 ```
 
-### Node.js Projects (tauri, tauri-aws, nextjs-aws)
+### Node.js Projects (tauri-react, nextjs-aws, node-lambda)
 
 **Additional permissions:**
 ```json
@@ -161,50 +136,10 @@ After creating tasks, proceed with configuration execution.
 {"tool": "Bash", "prompt": "pip install *"}
 ```
 
-## Mode Selection: Template vs Profile
-
-### Template Mode (Explicit Control)
-
-Use permission templates for explicit permission levels:
-
-```bash
-/configure-permissions --all        # Everything (trusted environments)
-/configure-permissions --safe       # Safe automation (recommended)
-/configure-permissions --minimal    # Basic operations (learning)
-/configure-permissions --read-only  # No writes (exploration)
-```
-
-**When to use:**
-- Want explicit control over permission level
-- Different security requirements
-- Multiple projects with same permission needs
-- CI/CD or trusted environments (--all)
-- Learning or code review (--minimal, --read-only)
-
-**Templates available:**
-- `all` - Full automation (grants everything `["*"]`)
-- `safe` - Safe automation (blocks destructive operations)
-- `minimal` - Basic operations (git read, tests only)
-- `read-only` - No modifications (git read only)
-- Custom templates - Create your own in `framework/.claude-template/permission-templates/`
-
-**See:** `framework/.claude-template/permission-templates/README.md` for complete template documentation
-
-### Profile-Aware Mode (Auto-Detection)
-
-Detects project type and applies appropriate permissions:
-
-```bash
-/configure-permissions              # Auto-detect profile
-/configure-permissions --profile tauri  # Override detection
-```
-
-**When to use:**
-- Want automatic configuration based on project type
-- Framework-managed projects
-- Consistent permissions across similar projects
+## Profile Detection
 
 **Detection logic:**
+
 ```
 1. Check for .framework-install file
    → profile: <name> field
@@ -215,32 +150,16 @@ Detects project type and applies appropriate permissions:
 3. If not found, check pyproject.toml
    → Python project
 
-4. Default to tauri profile
+4. Default to minimal profile
 ```
 
 **Profiles:**
-- `tauri` - Desktop app (local): git + gh + npm + Tauri CLI
-- `tauri-aws` - Desktop + cloud: tauri + AWS CLI + Lambda permissions
-- `nextjs-aws` - Web full-stack: git + gh + npm + Next.js + AWS CLI
-
-### Flag Precedence
-
-**Mutually exclusive** - cannot use both template and profile:
-
-```bash
-# ✅ VALID
-/configure-permissions --safe
-/configure-permissions --profile tauri
-/configure-permissions  # Auto-detect profile
-
-# ❌ INVALID
-/configure-permissions --safe --profile tauri  # Error: conflicting flags
-```
-
-**Priority:**
-1. Template flag (`--all`, `--safe`, `--minimal`, `--read-only`, `--template`) → Use template
-2. Profile flag (`--profile`) → Use specified profile
-3. No flags → Auto-detect profile (default behavior)
+- `minimal` - Basic git + gh permissions only
+- `node-lambda` - Minimal + npm + AWS CLI
+- `react-aws` - node-lambda + React dev tools
+- `tauri-react` - react-aws + Tauri CLI
+- `nextjs-aws` - react-aws + Next.js CLI
+- `python-fastapi` - Minimal + pytest + pip
 
 ## Permission Merging Logic
 
@@ -323,7 +242,7 @@ def validate_settings(settings):
 > "configure permissions for work-issue auto mode"
 
 **What happens:**
-1. Detect profile: nextjs-aws (from .framework-install)
+1. Detect profile: react-aws (from .framework-install)
 2. Load settings.json (or create if missing)
 3. Generate permissions: tools (9) + git (18) + npm (5) = 32 prompts
 4. Merge: Add 29 new, preserve 3 existing
@@ -340,7 +259,7 @@ def validate_settings(settings):
 
 **What happens:**
 1. `/configure-permissions ../u-safe`
-2. Detect profile: tauri
+2. Detect profile: tauri-react
 3. Generate permissions: tools (9) + git (18) + npm (5) + tauri (2) = 34 prompts
 4. Create settings.json (didn't exist)
 5. Write: New settings.json with 34 permissions
@@ -441,9 +360,12 @@ Please check:
 
 Profile: invalid-profile
 Valid profiles:
-- tauri
-- tauri-aws
+- minimal
+- node-lambda
+- react-aws
+- tauri-react
 - nextjs-aws
+- python-fastapi
 
 Fix: Use --profile with valid profile name
 ```
@@ -501,7 +423,7 @@ Options:
 1. **Run after framework installation:**
 ```bash
 # New project
-python3 scripts/init-project.py --profile=nextjs-aws --name=my-app --configure-permissions
+python3 scripts/init-project.py --profile=react-aws --name=my-app --configure-permissions
 
 # Existing project
 /update-framework ../target --configure-permissions
@@ -516,7 +438,7 @@ python3 scripts/init-project.py --profile=nextjs-aws --name=my-app --configure-p
 3. **Profile-specific configuration:**
 ```bash
 # Override auto-detection
-/configure-permissions --profile=tauri
+/configure-permissions --profile=minimal
 
 # Target specific project type
 /configure-permissions ../python-api --profile=python-fastapi
@@ -539,7 +461,7 @@ cat .claude/settings.json | jq '.allowedPrompts'
 📋 Configuring permissions for work-issue auto mode
 
 1. Detecting profile...
-   ✅ Found profile: nextjs-aws (from .framework-install)
+   ✅ Found profile: react-aws (from .framework-install)
 
 2. Loading settings.json...
    ✅ Found existing settings
@@ -644,10 +566,7 @@ This is a **workflow skill** and must follow the standard pattern:
 
 ---
 
-**Version:** 2.0.0
+**Version:** 1.0.0
 **Pattern:** Tool-Reference (guides configuration process)
 **Compliance:** ADR-001 ✅ | WORKFLOW_PATTERNS.md ✅
-**Last Updated:** 2026-03-14
-**Changelog:**
-- v2.0.0: Added permission template support (--all, --safe, --minimal, --read-only, --template)
-- v1.0.0: Initial release with profile-aware configuration
+**Last Updated:** 2026-03-12

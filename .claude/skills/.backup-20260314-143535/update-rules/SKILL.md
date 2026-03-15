@@ -11,7 +11,7 @@ user-invocable: true
 
 # Update Rules - Technical Rules Synchronization
 
-Sync technical rule documentation between projects bidirectionally with **profile-aware filtering** (v2.2.0+).
+Sync technical rule documentation between projects bidirectionally with category-based filtering.
 
 ## Overview
 
@@ -19,15 +19,14 @@ This skill synchronizes technical rules (.claude/rules/) between projects:
 
 **What it does:**
 1. Scans source and target projects for rules
-2. **Filters by profile** - syncs only rules relevant to tech stack (recommended)
-3. Compares rules to detect new/updated content
-4. Shows detailed diff preview with filter summary
-5. Syncs rules with confirmation
-6. Validates profile compliance
-7. Reports what was synced
+2. Compares rules by category to detect new/updated content
+3. Shows detailed diff preview organized by category
+4. Syncs rules with confirmation
+5. Supports category-based filtering
+6. Reports what was synced
 
 **Why it's needed:**
-Framework rule updates need to propagate across projects with **precision**. Category-based sync causes 30-50% rule bloat (e.g., Tauri rules in web apps). Profile-aware filtering ensures **zero incorrect rules** by syncing only what's relevant to each project's tech stack.
+Framework rule updates need to propagate across projects. Best practices evolve and cross-project learning requires bidirectional sync. This skill automates rule synchronization with category awareness and safety checks.
 
 **When to use:**
 - Monthly framework upgrades
@@ -116,120 +115,9 @@ Preview changes without applying:
 - No confirmation required
 - No actual changes made
 
-### 4. Profile-Based Sync (--profile) - RECOMMENDED
+### 4. Category Filter (--categories)
 
-**New in v2.2.0**: Sync rules based on project profile with precise filtering.
-
-Sync only rules relevant to project's tech stack:
-
-```bash
-/update-rules --from ~/dev/ai-dev --to ~/dev/u-safe --profile tauri
-/update-rules --from ~/dev/ai-dev --to ~/dev/buffer --profile nextjs-aws
-/update-rules --from ~/dev/ai-dev --profile tauri-aws  # Auto-detects target from pwd
-```
-
-**How it works:**
-1. Reads profile definition from `framework/profiles/<profile>.json`
-2. Applies `rules.include` whitelist (exact rules needed)
-3. Applies `rules.exclude` patterns (rules to skip)
-4. Syncs ONLY relevant rules for that tech stack
-
-**Benefits:**
-- ✅ Precise rule sets (zero bloat)
-- ✅ No incorrect rules (e.g., no Tauri in web apps, no AWS in desktop apps)
-- ✅ Profile compliance validation
-- ✅ Better Claude Code context management
-
-**Supported Profiles:**
-- `tauri` - Desktop apps (Tauri + React): 23 rules
-- `tauri-aws` - Desktop + cloud backend: TBD rules
-- `nextjs-aws` - Full-stack web (Next.js + AWS): 30 rules
-
-**Example Results (from Issue #162):**
-
-```
-Before:
-  u-safe (tauri): 46 rules (bloated with AWS/Lambda rules)
-  buffer (nextjs-aws): 43 rules (bloated with Tauri rules)
-
-After:
-  u-safe (tauri): 23 rules ✅ (50% reduction)
-  buffer (nextjs-aws): 30 rules ✅ (30% reduction)
-
-Impact: 100% profile compliance, zero incorrect rules
-```
-
-**Profile Definition Example** (`framework/profiles/tauri.json`):
-```json
-{
-  "name": "tauri",
-  "pillars": ["A", "B", "K", "L"],
-  "rules": {
-    "include": [
-      // Core (7 rules)
-      "workflow", "naming", "debugging", "docs",
-      "memory-management", "memory-protection", "planning-context",
-
-      // Architecture (6 rules)
-      "clean-architecture", "dependency-rule", "service-layer",
-      "headless", "adapters", "identity",
-
-      // Languages (3 rules)
-      "typescript-esm", "typescript-strict", "typescript-nominal-types",
-
-      // Frontend (4 rules)
-      "design-system", "zustand-hooks", "views", "css",
-
-      // Infrastructure - Tauri specific (3 rules)
-      "tauri-stack", "tauri-ipc", "tauri-security"
-    ],
-    "exclude": [
-      "backend/lambda-*.md",      // No serverless in desktop
-      "infrastructure/aws-*.md",  // No AWS in desktop
-      "infrastructure/cdk-*.md"   // No CDK in desktop
-    ]
-  }
-}
-```
-
-**Comparison with Category Filtering:**
-
-| Approach | nextjs-aws Example | Result |
-|----------|-------------------|--------|
-| `--categories` | Syncs ALL rules in specified categories | 43 rules (30% bloat) |
-| `--profile` | Syncs ONLY rules in profile's include list | 30 rules (100% precise) |
-
-**Migration from --categories:**
-
-```bash
-# Old way (category-based) - causes bloat
-/update-rules --to ~/dev/buffer --categories core,architecture,frontend,backend,infrastructure
-# Result: 43 rules (includes irrelevant Tauri rules)
-
-# New way (profile-based) - precise
-/update-rules --to ~/dev/buffer --profile nextjs-aws
-# Result: 30 rules (only relevant rules)
-```
-
-**Troubleshooting:**
-
-```bash
-# Check current rule count
-find .claude/rules -name "*.md" | wc -l
-
-# Check expected count for profile
-cat ~/dev/ai-dev/framework/profiles/nextjs-aws.json | jq '.rules.include | length'
-
-# If mismatch, re-sync with profile
-cd ~/dev/ai-dev
-/update-rules --to ~/dev/your-project --profile <profile>
-```
-
-### 5. Category Filter (--categories) - LEGACY
-
-**Deprecated**: Use `--profile` instead for precise filtering.
-
-Sync rules by category (coarse-grained):
+Sync only specific categories:
 
 ```bash
 /update-rules --from ~/dev/ai-dev --categories core,architecture,languages
@@ -245,13 +133,7 @@ Sync rules by category (coarse-grained):
 - `infrastructure` - AWS CDK, secrets, monitoring
 - `development` - Performance, security
 
-**Why deprecated:**
-- ❌ Too coarse-grained (syncs ALL rules in category)
-- ❌ Causes rule bloat (30-50% extra rules)
-- ❌ Can't exclude specific files within category
-- ✅ Use `--profile` instead for precise control
-
-### 6. Smart Filter (--filter-config)
+### 5. Smart Filter (--filter-config) - NEW
 
 Apply intelligent filtering based on tech stack configuration:
 
@@ -382,41 +264,21 @@ Summary:
 
 ## Usage Examples
 
-### Example 1: Profile-Based Sync (Recommended)
-
-**User says:**
-> "update rules from framework for my tauri project"
-
-**What happens:**
-1. Detect profile from `.framework-install` → `tauri`
-2. Load `framework/profiles/tauri.json` → 23 rules in include list
-3. Scan and filter: exclude AWS/Lambda/CDK rules
-4. Show: 23 rules to sync (with filter summary)
-5. Confirm and sync
-6. Report: "Synced 23 rules (tauri profile, 100% compliance)"
-
-**Before/After:**
-- Before: 46 rules (bloated with AWS rules)
-- After: 23 rules (precise, zero bloat)
-- Reduction: 50%
-
-**Time:** ~25 seconds
-
-### Example 2: Framework Upgrade with Profile
+### Example 1: Framework Upgrade
 
 **User says:**
 > "update rules from the framework"
 
 **What happens:**
-1. Auto-detect profile from `.framework-install`
-2. Apply profile filtering
-3. Show: 5 rules to update (only relevant ones)
+1. Pull from ~/dev/ai-dev
+2. Scan both projects
+3. Show: 9 rules to update across categories
 4. Confirm and sync
-5. Report: "Updated 5 rules (nextjs-aws profile)"
+5. Report: "Updated 9 rules"
 
-**Time:** ~20 seconds
+**Time:** ~30 seconds
 
-### Example 3: Category-Based Update (Legacy - Not Recommended)
+### Example 2: Tech Stack-Specific Update
 
 **User says:**
 > "pull only frontend and React rules from the framework"
@@ -428,9 +290,21 @@ Summary:
 4. Sync specific categories
 5. Report: "Updated 3 frontend/language rules"
 
-**⚠️ Warning:** This syncs ALL rules in categories, causing bloat. Use `--profile` instead.
-
 **Time:** ~20 seconds
+
+### Example 3: Share Backend Innovations
+
+**User says:**
+> "push backend rules to my other project"
+
+**What happens:**
+1. `/update-rules --to ~/projects/other-app --categories backend`
+2. Compare backend rules
+3. Show: 2 NEW backend rules
+4. Confirm and push
+5. Report: "Pushed 2 backend rules"
+
+**Time:** ~25 seconds
 
 ## Safety Features
 
@@ -441,9 +315,8 @@ Summary:
 - ✅ Dry-run preview available
 
 **Smart filtering:**
-- Profile-aware filtering (whitelist-based)
-- Only syncs rules relevant to tech stack
-- Excludes incorrect rules (e.g., no AWS in desktop apps)
+- Category-based organization
+- Only syncs specified categories
 - Clear status for each rule
 
 **Backup strategy:**
@@ -495,33 +368,30 @@ Valid categories:
 
 ## Best Practices
 
-1. **Use profile-based sync (recommended):**
-```bash
-# Auto-detects profile from .framework-install
-/update-rules --from ~/dev/ai-dev --to ~/dev/u-safe --profile tauri
-
-# Ensures zero incorrect rules
-/update-rules --from ~/dev/ai-dev --to ~/dev/buffer --profile nextjs-aws
-```
-
-2. **Always dry-run first:**
+1. **Always dry-run first:**
 ```bash
 /update-rules --from ~/dev/ai-dev --dry-run
 /update-rules --from ~/dev/ai-dev
 ```
 
+2. **Category-specific updates:**
+```bash
+# Only update relevant categories
+/update-rules --from ~/dev/ai-dev --categories frontend,languages
+```
+
 3. **Framework as source of truth:**
 ```bash
-# In projects: pull from framework with profile
-/update-rules --from ~/dev/ai-dev --profile tauri
+# In projects: pull from framework
+/update-rules --from ~/dev/ai-dev
 
-# In framework: test profile filtering
-/update-rules --to ~/dev/test-project --profile nextjs-aws --dry-run
+# In framework: pull innovations from projects
+/update-rules --from ~/projects/my-app --categories backend
 ```
 
 4. **Regular updates:**
 ```bash
-# Weekly/monthly routine (profile auto-detected)
+# Weekly/monthly routine
 /update-rules --from ~/dev/ai-dev
 ```
 
@@ -552,7 +422,7 @@ Project setup → Push Rules → Share knowledge
 ```
 Paths validated → Update Task #1
 Rules scanned → Update Task #2
-Rules compared by profile → Update Task #3
+Categories compared → Update Task #3
 Diff shown → Update Task #4
 Sync executed → Update Task #5
 Results reported → Update Task #6
@@ -567,10 +437,10 @@ Provides real-time visibility of sync progress.
 ```
 - [ ] All 6 sync tasks completed
 - [ ] Source and target paths valid
-- [ ] Rules compared by profile (or category if legacy mode)
+- [ ] Rules compared by category
 - [ ] User confirmed changes
 - [ ] Files copied correctly
-- [ ] Sync summary displayed with filter info
+- [ ] Sync summary displayed
 ```
 
 Missing items indicate incomplete sync.

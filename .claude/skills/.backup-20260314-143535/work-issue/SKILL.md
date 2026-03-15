@@ -134,9 +134,7 @@ Skill("start-issue", args=str(issue_number))
 # ✅ Phase 1 complete → IMMEDIATELY proceed to Phase 1.5 (DO NOT WAIT)
 
 # Phase 1.5: Evaluate Plan
-# CRITICAL: Pass --mode=auto in auto mode to enable auto-fix
-eval_args = f"{issue_number} --mode=auto" if mode == "auto" else str(issue_number)
-Skill("eval-plan", args=eval_args)
+Skill("eval-plan", args=str(issue_number))
 # ✅ Phase 1.5 complete → Check score and checkpoint logic
 
 # Checkpoint 1: Auto mode decision
@@ -226,114 +224,6 @@ if mode == "auto":
     # Otherwise continue automatically
 ```
 
-### Batch Processing Pattern (CRITICAL)
-
-**DO NOT STOP between issues** - When executing batch mode, AI must process ALL issues continuously without pausing between issues.
-
-**Batch execution loop:**
-```python
-# CONTINUOUS BATCH EXECUTION - DO NOT STOP until all issues complete
-
-# Parse issue list
-issues = [128, 184, 33]  # Example
-mode = "auto"  # Default for batch
-
-# Execute each issue sequentially
-for i, issue_num in enumerate(issues):
-    print(f"\n{'━' * 60}")
-    print(f"Issue #{issue_num} ({i+1}/{len(issues)})")
-    print(f"{'━' * 60}\n")
-
-    try:
-        # Execute full work-issue workflow for this issue
-        # MUST use Skill tool to invoke work-issue
-        Skill("work-issue", args=str(issue_num))
-
-        # ✅ Issue complete → IMMEDIATELY continue to next issue (DO NOT STOP)
-        print(f"\n✅ Issue #{issue_num} complete\n")
-
-    except Exception as e:
-        # Handle failure based on strategy
-        print(f"\n❌ Issue #{issue_num} failed: {e}\n")
-
-        if stop_on_error:
-            # Stop batch, report progress
-            print(f"⚠️ Batch stopped (--stop-on-error)")
-            break
-        else:
-            # Continue to next issue
-            print(f"⚠️ Continuing to next issue (--continue-on-error)")
-            continue
-
-    # ✅ CRITICAL: Check if more issues remaining
-    remaining = len(issues) - i - 1
-    if remaining > 0:
-        print(f"📋 {remaining} more issue(s) to go, continuing...")
-        # DO NOT RETURN TO USER - continue loop
-    else:
-        # Last issue complete
-        print(f"✅ Last issue complete!")
-        break
-
-# Only return after ALL issues processed
-print(f"\n{'━' * 60}")
-print("Batch Complete")
-print(f"{'━' * 60}")
-print(f"✅ {completed}/{len(issues)} issues completed")
-if failed > 0:
-    print(f"❌ {failed}/{len(issues)} issues failed")
-```
-
-**CRITICAL RULES for Batch:**
-
-1. **Never pause between issues** - Each issue's Skill() call must be immediately followed by the next issue (unless failure + stop-on-error)
-
-2. **Only stop when**:
-   - All issues completed
-   - Error + `--stop-on-error` flag
-   - User interrupt
-   - DO NOT stop for checkpoints in batch mode (auto mode)
-
-3. **Loop until complete** - The `for issue in issues:` loop must run to completion without returning to user
-
-4. **Auto mode enforced** - Batch mode implies auto mode (no interactive checkpoints between issues)
-
-5. **Check remaining issues** - After each issue, check `if remaining > 0: continue` (do not return)
-
-**Common mistake to avoid:**
-```python
-# ❌ WRONG - Stopping after every issue
-for issue in [128, 184, 33]:
-    Skill("work-issue", args=str(issue))
-    return "Issue complete"  # ← BUG! Stops batch
-
-# ✅ CORRECT - Continuous batch execution
-for issue in [128, 184, 33]:
-    Skill("work-issue", args=str(issue))
-    # DO NOT RETURN - continue to next issue
-    if more_remaining():
-        continue
-# Only return after loop completes
-return batch_summary
-```
-
-**State management:**
-```python
-# Create batch state file at start
-create_batch_state({
-    "mode": "batch",
-    "issues": [128, 184, 33],
-    "current_index": 0,
-    "continuous_execution": True
-})
-
-# Update after each issue
-update_batch_state({"current_index": i+1})
-
-# Delete after batch complete
-delete_batch_state()
-```
-
 ## Workflow Steps
 
 Copy this checklist to track progress:
@@ -359,7 +249,7 @@ Task Progress:
 
 ### Phase 1.5: Evaluate Plan
 
-**Execute**: `/eval-plan #N --mode=auto` (in auto mode) or `/eval-plan #N` (in interactive mode)
+**Execute**: `/eval-plan #N` (automatic, issue number passed from Phase 1)
 
 **Validates:**
 - Architecture alignment (catches violations)
@@ -368,17 +258,9 @@ Task Progress:
 - Best practices (error handling, docs, logging)
 - Task clarity (no vague tasks)
 
-**Auto-Fix (NEW in v3.1.0):**
-When `--mode=auto` and score ≥90, automatically fixes minor issues:
-- Missing TODO comments
-- Incomplete test descriptions
-- Task numbering gaps
-- Missing file paths
-- Small logic gaps
+**Output**: Evaluation report with score and recommendations
 
-**Output**: Evaluation report with score, recommendations, and auto-fix log (if applicable)
-
-**Time**: 30-60 seconds (+ 5-10 seconds if auto-fix triggered)
+**Time**: 30-60 seconds
 
 ### Checkpoint 1: Review Evaluation
 
@@ -409,26 +291,9 @@ Issues Found:
 ```
 
 **Auto mode behavior:**
-- Score > 90 (before or after auto-fix): Skip checkpoint, proceed to Phase 2
+- Score > 90: Skip checkpoint, proceed to Phase 2
 - Score ≤ 90: Stop here, require human decision
 - Blocking issues: Always stop (any mode)
-- **Auto-fix applied**: If minor issues fixed, shows fix log before continuing
-
-**Example with auto-fix:**
-```
-📊 Plan Evaluation (Auto Mode)
-
-Issue #177: Auto-fix minor issues
-Initial Score: 88/100
-
-🔧 Auto-Fixes Applied:
-1. Format issue: Renumbered tasks 1,2,4,5 → 1,2,3,4
-2. Missing TODO: Added TODO comment to Task 3
-
-New Score: 95/100 ✅
-
-Proceeding to Phase 2 (execute-plan)...
-```
 
 ### Phase 2: Execute Plan
 
@@ -815,62 +680,6 @@ Checkpoint 2: Human approval
 - Updated: After each phase
 - Deleted: When workflow completes
 
-### Batch Mode State Extension
-
-**Extended state file** for batch processing: `.claude/.work-issue-execution-state.json`
-
-**Batch-specific schema:**
-```json
-{
-  "version": "1.0.0",
-  "mode": "batch",
-  "continuous_execution": true,
-  "batch_config": {
-    "total_issues": 3,
-    "current_index": 1,
-    "issues": [
-      {
-        "issue_number": 128,
-        "status": "completed",
-        "result": "success",
-        "duration_minutes": 45
-      },
-      {
-        "issue_number": 184,
-        "status": "in_progress",
-        "current_phase": 2
-      },
-      {
-        "issue_number": 33,
-        "status": "pending"
-      }
-    ],
-    "failure_policy": "skip",
-    "checkpoint_behavior": "auto_continue"
-  },
-  "execution_started": "2026-03-13T10:00:00Z"
-}
-```
-
-**Batch state lifecycle:**
-1. `work-issue [issues]` starts → Create batch state with all issues
-2. Each issue starts → Update `current_index`, set status `in_progress`
-3. Each issue completes → Set status `completed`, record result
-4. Batch completes → Delete state file
-5. Batch interrupted → Preserve state file for `--resume-batch`
-
-**AI usage pattern:**
-```python
-# Check if in batch mode
-state = read_batch_state()
-if state and state.mode == "batch":
-    # Continue to next issue if remaining
-    if state.current_index < state.total_issues - 1:
-        # DO NOT RETURN TO USER - continue loop
-        continue
-    # Otherwise all complete
-```
-
 ## Error Handling
 
 **Plan eval fails:** Fix blocking issues, resume with `/work-issue #23 --resume`
@@ -1196,12 +1005,11 @@ else:
 
 ---
 
-**Version:** 3.1.0
+**Version:** 3.0.0
 **Pattern:** Meta-Workflow Orchestrator with Symmetric Validation + Batch Processing
 **Compliance:** ADR-001 ✅ | ADR-003 ✅ | WORKFLOW_PATTERNS.md ✅
-**Last Updated:** 2026-03-13
+**Last Updated:** 2026-03-12
 **Changelog:**
-- v3.1.0: Integrated eval-plan auto-fix mode for seamless auto workflow (Issue #177)
 - v3.0.0: Added batch processing support for multiple issues (Issue #141)
 - v2.0.0: Integrated /eval-plan with symmetric validation checkpoints
 - v1.0.0: Initial release with 4-skill orchestration
