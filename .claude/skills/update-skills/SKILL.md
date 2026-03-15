@@ -4,6 +4,7 @@ description: |
   Sync skills between projects - bidirectional copy with version detection.
   TRIGGER when: user wants to sync skills ("update skills from X", "sync skills", "pull skills from framework", "push skills to project").
   DO NOT TRIGGER when: user wants to update pillars/rules/workflow (use respective update-* skills), or just wants to read skill docs.
+version: "2.2.0"
 allowed-tools: Bash(cp *), Bash(mkdir *), Bash(ls *), Bash(find *), Bash(test *), Bash(cat *), Bash(wc *), Bash(stat *), Bash(git *), Read, Write, Glob, Grep, Edit
 disable-model-invocation: false
 user-invocable: true
@@ -171,51 +172,196 @@ Result: 14 skills synced (2 excluded)
 - Filtering mainly used for specialized deployment skills
 - Typically called by `/update-framework` meta-skill
 
-## Version Detection
+## Version Detection (v2.0.0+)
+
+**Method**: Semantic version comparison from YAML frontmatter
 
 **Comparison algorithm:**
 
+```python
+def parse_yaml_version(file_path):
+    """从 SKILL.md 的 YAML frontmatter 提取 version 字段
+
+    Returns:
+        str: 版本号 (如 "1.1.0") 或 None
+    """
+    import re
+    with open(file_path, 'r') as f:
+        # 读取 YAML frontmatter (---...--- 之间)
+        lines = []
+        in_yaml = False
+        for line in f:
+            if line.strip() == '---':
+                if not in_yaml:
+                    in_yaml = True
+                    continue
+                else:
+                    break  # 结束 YAML 块
+            if in_yaml:
+                lines.append(line)
+
+        # 查找 version: "x.y.z"
+        for line in lines:
+            if line.startswith('version:'):
+                # 提取引号内的版本号
+                match = re.search(r'version:\s*"([^"]+)"', line)
+                if match:
+                    return match.group(1)
+    return None
+
+def compare_semver(v1: str, v2: str) -> int:
+    """语义化版本比较
+
+    Args:
+        v1: 版本号 1 (如 "2.1.0")
+        v2: 版本号 2 (如 "2.0.0")
+
+    Returns:
+        int: 1 if v1 > v2, -1 if v1 < v2, 0 if equal
+    """
+    parts1 = [int(x) for x in v1.split('.')]
+    parts2 = [int(x) for x in v2.split('.')]
+
+    for p1, p2 in zip(parts1, parts2):
+        if p1 > p2:
+            return 1
+        elif p1 < p2:
+            return -1
+
+    return 0
+
+def content_differs(source_path, target_path):
+    """检查两个文件内容是否不同（忽略空白和注释）
+
+    Returns:
+        bool: True if content differs
+    """
+    def normalize(path):
+        # 读取文件，移除 YAML frontmatter 和空白行
+        with open(path, 'r') as f:
+            lines = f.readlines()
+
+        # 跳过 YAML frontmatter
+        in_yaml = False
+        content_lines = []
+        for line in lines:
+            if line.strip() == '---':
+                if not in_yaml:
+                    in_yaml = True
+                    continue
+                else:
+                    in_yaml = False
+                    continue
+            if not in_yaml and line.strip():
+                content_lines.append(line.strip())
+
+        return '\n'.join(content_lines)
+
+    return normalize(source_path) != normalize(target_path)
+
+def compare_skill_versions(source_skill, target_skill):
+    """比较两个 skill 的版本
+
+    Returns:
+        str: "NEW", "NEWER", "OLDER", "SAME", "CONFLICT"
+    """
+    import os
+    source_path = f"{source_skills_dir}/{source_skill}/SKILL.md"
+    target_path = f"{target_skills_dir}/{target_skill}/SKILL.md"
+
+    # 1. Target 不存在 → NEW
+    if not os.path.exists(target_path):
+        return "NEW"
+
+    # 2. 解析 YAML version 字段
+    source_version = parse_yaml_version(source_path)
+    target_version = parse_yaml_version(target_path)
+
+    # 3. 向后兼容：任一缺少 version → fallback to legacy
+    if not source_version or not target_version:
+        return compare_legacy(source_path, target_path)
+
+    # 4. 语义化版本比较
+    cmp = compare_semver(source_version, target_version)
+
+    if cmp > 0:
+        return "NEWER"    # Source version higher
+    elif cmp < 0:
+        return "OLDER"    # Source version lower
+    else:
+        # 5. 版本相同，检查内容
+        if content_differs(source_path, target_path):
+            return "CONFLICT"  # Same version, different content
+        else:
+            return "SAME"
+
+def compare_legacy(source_path, target_path):
+    """Legacy 比较方法（时间 + 行数）- 向后兼容"""
+    import os
+    # 原有的 stat -f %m 和 wc -l 逻辑
+    source_time = os.path.getmtime(source_path)
+    target_time = os.path.getmtime(target_path)
+
+    if source_time > target_time:
+        return "NEWER"
+    elif source_time < target_time:
+        return "OLDER"
+    else:
+        # 时间相同，比较行数
+        source_lines = len(open(source_path).readlines())
+        target_lines = len(open(target_path).readlines())
+
+        if source_lines != target_lines:
+            return "CONFLICT"
+        else:
+            return "SAME"
 ```
-For each skill directory with SKILL.md:
-1. Check if exists in target
-   → NEW if not found
-2. Compare modification time (stat -f %m)
-   → NEWER if source newer
-   → OLDER if source older
-3. Compare file size (wc -l)
-   → CONFLICT if same time, different size
-   → SAME if identical time and size
-```
+
+**Process**:
+1. Parse `version: "x.y.z"` from SKILL.md YAML frontmatter
+2. Compare using semantic versioning rules:
+   - Major: Breaking changes (2.0.0 > 1.9.0)
+   - Minor: New features (1.1.0 > 1.0.0)
+   - Patch: Bug fixes (1.0.1 > 1.0.0)
+3. Detect conflicts: Same version, different content
+4. Fallback: If no version field, use legacy (time + size)
 
 **Status meanings:**
 - **NEW** - Skill doesn't exist in target (safe to copy)
-- **NEWER** - Source modified more recently (recommend update)
-- **OLDER** - Target modified more recently (warn before overwrite)
-- **CONFLICT** - Same modification time but different content (manual review needed)
-- **SAME** - Identical (skip)
+- **NEWER** - Source version > target version (2.1.0 > 2.0.0, recommend update)
+- **OLDER** - Source version < target version (warn before overwrite)
+- **SAME** - Versions and content identical (skip)
+- **CONFLICT** - Same version but content differs (manual review needed)
+
+**Legacy fallback** (for skills without `version` field):
+- Compare modification time (`stat -f %m`)
+- If time same, compare file size (`wc -l`)
 
 ## Analysis Output
 
 ```
 📊 Analysis:
-┌─────────────────┬────────┬──────────────────┐
-│ Skill           │ Status │ Action           │
-├─────────────────┼────────┼──────────────────┤
-│ adr             │ NEWER  │ Update (443 vs 408 lines) │
-│ create-issues   │ NEW    │ Copy (617 lines) │
-│ start-issue     │ NEW    │ Copy (554 lines) │
-│ finish-issue    │ NEW    │ Copy (557 lines) │
-│ status          │ SAME   │ Skip             │
-│ review          │ OLDER  │ Skip (warn)      │
-│ (15 others)     │ SAME   │ Skip             │
-└─────────────────┴────────┴──────────────────┘
+┌─────────────────┬────────┬──────────────────────────────┐
+│ Skill           │ Status │ Action                       │
+├─────────────────┼────────┼──────────────────────────────┤
+│ adr             │ NEWER  │ Update (v1.1.0 → v1.2.0)     │
+│ create-issues   │ NEW    │ Add (v1.0.0)                 │
+│ start-issue     │ NEWER  │ Update (v2.1.0 → v2.2.0)     │
+│ finish-issue    │ NEW    │ Add (v1.0.0)                 │
+│ status          │ SAME   │ Skip (both v1.0.0)           │
+│ review          │ OLDER  │ Skip (v1.0.0 < v1.1.0)       │
+│ work-issue      │ CONFLICT│ Manual review needed         │
+│                 │        │ (both v3.0.0, content diff)  │
+│ (15 others)     │ SAME   │ Skip                         │
+└─────────────────┴────────┴──────────────────────────────┘
 
 Summary:
-- New skills: 3
-- Updated skills: 1
-- Unchanged: 18
-- Skipped (older): 1
-- Total to sync: 4 skills (2,171 lines)
+- New skills: 2 (create-issues, finish-issue)
+- Updated skills: 2 (adr, start-issue)
+- Unchanged: 15
+- Skipped (older): 1 (review)
+- Conflicts: 1 (work-issue - requires manual resolution)
+- Total to sync: 4 skills
 ```
 
 ## Conflict Handling
@@ -237,25 +383,50 @@ Options:
 Choice (1/2/3):
 ```
 
-### CONFLICT Detection
+### CONFLICT Detection (Version Mismatch)
 
 ```
 ❌ Conflict detected
 
-Skill: adr
-Source: modified 2026-03-04 14:59 (443 lines)
-Target: modified 2026-03-04 14:59 (408 lines)
+Skill: work-issue
+Source version: v3.0.0
+Target version: v3.0.0
+Content differs: Yes
 
-Same modification time but different content.
+⚠️ Issue: Version numbers match but content differs
+
+This usually means:
+- Both sides modified same version
+- Forgot to bump version after changes
+- Divergent development
+
+Recommended action:
+1. Review changes: diff source/SKILL.md target/SKILL.md
+2. Merge manually or choose one version
+3. Update version number after merge (v3.0.1 or v3.1.0)
 
 Options:
-1. Skip - Keep current version
+1. Skip - Keep current version (no sync)
 2. Show diff - Compare line by line
-3. Overwrite - Use source version
-4. Manual merge - Open both files
+3. Overwrite - Use source version (requires confirmation)
+4. Manual merge - Open both files in editor
 
 Choice (1/2/3/4):
 ```
+
+**Why conflicts occur:**
+- Both source and target modified same version
+- Version number not bumped after content changes
+- Parallel development without coordination
+
+**Resolution steps:**
+1. Review both versions (option 2: show diff)
+2. Choose merge strategy:
+   - Manual merge: Combine both changes
+   - Accept source: Use newer implementation
+   - Accept target: Keep current version
+3. Bump version number (v3.0.0 → v3.0.1 or v3.1.0)
+4. Re-run sync to verify
 
 ## Backup Strategy
 

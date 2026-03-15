@@ -4,6 +4,7 @@ description: |
   Sync workflow documentation between projects - CLAUDE.md and .claude/workflow/ files.
   TRIGGER when: user wants to sync workflow docs ("update workflow from X", "sync workflow", "pull workflow from framework", "push workflow to project").
   DO NOT TRIGGER when: user wants to update pillars/rules/skills (use respective update-* skills), or just wants to read workflow docs.
+version: "2.1.0"
 allowed-tools: Bash(cp *), Bash(mkdir *), Bash(ls *), Bash(find *), Bash(test *), Bash(cat *), Bash(git *), Read, Write, Glob, Grep, Edit
 disable-model-invocation: false
 user-invocable: true

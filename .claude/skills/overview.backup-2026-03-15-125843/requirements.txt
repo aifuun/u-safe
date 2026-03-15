@@ -1,0 +1,5 @@
+# Overview Skill Dependencies
+# Python 3.9+ required
+
+# No external dependencies - using stdlib only
+# HTML reports use existing template with JSON injection

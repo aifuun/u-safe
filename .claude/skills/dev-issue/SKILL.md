@@ -5,6 +5,7 @@ description: |
   Execute implementation plan step-by-step - creates todos from plan, guides through tasks sequentially, runs until issue resolved.
   TRIGGER when: user wants to implement after /start-issue (e.g., "start development", "implement issue #23", "work on the plan", "execute the tasks").
   DO NOT TRIGGER when: user just wants to plan (use /start-issue), review code (use /review), or finish work (use /finish-issue).
+version: "3.0.0"
 argument-hint: "[issue-number] [--resume] [--skip-task N]"
 allowed-tools: Bash(git *), Bash(gh *), Bash(npm *), Read, Write, Glob, Grep, Edit
 disable-model-invocation: false

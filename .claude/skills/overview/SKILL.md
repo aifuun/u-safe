@@ -3,6 +3,7 @@ name: overview
 description: |
   Display comprehensive project overview including git state, framework configuration, active work, and code quality metrics.
   TRIGGER when: user wants to see project overview ("show overview", "project overview", "current state", "what's the status").
+version: "3.0.0"
   DO NOT TRIGGER when: user wants git-specific info only (use git commands), or wants to create/modify (not viewing overview).
 ---
 

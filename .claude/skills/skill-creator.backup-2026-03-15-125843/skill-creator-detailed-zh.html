@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Skill Creator 详细解释说明</title>
+  <style>
+    :root {
+      --bg: #f6f8fb;
+      --card: #ffffff;
+      --text: #111827;
+      --muted: #6b7280;
+      --line: #e5e7eb;
+      --brand: #1d4ed8;
+      --soft: #eff6ff;
+      --ok: #065f46;
+      --warn: #92400e;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+      line-height: 1.65;
+    }
+    .container {
+      width: min(1100px, 92vw);
+      margin: 24px auto 40px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 18px 20px;
+      margin-bottom: 14px;
+    }
+    h1 { margin: 0 0 10px; font-size: 30px; }
+    h2 { margin: 0 0 10px; font-size: 22px; }
+    h3 { margin: 0 0 8px; font-size: 18px; }
+    p { margin: 0 0 10px; }
+    .muted { color: var(--muted); }
+    .pill {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 999px;
+      background: var(--soft);
+      border: 1px solid #dbeafe;
+      color: var(--brand);
+      font-size: 12px;
+      margin-right: 6px;
+      margin-bottom: 6px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 12px;
+    }
+    .box {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 12px;
+      background: #fcfdff;
+    }
+    ol, ul { margin: 8px 0 0; padding-left: 20px; }
+    li { margin: 6px 0; }
+    code {
+      background: #f3f4f6;
+      border-radius: 6px;
+      padding: 2px 6px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.92em;
+      word-break: break-word;
+    }
+    pre {
+      margin: 8px 0 0;
+      background: #0f172a;
+      color: #e2e8f0;
+      border-radius: 10px;
+      padding: 12px;
+      overflow: auto;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+      font-size: 14px;
+    }
+    th, td {
+      border: 1px solid var(--line);
+      padding: 9px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: #f9fafb; }
+    .note {
+      border-left: 4px solid var(--brand);
+      background: var(--soft);
+      padding: 10px 12px;
+      border-radius: 8px;
+      margin-top: 10px;
+    }
+    .ok { color: var(--ok); font-weight: 600; }
+    .warn { color: var(--warn); font-weight: 600; }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <section class="card">
+      <h1>Skill Creator（skill-creator）详细解释说明</h1>
+      <p>本页面是对 <code>skills/skill-creator/SKILL.md</code> 的中文化、结构化说明。目标是帮助你快速掌握该技能在「创建 skill、验证效果、迭代优化、提升触发率」四个方面的完整工作流。</p>
+      <div>
+        <span class="pill">适用对象：想构建或优化 Skill 的开发者</span>
+        <span class="pill">核心理念：先小样本验证，再多轮迭代</span>
+        <span class="pill">关键产物：SKILL.md + eval 数据 + 用户反馈</span>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>1. 这个 Skill 是做什么的？</h2>
+      <p><strong>skill-creator</strong> 是一个“技能开发教练”。它不是只帮你写一个 <code>SKILL.md</code>，而是带你走完从想法到可用技能的完整闭环：</p>
+      <ol>
+        <li>明确意图和触发条件（这个 skill 到底什么时候该被调用）</li>
+        <li>写出初版 skill</li>
+        <li>设计测试用例并运行（含基线对比）</li>
+        <li>结合定量评测 + 用户主观反馈做改进</li>
+        <li>必要时优化 description，提升触发准确率</li>
+      </ol>
+      <div class="note">一句话理解：<strong>它是“以评测驱动的 skill 研发流程”</strong>，而不是一次性写文档。</div>
+    </section>
+
+    <section class="card">
+      <h2>2. 核心流程（最重要）</h2>
+      <div class="grid">
+        <div class="box">
+          <h3>阶段 A：定义与访谈</h3>
+          <ul>
+            <li>技能要解决什么问题？</li>
+            <li>什么用户表达会触发它？</li>
+            <li>输出格式是什么？</li>
+            <li>是否需要测试用例（客观任务优先）？</li>
+          </ul>
+        </div>
+        <div class="box">
+          <h3>阶段 B：写初版 SKILL</h3>
+          <ul>
+            <li>完善 frontmatter：<code>name</code>、<code>description</code></li>
+            <li>description 要写清“做什么 + 何时触发”</li>
+            <li>正文描述流程、边界、示例与资源结构</li>
+          </ul>
+        </div>
+        <div class="box">
+          <h3>阶段 C：跑评测与对比</h3>
+          <ul>
+            <li>每个用例同时跑 with-skill 与 baseline</li>
+            <li>记录耗时/Token，生成 <code>grading.json</code></li>
+            <li>聚合 benchmark，启动 viewer 给用户评审</li>
+          </ul>
+        </div>
+        <div class="box">
+          <h3>阶段 D：迭代优化</h3>
+          <ul>
+            <li>读 <code>feedback.json</code>，定位问题类型</li>
+            <li>避免“为某个样例过拟合”</li>
+            <li>继续下一轮迭代直到用户满意</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>3. 如何写出更好的 SKILL.md</h2>
+      <table>
+        <thead>
+          <tr><th>要点</th><th>说明</th><th>实践建议</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>触发描述（description）</td>
+            <td>是技能是否被调用的主要依据</td>
+            <td>写清任务场景 + 同义表达 + 边界；略“积极触发”</td>
+          </tr>
+          <tr>
+            <td>渐进加载</td>
+            <td>metadata 常驻，正文触发后加载，resources 按需读取</td>
+            <td>正文保持清晰，复杂内容放 <code>references/</code> 或 <code>scripts/</code></td>
+          </tr>
+          <tr>
+            <td>结构组织</td>
+            <td>多领域技能应按变体拆分（例如按云厂商）</td>
+            <td>用目录层级减少无关上下文注入</td>
+          </tr>
+          <tr>
+            <td>写作风格</td>
+            <td>少堆硬性命令，多解释“为什么”</td>
+            <td>让模型理解目标与原因，提升泛化能力</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <h2>4. 评测执行细则（实战）</h2>
+      <h3>4.1 用例与目录规范</h3>
+      <ul>
+        <li>测试用例写入 <code>evals/evals.json</code>（先写 prompt，不急着写断言）</li>
+        <li>结果落盘到 <code>&lt;skill-name&gt;-workspace/iteration-N/eval-*/</code></li>
+        <li>每个 eval 保存 <code>eval_metadata.json</code>（含名称、prompt、assertions）</li>
+      </ul>
+
+      <h3>4.2 同步启动对比运行</h3>
+      <ul>
+        <li>每条测试同时跑两组：<code>with_skill</code> 与 baseline</li>
+        <li>创建新 skill 时 baseline 通常为 <code>without_skill</code></li>
+        <li>优化旧 skill 时 baseline 可为“旧快照版本”</li>
+      </ul>
+
+      <h3>4.3 中途不要空等：并行起草断言</h3>
+      <ul>
+        <li>运行过程中补充可客观验证的 assertions</li>
+        <li>主观质量（文风、美感）优先让人评审，不要强行量化</li>
+      </ul>
+
+      <h3>4.4 完成后聚合与展示</h3>
+      <pre>python -m scripts.aggregate_benchmark &lt;workspace&gt;/iteration-N --skill-name &lt;name&gt;
+nohup python eval-viewer/generate_review.py &lt;workspace&gt;/iteration-N --benchmark &lt;workspace&gt;/iteration-N/benchmark.json &amp;</pre>
+      <p class="muted">viewer 会同时展示输出样例与 benchmark，用户评审后会生成 <code>feedback.json</code>。</p>
+
+      <h3>4.5 必须抓取 timing</h3>
+      <p>每个运行完成时立刻记录 <code>total_tokens</code> 和 <code>duration_ms</code> 到 <code>timing.json</code>，这是唯一稳定来源。</p>
+    </section>
+
+    <section class="card">
+      <h2>5. 迭代改进的原则</h2>
+      <ul>
+        <li><span class="ok">泛化优先：</span>从反馈中抽象共性，不要只修单个样例。</li>
+        <li><span class="ok">提示精简：</span>删掉低价值指令，避免模型做无效劳动。</li>
+        <li><span class="ok">解释原因：</span>告诉模型“为什么这样做”，比生硬约束更稳。</li>
+        <li><span class="ok">沉淀重复动作：</span>若多个用例重复写同类脚本，提炼到 <code>scripts/</code>。</li>
+      </ul>
+      <div class="note">终止条件：用户明确满意、反馈为空、或继续迭代已无明显收益。</div>
+    </section>
+
+    <section class="card">
+      <h2>6. Description 优化（触发率优化）</h2>
+      <ol>
+        <li>构造约 20 条触发评测 query（应触发 + 不应触发）</li>
+        <li>使用 <code>assets/eval_review.html</code> 让用户审阅并导出 eval 集</li>
+        <li>后台运行优化循环（最多 5 轮）</li>
+        <li>用 <code>best_description</code> 回写 SKILL frontmatter</li>
+      </ol>
+      <pre>python -m scripts.run_loop \
+  --eval-set &lt;trigger-eval.json&gt; \
+  --skill-path &lt;path-to-skill&gt; \
+  --model &lt;当前会话模型ID&gt; \
+  --max-iterations 5 \
+  --verbose</pre>
+      <p class="muted">关键点：评测 query 要“真实、具体、带上下文”，避免过于简短的玩具样例。</p>
+    </section>
+
+    <section class="card">
+      <h2>7. 不同环境下怎么落地</h2>
+      <table>
+        <thead>
+          <tr><th>环境</th><th>可用能力</th><th>建议做法</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Claude Code</td>
+            <td>有子代理、可并行、可打开 viewer</td>
+            <td>按完整流程执行（并行评测 + benchmark + viewer）</td>
+          </tr>
+          <tr>
+            <td>Claude.ai</td>
+            <td>无子代理、评测并行能力弱</td>
+            <td>顺序跑用例，重点做人工评审，弱化基线 benchmark</td>
+          </tr>
+          <tr>
+            <td>Cowork/无显示环境</td>
+            <td>可运行脚本但可能无浏览器界面</td>
+            <td>viewer 用 <code>--static</code> 输出独立 HTML；反馈用下载文件回收</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <h2>8. 常见误区与规避</h2>
+      <ul>
+        <li><span class="warn">误区：</span>只写好看提示词，不做评测。<br/>规避：至少 2-3 条真实用例 + 一轮用户反馈。</li>
+        <li><span class="warn">误区：</span>断言字段随意命名。<br/>规避：<code>grading.json</code> 必须使用 <code>text/passed/evidence</code>。</li>
+        <li><span class="warn">误区：</span>先自我主观评价，再给用户看。<br/>规避：先生成 viewer，让人类尽早参与审阅。</li>
+        <li><span class="warn">误区：</span>description 只写“功能”，不写“何时触发”。<br/>规避：同时覆盖任务类型、上下文线索、边界条件。</li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <h2>9. 一页版执行清单（可直接照做）</h2>
+      <ol>
+        <li>澄清目标、触发场景、输出格式</li>
+        <li>写初版 <code>SKILL.md</code></li>
+        <li>写 2-3 条 eval prompt 到 <code>evals/evals.json</code></li>
+        <li>并行跑 with-skill 与 baseline</li>
+        <li>运行中补 assertions，完成后做 grading + benchmark</li>
+        <li>用 <code>generate_review.py</code> 让用户评审，读取 <code>feedback.json</code></li>
+        <li>根据反馈改进 skill，进入下一迭代</li>
+        <li>完成后做 description 优化并回写</li>
+      </ol>
+      <p class="muted">如果你只想先最小可用：完成前 1~6 步即可形成有效闭环。</p>
+    </section>
+  </main>
+</body>
+</html>

@@ -3,6 +3,7 @@ name: plan
 description: |
   Create or update implementation plans for features, MVPs, and milestones.
   TRIGGER when: user wants to plan a feature ("create a plan for X", "plan this feature", "how should we implement Y", "break down this task").
+version: "2.1.0"
   DO NOT TRIGGER when: user wants to start an issue (use /start-issue), or just wants quick advice without detailed planning.
 ---
 

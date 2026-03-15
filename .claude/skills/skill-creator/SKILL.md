@@ -6,6 +6,7 @@ description: |
   TRIGGER when: User wants to create a skill from scratch, update or optimize an existing skill, run evals to test a skill, benchmark skill performance with variance analysis, or optimize a skill's description for better triggering accuracy.
 
   DO NOT TRIGGER when: User is just asking about skills conceptually, wants to use an existing skill, or is discussing skill documentation without creating/modifying anything.
+version: "2.0.0"
 ---
 
 # Skill Creator
@@ -482,3 +483,7 @@ Repeating one more time the core loop here for emphasis:
 Please add steps to your TodoList, if you have such a thing, to make sure you don't forget. If you're in Cowork, please specifically put "Create evals JSON and run `eval-viewer/generate_review.py` so human can review test cases" in your TodoList to make sure it happens.
 
 Good luck!
+
+---
+
+**Version:** 2.0.0

@@ -211,9 +211,15 @@ description: |
   What it does.
   TRIGGER when: [conditions]
   DO NOT TRIGGER when: [exclusions]
+version: "1.0.0"           # Semantic version (major.minor.patch)
 allowed-tools: Read, Write, Bash(git *)
 ---
 ```
+
+**Version Field** (Required as of ADR-008):
+- Format: `"major.minor.patch"` (string with quotes)
+- Enables semantic version comparison in `/update-skills`
+- Also add `**Version:** X.Y.Z` at bottom of SKILL.md for backward compatibility
 
 **Quality Standards**:
 - Simple: <200 lines | Standard: 200-350 lines | Complex: >400 lines

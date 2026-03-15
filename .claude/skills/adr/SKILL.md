@@ -7,6 +7,7 @@ description: |
   TRIGGER when: User wants to create an ADR ("create adr", "record decision", "document architecture decision"), list ADRs, show a specific ADR, or validate ADR format.
 
   DO NOT TRIGGER when: User is just asking about existing ADRs conceptually, viewing ADR documentation, or discussing decisions without creating/modifying ADRs.
+version: "1.0.0"
 argument-hint: "create <title> | list | show <number> | validate <number>"
 allowed-tools: Read, Glob, Grep, Write, Edit
 disable-model-invocation: false
@@ -444,5 +445,5 @@ When user invokes `/adr create`:
 
 ---
 
+**Version:** 1.0.0
 **Last Updated**: 2026-03-04
-**Version**: 1.0
