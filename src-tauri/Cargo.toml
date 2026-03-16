@@ -21,6 +21,13 @@ rusqlite = { version = "0.30", features = ["bundled"] }
 log = "0.4"
 env_logger = "0.11"
 
+# 加密相关依赖
+argon2 = "0.5"           # 密钥派生 (KDF)
+aes-gcm = "0.10"         # AES-256-GCM 加密
+rand = "0.8"             # 安全随机数生成
+zeroize = { version = "1.7", features = ["derive"] }  # 内存清零
+uuid = { version = "1.7", features = ["v4"] }  # UUID 生成（临时文件名）
+
 [features]
 default = ["custom-protocol"]
 custom-protocol = ["tauri/custom-protocol"]

@@ -3,6 +3,12 @@ pub mod db;
 mod usb_detection;
 mod system_info;
 
+// Crypto module (加密模块)
+pub mod crypto;
+
+// File I/O module (文件 I/O 模块)
+pub mod file;
+
 use db::{Database, get_default_db_path};
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
