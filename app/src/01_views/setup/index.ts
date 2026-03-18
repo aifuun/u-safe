@@ -1,0 +1,1 @@
+export { SetupPasswordView } from './SetupPasswordView';
