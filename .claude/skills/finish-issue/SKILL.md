@@ -2,7 +2,7 @@
 name: finish-issue
 description: |
   Complete issue workflow - commit, PR, merge, close, cleanup.
-version: "3.0.0"
+version: "3.1.0"
 
   TRIGGER when: User wants to complete/finish an issue ("finish issue #23", "complete issue", "merge and close", "done with issue").
 
@@ -125,6 +125,36 @@ else:
 ### Step 2: Create Task List and Execute
 
 **After** issue number is determined, proceed with normal workflow:
+
+## Output Strategy (Mode-Aware)
+
+**Output adapts based on mode:**
+
+### Auto Mode Output (2 lines)
+
+When called by `/work-issue --auto`:
+
+```
+✅ Issue #{issue_number} finished | PR #{pr_number} merged
+Cleanup: Branch deleted, worktree removed, status files cleared
+```
+
+### Interactive Mode Output (≤20 lines)
+
+When called directly by user:
+
+```markdown
+🎉 Issue #{issue_number} Complete!
+
+✅ Committed and pushed
+✅ PR #{pr_number} created and merged
+✅ Issue closed on GitHub
+✅ Branch deleted
+✅ Worktree removed
+✅ Status files cleaned
+
+Back on: main branch (up to date)
+```
 
 ## Workflow Steps (AI Orchestration)
 
@@ -777,11 +807,12 @@ This is a **workflow skill** and must follow the standard pattern:
 
 ---
 
-**Version:** 3.0.0
+**Version:** 3.1.0
 **Pattern:** Workflow Orchestrator (AI-guided + Script)
 **Compliance:** ADR-001 ✅ | ADR-003 ✅ | WORKFLOW_PATTERNS ✅
-**Last Updated:** 2026-03-11
+**Last Updated:** 2026-03-18
 **Changelog:**
+- v3.1.0: Added mode-aware output (2 lines auto, ≤20 lines interactive) (Issue #263)
 - v3.0.0: Complete rewrite with Python script + AI orchestration
 - v2.0.0: Added workflow pattern compliance
 - v1.0.0: Initial release

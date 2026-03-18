@@ -4,7 +4,7 @@ description: |
   Evaluate implementation plan before execution - validates architecture, coverage, dependencies, and best practices.
   TRIGGER when: user wants plan validated ("evaluate plan", "check plan", "validate plan", "review the plan before starting").
   DO NOT TRIGGER when: user wants to execute plan (use /execute-plan), create plan (use /start-issue or /plan), or review code (use /review).
-version: "1.2.0"
+version: "1.3.0"
 argument-hint: "[issue-number] [--strict] [--json]"
 allowed-tools: Bash(gh *), Read, Glob, Grep
 disable-model-invocation: false
@@ -227,7 +227,37 @@ if mode == "auto" and score >= 90:
     report_auto_fixes(fixes, score, new_score)
 ```
 
-### Step 5: Task Updates
+### Step 5: Generate Output (Mode-Aware)
+
+**Output mode detection**:
+- **Auto mode** (--mode=auto or called by /work-issue): Minimal 2-line output
+- **Interactive mode** (direct invocation): Concise summary ≤20 lines
+
+**Auto mode output**:
+```python
+is_auto_mode = args.get('mode') == 'auto' or os.path.exists('.claude/.work-issue-state.json')
+
+if is_auto_mode:
+    print(f"✅ Plan evaluation: {total_score}/100 ({status})")
+    print(f"Status: .claude/.eval-plan-status.json")
+else:
+    # Interactive mode - show concise summary (see "Evaluation Output" section)
+    print_concise_summary(scores, issues)
+```
+
+**Concise summary format** (interactive mode, max 20 lines):
+```markdown
+# Plan Evaluation: Issue #{issue_number}
+
+Score: {score}/100 ({status})
+Issues: {blocking} blocking, {recommendations} recommendations
+
+{Top 3 issues only}
+
+Status file: .claude/.eval-plan-status.json
+```
+
+### Step 6: Task Updates
 
 ```python
 for task_id in task_ids:
@@ -365,75 +395,66 @@ PLAN_FILE=".claude/plans/active/issue-${ISSUE_NUM}-plan.md"
 
 ## Evaluation Output
 
-### Human-Readable Format
+**Output adapts based on mode:**
+
+### Auto Mode Output (2 lines)
+
+When called by `/work-issue --auto` or with `--mode=auto`:
+
+```
+✅ Plan evaluation: 92/100 (approved)
+Status: .claude/.eval-plan-status.json
+```
+
+### Interactive Mode Output (≤20 lines)
+
+When called directly by user:
 
 ```markdown
 # Plan Evaluation: Issue #23
 
-## Summary
-- **Status**: ⚠️ Needs improvements
-- **Score**: 82/100
-- **Issue**: Fix user authentication flow
-- **Tasks**: 8 tasks identified
-- **Estimated complexity**: Medium
+Score: 82/100 (needs_improvement)
+Issues: 0 blocking, 3 recommendations
 
-## Breakdown
-- Architecture Alignment: 35/40 ✅
-- Acceptance Criteria Coverage: 25/30 ✅
-- Task Dependencies: 12/15 ⚠️
-- Best Practices: 7/10 ⚠️
-- Task Clarity: 3/5 ⚠️
+Top Issues:
+1. Task 5 - Architecture violation: API in UI component
+2. Missing error handling task
+3. Task 3 - Dependency order incorrect
 
-## Issues Found
+Full details: .claude/.eval-plan-status.json
+Next: Edit plan or /execute-plan #23
+```
 
-### 🔴 Blocking (must fix before proceeding)
-None
+### Full Report Format (status file only)
 
-### ⚠️ Recommendations (should fix)
-1. **Task 5 - Architecture Violation**
-   - Issue: "Add API endpoint in LoginForm component"
-   - Problem: UI component should not contain API logic
-   - Fix: Move API call to service layer, call from component
-   - Impact: Violates clean architecture, creates coupling
+Complete evaluation stored in `.claude/.eval-plan-status.json`:
 
-2. **Missing Task - Error Handling**
-   - Problem: No task addresses error scenarios
-   - Fix: Add task: "Implement error handling for auth failures"
-   - Impact: Production issues without proper error handling
-
-3. **Task 3 - Dependency Order**
-   - Issue: "Add tests for AuthService" (Task 3) before "Create AuthService" (Task 7)
-   - Fix: Swap order - create service first (Task 3), then test (Task 7)
-   - Impact: Can't test what doesn't exist yet
-
-### 💡 Suggestions (nice to have)
-1. Consider adding documentation update task
-2. Add logging for authentication events
-3. Task 5 could be split (validation + API call)
-
-## Strengths
-1. ✅ Clear task breakdown with specific deliverables
-2. ✅ Good acceptance criteria mapping (90% coverage)
-3. ✅ Test coverage included
-
-## Approval
-⚠️ **Approved with recommendations**
-- Can proceed, but fix recommendations for better outcome
-- Estimated fix time: 10-15 minutes
-- Re-run /eval-plan after fixes (optional)
-
-## Next Steps
-**Option 1**: Fix recommendations now
-- Edit plan: .claude/plans/active/issue-23-plan.md
-- Re-evaluate: /eval-plan #23
-
-**Option 2**: Proceed with awareness
-- Start implementation: /execute-plan #23
-- Address issues during development
-
-**Option 3**: Stop and revise
-- Improve plan quality first
-- Run /eval-plan again when ready
+```json
+{
+  "timestamp": "2026-03-11T10:30:00Z",
+  "issue_number": 23,
+  "status": "needs_improvement",
+  "score": 82,
+  "breakdown": {
+    "architecture": 35,
+    "coverage": 25,
+    "dependencies": 12,
+    "practices": 7,
+    "clarity": 3
+  },
+  "issues": {
+    "blocking": [],
+    "recommendations": [
+      {
+        "task": "Task 5",
+        "category": "architecture",
+        "description": "API endpoint in UI component violates clean architecture",
+        "fix": "Move API call to service layer",
+        "impact": "high"
+      }
+    ]
+  }
+}
 ```
 
 ### JSON Format (for automation)
@@ -894,10 +915,11 @@ This is a **workflow skill** and must follow the standard pattern:
 
 ---
 
-**Version:** 1.2.0
+**Version:** 1.3.0
 **Pattern:** Analysis skill (validates before execution)
 **Compliance:** ADR-001 ✅ | WORKFLOW_PATTERNS.md ✅
-**Last Updated:** 2026-03-13
+**Last Updated:** 2026-03-18
 **Changelog:**
+- v1.3.0: Added mode-aware output (2 lines auto, ≤20 lines interactive) (Issue #263)
 - v1.2.0: Added auto-fix mode for minor issues when score ≥90 (Issue #177)
 - v1.0.0: Initial release with 5-dimension evaluation

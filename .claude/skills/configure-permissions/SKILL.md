@@ -28,9 +28,8 @@ This skill configures `.claude/settings.json` with required permissions for work
 2. **Detects project profile** (tauri, tauri-aws, nextjs-aws) OR **loads permission template**
 3. **Generates permissions** based on profile or template
 4. **Merges permissions smartly** without overwriting existing config
-5. **Creates backup** before modification
-6. **Validates structure** to ensure correctness
-7. **Reports changes** clearly
+5. **Validates structure** to ensure correctness
+6. **Reports changes** clearly
 
 **Why it's needed:**
 Without pre-configured permissions, work-issue auto mode stops at every bash command to ask for approval, defeating the purpose of automation. This skill pre-configures the required permissions for seamless execution.
@@ -90,9 +89,8 @@ Task #1: Detect project profile
 Task #2: Load or create settings.json (blocked by #1)
 Task #3: Generate permission templates (blocked by #1)
 Task #4: Merge permissions (blocked by #2, #3)
-Task #5: Create backup (blocked by #2)
-Task #6: Write updated settings (blocked by #4, #5)
-Task #7: Validate and report (blocked by #6)
+Task #5: Write updated settings (blocked by #4)
+Task #6: Validate and report (blocked by #5)
 ```
 
 After creating tasks, proceed with configuration execution.
@@ -275,23 +273,33 @@ def prompt_exists(prompts, target):
 - Preserve all other settings.json fields
 - Maintain formatting and structure
 
-## Backup Strategy
+## Recovery Using Git
 
-**Before modification:**
+With git version control, you can easily recover previous permission settings without needing automatic backups.
 
+**View changes:**
 ```bash
-# Create timestamped backup
-BACKUP=".claude/settings.json.backup-$(date +%Y%m%d-%H%M%S)"
-cp .claude/settings.json "$BACKUP"
+# See what changed
+git diff .claude/settings.json
 
-echo "✅ Backup created: $BACKUP"
+# View full git history
+git log .claude/settings.json
 ```
 
-**Rollback if needed:**
+**Restore previous version:**
 ```bash
-# Restore from backup
-cp .claude/settings.json.backup-20260312-143000 .claude/settings.json
+# Undo uncommitted changes
+git restore .claude/settings.json
+
+# Restore from specific commit
+git show <commit-hash>:.claude/settings.json > .claude/settings.json
 ```
+
+**Why no automatic backup:**
+- Git provides complete version history
+- Avoids clutter from backup files
+- Single source of truth for all changes
+- Standard recovery workflow across all skills
 
 ## Validation
 
@@ -328,11 +336,10 @@ def validate_settings(settings):
 2. Load settings.json (or create if missing)
 3. Generate permissions: tools (9) + git (18) + npm (5) = 32 prompts
 4. Merge: Add 29 new, preserve 3 existing
-5. Backup: .claude/settings.json.backup-20260312-143000
-6. Write: Updated settings.json
-7. Report: "✅ Configured 32 permissions (29 added, 3 existing)"
+5. Write: Updated settings.json
+6. Report: "✅ Configured 32 permissions (29 added, 3 existing)"
 
-**Time:** ~10 seconds
+**Time:** ~8 seconds
 
 ### Example 2: Configure Target Project
 
@@ -396,7 +403,6 @@ Permissions Configured:
 ✅ Detected profile: nextjs-aws
 ✅ Added 12 new permissions
 ✅ Preserved 3 existing permissions
-✅ Backup: .claude/settings.json.backup-20260312-143000
 
 work-issue auto mode ready!
 ```
@@ -473,8 +479,8 @@ Error: Unexpected token at line 15
 
 Options:
 1. Fix manually and retry
-2. Delete and recreate (backup will be preserved)
-3. Restore from backup: settings.json.backup-*
+2. Restore from git: git restore .claude/settings.json
+3. View previous version: git show HEAD:.claude/settings.json
 ```
 
 ## Safety Features
@@ -483,7 +489,7 @@ Options:
 - ✅ Target path exists and has .claude/ directory
 - ✅ User confirmation before changes (unless in auto mode)
 - ✅ Dry-run preview available
-- ✅ Automatic backup before modification
+- ✅ Git version control for recovery
 
 **Smart merging:**
 - Never removes existing permissions
@@ -552,13 +558,10 @@ cat .claude/settings.json | jq '.allowedPrompts'
    ✅ Added 12 new permissions
    ✅ Preserved 3 existing permissions
 
-5. Creating backup...
-   ✅ Backup: .claude/settings.json.backup-20260312-143000
-
-6. Writing updated settings...
+5. Writing updated settings...
    ✅ Updated .claude/settings.json
 
-7. Validating configuration...
+6. Validating configuration...
    ✅ Valid structure
    ✅ All git operations present
    ✅ All npm operations present
@@ -602,9 +605,8 @@ Profile detected → Update Task #1
 Settings loaded → Update Task #2
 Templates generated → Update Task #3
 Permissions merged → Update Task #4
-Backup created → Update Task #5
-Settings written → Update Task #6
-Validation passed → Update Task #7
+Settings written → Update Task #5
+Validation passed → Update Task #6
 ```
 
 Provides real-time visibility of configuration progress.
@@ -614,10 +616,9 @@ Provides real-time visibility of configuration progress.
 **Before declaring configuration complete**, verify:
 
 ```
-- [ ] All 7 configuration tasks completed
+- [ ] All 6 configuration tasks completed
 - [ ] Profile detected or specified
 - [ ] settings.json exists
-- [ ] Backup created (if modified existing file)
 - [ ] All git permissions present
 - [ ] Profile-specific permissions added
 - [ ] JSON structure validated
@@ -625,6 +626,9 @@ Provides real-time visibility of configuration progress.
 ```
 
 Missing items indicate incomplete configuration.
+
+**Recovery available via git:**
+Use `git restore .claude/settings.json` to undo changes if needed.
 
 ## Workflow Skills Requirements
 

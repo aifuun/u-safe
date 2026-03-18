@@ -1,8 +1,8 @@
 # Claude Code Skills System
 
 **Version**: 4.0.0 (Streamlined Edition)
-**Last Updated**: 2026-03-15
-**Active Skills**: 20
+**Last Updated**: 2026-03-18
+**Active Skills**: 21
 **Policy**: Python-only ([ADR-003](../../docs/ADRs/003-python-only-for-skill-scripts.md))
 
 > **Purpose**: Navigation hub for Claude Code skills - quick reference and links to detailed documentation.
@@ -102,7 +102,7 @@ Shared code logic? → Python library (Layer 3, imported by Layer 2)
 
 ## Active Skills Reference
 
-**20 skills** organized by usage frequency. Each skill has detailed `SKILL.md` documentation.
+**21 skills** organized by usage frequency. Each skill has detailed `SKILL.md` documentation.
 
 ### 🔥 High Frequency (Daily/Weekly)
 
@@ -123,6 +123,7 @@ Shared code logic? → Python library (Layer 3, imported by Layer 2)
 | **execute-plan** | Execute implementation plan step-by-step | `/execute-plan #N` | [SKILL.md](execute-plan/SKILL.md) |
 | **finish-issue** | Complete issue (commit + PR + merge) | `/finish-issue #N` | [SKILL.md](finish-issue/SKILL.md) |
 | **work-issue** | Complete lifecycle with checkpoints | `/work-issue #N [--auto]` | [SKILL.md](work-issue/SKILL.md) |
+| **auto-solve-issue** | Zero-pause automation with Task dependencies + Subagents | `/auto-solve-issue #N [--auto]` | [SKILL.md](auto-solve-issue/SKILL.md) |
 | **review** | Code quality review | `/review [file/branch]` | [SKILL.md](review/SKILL.md) |
 | **sync** | Sync branch with main | `/sync` | [SKILL.md](sync/SKILL.md) |
 | **dev-issue** | ⚠️ DEPRECATED - use `/execute-plan` | `/dev-issue #N` | [SKILL.md](dev-issue/SKILL.md) |

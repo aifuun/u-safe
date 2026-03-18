@@ -4,7 +4,7 @@ description: |
   Execute implementation plan step-by-step - creates todos from plan, guides through tasks sequentially, runs until issue resolved.
   TRIGGER when: user wants to execute the plan after /start-issue (e.g., "execute the plan", "execute plan for #23", "implement issue #23", "work on the plan").
   DO NOT TRIGGER when: user just wants to plan (use /start-issue), review code (use /review), or finish work (use /finish-issue).
-version: "3.0.0"
+version: "3.1.0"
 argument-hint: "[issue-number] [--resume] [--skip-task N]"
 allowed-tools: Bash(git *), Bash(gh *), Bash(npm *), Read, Write, Glob, Grep, Edit
 disable-model-invocation: false
@@ -347,23 +347,29 @@ Completed:
 
 ### Step 5: Report Completion
 
-**Success message:**
-```markdown
+**Output mode detection**:
+- **Auto mode** (called by /work-issue): Minimal 2-line output
+- **Interactive mode** (direct invocation): Concise summary ≤20 lines
+
+**Auto mode output**:
+```python
+is_auto_mode = os.path.exists('.claude/.work-issue-state.json')
+
+if is_auto_mode:
+    print(f"✅ Plan executed: {completed_tasks}/{total_tasks} tasks | {files_changed} files changed")
+    print(f"Next: /review")
+else:
+    # Interactive mode - show concise summary
+    print(f"""
 🎉 Development Complete!
 
-**Issue #23**: {title}
-**Tasks completed**: {Y}/{Y}
-**Status**: ✅ Ready for review
+Issue #{issue_number}: {title}
+Tasks: {completed_tasks}/{total_tasks} ✅
+Files changed: {files_changed}
+Tests: {test_status}
 
-**Next steps**:
-1. Review code quality: /review
-2. Make adjustments if needed
-3. Finish issue: /finish-issue #23
-
-**Current state**:
-Branch: {branch-name}
-Files changed: {count}
-Tests: {status}
+Next: /review → /finish-issue #{issue_number}
+""")
 ```
 
 **What NOT to do:**
@@ -632,7 +638,11 @@ For detailed guidance on:
 
 ---
 
-**Version:** 3.0.0
+**Version:** 3.1.0
 **Pattern:** Workflow Orchestrator (executes plan step-by-step)
 **Compliance:** ADR-001 ✅ | WORKFLOW_PATTERNS.md ✅
-**Last Updated:** 2026-03-10
+**Last Updated:** 2026-03-18
+**Changelog:**
+- v3.1.0: Added mode-aware output (2 lines auto, ≤20 lines interactive) (Issue #263)
+- v3.0.0: Worktree support and task execution
+- v2.0.0: Added progress tracking

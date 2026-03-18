@@ -5,7 +5,7 @@ description: |
   TRIGGER when: user wants code reviewed ("review my code", "check this PR", "review these changes", "quality check").
   Dynamically detects project configuration (Pillars, architecture rules, ADRs) and adapts checks accordingly.
   DO NOT TRIGGER when: user wants to create/write code (not reviewing), or just wants explanations without quality assessment.
-version: "2.1.0"
+version: "2.2.0"
 argument-hint: "[options]"
 ---
 
@@ -194,70 +194,70 @@ Basic performance checks:
 
 ## Review Output
 
-Generate a structured review report:
+**Output adapts based on mode:**
+
+### Auto Mode Output (2 lines)
+
+When called by `/work-issue --auto`:
+
+```
+✅ Code review: 92/100 (approved)
+Status: .claude/.review-status.json
+```
+
+### Interactive Mode Output (≤20 lines)
+
+When called directly by user:
 
 ```markdown
-# Code Review: [Feature Name]
+# Code Review: Issue #{issue_number}
 
-## Summary
-- Files: 8 changed, 150 insertions, 50 deletions
-- Quality Score: 85/100
-- Status: ⚠️ Approved with recommendations
+Score: 85/100 (approved_with_recommendations)
+Files: 8 changed (+150/-50)
+Issues: 0 blocking, 2 recommendations
 
-## ✅ Strengths
-1. Clear schema validation at API boundaries
-2. Comprehensive test coverage (88%)
-3. Good error messages with context
+Quality Gates: ✅ All passed
+Pillars: 7/7 compliant
+ADRs: 2/3 compliant
 
-## Configuration Detected
-- Profile: react-aws (7 Pillars enabled)
-- Architecture: Clean Architecture + Layer Boundaries
-- ADRs: 3 found in docs/adr/
+Top Issues:
+1. ADR-009 violation: taskStore.ts:5 - Use createStore()
+2. Performance: N+1 query in userLoader.ts:23
 
-## Quality Gates
-✅ TypeScript compiles without errors
-✅ All tests passing (45/45)
-✅ Linting passed
-✅ No obvious bugs detected
+Status: .claude/.review-status.json
+Next: Fix issues or /finish-issue
+```
 
-## Pillar Compliance (7/7 enabled)
-✅ Pillar A (Nominal Types): TaskId, UserId use branded types
-✅ Pillar B (Airlock): Zod validation at boundaries
-✅ Pillar K (Testing): Good test pyramid
-✅ Pillar L (Headless): UI logic separated
-✅ Pillar M (Saga): Transaction patterns correct
-✅ Pillar Q (Idempotency): Operations idempotent
-✅ Pillar R (Logging): Semantic logging present
+### Full Report Format (status file only)
 
-## ADR Compliance (3 ADRs checked)
-✅ ADR-005 (Identity Model): Branded types used
-⚠️ ADR-009 (Zustand Store): Violation in taskStore.ts:5
-✅ ADR-007 (AWS Deployment): CDK patterns followed
+Complete review stored in `.claude/.review-status.json`:
 
-## ⚠️ Issues Found
-
-### Blocking (must fix before merge)
-None
-
-### Non-blocking (recommendations)
-1. **ADR-009 Violation** (src/stores/taskStore.ts:5)
-   - Using create() instead of createStore()
-   - Fix: Import from 'zustand/vanilla'
-   - Impact: Services cannot access store
-
-2. **Performance** (src/loaders/userLoader.ts:23)
-   - N+1 query detected in user loading
-   - Suggestion: Add DataLoader or batch queries
-
-## 🚀 Suggestions
-1. Fix ADR-009 violation before merge
-2. Add caching for user queries
-3. Consider extracting validation logic to shared utility
-
-## Approval
-⚠️ Approved with recommendations
-- Can merge after fixing ADR-009
-- Other issues are non-blocking
+```json
+{
+  "timestamp": "2026-03-11T14:30:00Z",
+  "issue_number": 23,
+  "status": "approved_with_recommendations",
+  "score": 85,
+  "breakdown": {
+    "quality_gates": 90,
+    "architecture": 88,
+    "security": 90,
+    "performance": 75
+  },
+  "issues_count": {
+    "blocking": 0,
+    "recommendations": 2
+  },
+  "issues": [
+    {
+      "file": "src/stores/taskStore.ts",
+      "line": 5,
+      "category": "adr_compliance",
+      "description": "ADR-009 violation: Using create() instead of createStore()",
+      "fix": "Import from 'zustand/vanilla'"
+    }
+  ]
+}
 ```
 
 ## Approval Levels
@@ -469,7 +469,11 @@ If no worktree path found:
 
 ---
 
-**Version:** 2.1.0
+**Version:** 2.2.0
 **Pattern:** Tool-Reference (guides review process)
 **Compliance:** ADR-001 ✅ | WORKFLOW_PATTERNS.md ✅
-**Last Updated:** 2026-03-11
+**Last Updated:** 2026-03-18
+**Changelog:**
+- v2.2.0: Added mode-aware output (2 lines auto, ≤20 lines interactive) (Issue #263)
+- v2.1.0: Dynamic configuration detection
+- v2.0.0: Added Pillar and ADR compliance checks

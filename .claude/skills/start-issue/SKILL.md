@@ -4,7 +4,7 @@ description: |
   Start working on a GitHub issue with automated branch creation and planning.
   TRIGGER when: user wants to begin work on an issue (e.g., "start issue #23", "begin working on #45", "work on that bug", "let's tackle the auth issue").
   Also trigger when user mentions starting, picking up, or beginning any GitHub issue by number or description.
-version: "2.1.0"
+version: "2.2.0"
   DO NOT TRIGGER when: user just wants to view/list issues (use /issue instead), or close/finish issues (use /finish-issue).
 ---
 
@@ -161,9 +161,22 @@ Write(plan_file, plan_content)
 
 ### Step 4: Success Message Format
 
-**MUST show worktree path prominently**:
+**Output mode detection**:
+- **Auto mode** (called by /work-issue): Minimal 3-line output
+- **Interactive mode** (direct invocation): Concise summary ≤20 lines
+
+**Auto mode output** (when called by /work-issue):
 ```python
-print(f"""
+# Detect if called by work-issue (check for .claude/.work-issue-state.json)
+is_auto_mode = os.path.exists('.claude/.work-issue-state.json')
+
+if is_auto_mode:
+    print(f"""✅ Issue #{issue_number} started
+Branch: {branch_name} | Worktree: {worktree_dir}
+Plan: {worktree_dir}/.claude/plans/active/issue-{issue_number}-plan.md""")
+else:
+    # Interactive mode - show full context
+    print(f"""
 🎉 Ready to work on Issue #{issue_number}!
 
 Worktree created: {worktree_dir}
@@ -633,7 +646,11 @@ This is a **workflow skill** and must follow the standard pattern:
 
 ---
 
-**Version:** 2.1.0
+**Version:** 2.2.0
 **Pattern:** Tool-Reference (guides Claude through workflow)
 **Compliance:** ADR-001 ✅ | WORKFLOW_PATTERNS.md ✅
-**Last Updated:** 2026-03-11
+**Last Updated:** 2026-03-18
+**Changelog:**
+- v2.2.0: Added mode-aware output (2-3 lines auto, ≤20 lines interactive) (Issue #263)
+- v2.1.0: Added worktree support
+- v2.0.0: Initial worktree implementation

@@ -9,7 +9,6 @@ for seamless work-issue auto mode execution.
 import json
 import os
 import sys
-from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -199,23 +198,6 @@ def validate_settings(settings: Dict) -> Tuple[bool, Optional[str]]:
     return True, None
 
 
-def create_backup(settings_file: Path) -> Optional[Path]:
-    """Create timestamped backup of settings.json."""
-    if not settings_file.exists():
-        return None
-
-    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    backup_file = settings_file.parent / f"settings.json.backup-{timestamp}"
-
-    try:
-        with open(settings_file) as f:
-            content = f.read()
-        with open(backup_file, "w") as f:
-            f.write(content)
-        return backup_file
-    except Exception as e:
-        print(f"❌ Failed to create backup: {e}", file=sys.stderr)
-        return None
 
 
 def load_template(template_name: str, target_path: Path) -> Optional[Dict]:
@@ -379,21 +361,8 @@ def configure_permissions(
         print(f"\n✅ Dry run complete - no changes written")
         return 0
 
-    # Step 5: Create backup
-    if settings_file.exists():
-        step_num = 5 if template else 6
-        print(f"\n{step_num}. Creating backup...")
-        backup_file = create_backup(settings_file)
-        if backup_file:
-            print(f"   ✅ Backup: {backup_file.name}")
-        else:
-            print(f"   ⚠️  Backup failed (continuing anyway)")
-
-    # Step 6: Write updated settings
-    if settings_file.exists():
-        step_num = 6 if template else 7
-    else:
-        step_num = 5 if template else 6
+    # Step 5: Write updated settings
+    step_num = 5 if template else 6
     print(f"\n{step_num}. Writing updated settings...")
     try:
         with open(settings_file, "w") as f:
