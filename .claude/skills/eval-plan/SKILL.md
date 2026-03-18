@@ -4,6 +4,7 @@ description: |
   Evaluate implementation plan before execution - validates architecture, coverage, dependencies, and best practices.
   TRIGGER when: user wants plan validated ("evaluate plan", "check plan", "validate plan", "review the plan before starting").
   DO NOT TRIGGER when: user wants to execute plan (use /execute-plan), create plan (use /start-issue or /plan), or review code (use /review).
+version: "1.2.0"
 argument-hint: "[issue-number] [--strict] [--json]"
 allowed-tools: Bash(gh *), Read, Glob, Grep
 disable-model-invocation: false
@@ -893,10 +894,10 @@ This is a **workflow skill** and must follow the standard pattern:
 
 ---
 
-**Version:** 1.1.0
+**Version:** 1.2.0
 **Pattern:** Analysis skill (validates before execution)
 **Compliance:** ADR-001 ✅ | WORKFLOW_PATTERNS.md ✅
 **Last Updated:** 2026-03-13
 **Changelog:**
-- v1.1.0: Added auto-fix mode for minor issues when score ≥90 (Issue #177)
+- v1.2.0: Added auto-fix mode for minor issues when score ≥90 (Issue #177)
 - v1.0.0: Initial release with 5-dimension evaluation

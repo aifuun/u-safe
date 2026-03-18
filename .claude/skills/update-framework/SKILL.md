@@ -4,6 +4,7 @@ description: |
   Sync entire framework (Pillars, Rules, Workflow, Skills) in one command - meta-skill orchestrating all update-* skills.
   TRIGGER when: user wants complete framework sync ("update framework from X", "sync entire framework", "pull all from framework", "upgrade framework").
   DO NOT TRIGGER when: user wants specific components only (use /update-pillars, /update-rules, /update-workflow, /update-skills), or just wants to read framework docs.
+version: "2.1.0"
 allowed-tools: Bash(cp *), Bash(mkdir *), Bash(ls *), Bash(find *), Bash(test *), Bash(cat *), Bash(git *), Bash(gh *), Read, Write, Glob, Grep, Edit
 disable-model-invocation: false
 user-invocable: true

@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-18T12:58:58.068862",
+  "issue_number": 255,
+  "instruction": {
+    "type": "call_skill",
+    "phase": "1",
+    "skill_name": "start-issue",
+    "skill_args": "255",
+    "message": "Executing /start-issue 255",
+    "checkpoint_data": null
+  }
+}

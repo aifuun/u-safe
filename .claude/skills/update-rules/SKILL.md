@@ -4,6 +4,7 @@ description: |
   Sync technical rules between projects - bidirectional copy with category filtering.
   TRIGGER when: user wants to sync rules ("update rules from X", "sync rules", "pull rules from framework", "push rules to project").
   DO NOT TRIGGER when: user wants to update pillars/skills/workflow (use respective update-* skills), or just wants to read rule docs.
+version: "2.1.0"
 allowed-tools: Bash(cp *), Bash(mkdir *), Bash(ls *), Bash(find *), Bash(test *), Bash(cat *), Bash(git *), Read, Write, Glob, Grep, Edit
 disable-model-invocation: false
 user-invocable: true

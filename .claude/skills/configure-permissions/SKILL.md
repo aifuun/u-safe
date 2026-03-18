@@ -4,6 +4,7 @@ description: |
   Configure Claude Code permissions for work-issue auto mode.
   TRIGGER when: user wants to configure permissions ("configure permissions", "set up auto mode", "enable work-issue auto mode"), after framework sync with --configure-permissions flag, during project initialization.
   DO NOT TRIGGER when: user just wants to read about permissions, asks conceptual questions about auto mode, or wants to modify permissions manually.
+version: "2.0.0"
 allowed-tools: Bash(python3 *), Read, Write, Glob
 disable-model-invocation: false
 user-invocable: true

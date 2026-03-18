@@ -1,10 +1,10 @@
 ---
 name: update-skills
 description: |
-  Sync skills between projects - bidirectional copy with version detection.
-  TRIGGER when: user wants to sync skills ("update skills from X", "sync skills", "pull skills from framework", "push skills to project").
+  Sync skills between projects - bidirectional copy with version detection and clean mode.
+  TRIGGER when: user wants to sync skills ("update skills from X", "sync skills", "pull skills from framework", "push skills to project"), or wants complete directory replacement ("clean sync", "reset skills").
   DO NOT TRIGGER when: user wants to update pillars/rules/workflow (use respective update-* skills), or just wants to read skill docs.
-version: "2.2.0"
+version: "2.4.0"
 allowed-tools: Bash(cp *), Bash(mkdir *), Bash(ls *), Bash(find *), Bash(test *), Bash(cat *), Bash(wc *), Bash(stat *), Bash(git *), Read, Write, Glob, Grep, Edit
 disable-model-invocation: false
 user-invocable: true
@@ -171,6 +171,77 @@ Result: 14 skills synced (2 excluded)
 - Skills are usually synced completely (no filtering)
 - Filtering mainly used for specialized deployment skills
 - Typically called by `/update-framework` meta-skill
+
+### 6. Clean Mode (--clean) - NEW in v2.3.0
+
+**IMPORTANT**: Destructive operation with complete directory replacement.
+
+Complete clean slate - delete entire target `.claude/skills` directory and replace with source:
+
+```bash
+# Execute full replacement
+/update-skills --from ~/dev/ai-dev --clean
+/update-skills --to ~/projects/my-app --clean
+```
+
+**What it does:**
+1. **Deletes** target directory completely
+2. **Copies** all skills from source
+3. **Reports** results
+
+**Use Cases:**
+- Version conflicts too complex to resolve manually
+- Target skills corrupted or inconsistent
+- Force align target to source state
+- Clean up residual skills after major version upgrade
+
+**Example Output:**
+
+```
+🗑️  Deleting .claude/skills (34 skills)
+📋 Copying from ~/dev/ai-dev/.claude/skills (22 skills)
+
+✅ Clean sync complete: 22 skills synced
+```
+
+**Mutual Exclusion Rules:**
+
+| Parameter Combination | Behavior | Valid? |
+|----------------------|----------|--------|
+| `--from --clean` | Clean current, copy from source | ✅ Valid |
+| `--to --clean` | Clean target, copy from current | ✅ Valid |
+| `--clean --skills` | **ERROR** | ❌ Mutually exclusive |
+| `--clean --filter-config` | **ERROR** | ❌ Mutually exclusive |
+
+**Error handling:**
+```bash
+$ /update-skills --from ~/dev/ai-dev --clean --skills adr,status
+
+❌ Error: --clean and --skills are mutually exclusive
+   --clean performs full directory replacement
+```
+
+**When NOT to use:**
+- ❌ Normal version updates → Use standard sync (--from/--to)
+- ❌ Selective skill updates → Use --skills flag
+- ❌ Regular maintenance → Use smart filter (--filter-config)
+
+**When to use:**
+- ✅ Severe version conflicts (manual resolution too complex)
+- ✅ Corrupted target skills directory
+- ✅ Force reset to framework state
+- ✅ Major version migration cleanup
+
+**Recovery:**
+If you need to restore after clean sync, use git:
+```bash
+# Restore deleted files
+git restore .claude/skills/
+
+# Or check changes
+git status
+git diff
+```
 
 ## Version Detection (v2.0.0+)
 
@@ -430,7 +501,7 @@ Choice (1/2/3/4):
 
 ## Backup Strategy
 
-**Automatic backup before overwrite:**
+**Automatic backup before overwrite (incremental mode only):**
 
 ```bash
 Before updating any skill:
@@ -448,6 +519,11 @@ Rollback available: .claude/skills/adr.backup-2026-03-06/
 **Backup cleanup:**
 - Automatic after 7 days
 - Or manual: `rm -rf .claude/skills/*.backup-*`
+
+**Note on --clean mode:**
+- `--clean` mode does NOT create backups
+- Relies on git version control for recovery
+- Use `git restore .claude/skills/` to recover if needed
 
 ## What Gets Synced
 

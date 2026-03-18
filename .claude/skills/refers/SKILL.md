@@ -6,6 +6,7 @@ description: |
   TRIGGER when: Never - this is a reference collection, not an invocable skill.
 
   DO NOT TRIGGER when: Always - this directory contains sample skills from anthropic-skills repository for reference purposes only.
+version: "1.0.0"
 user-invocable: false
 ---
 
@@ -55,3 +56,7 @@ This is **NOT** an invocable skill. It's a reference collection of official Anth
 **Type:** Reference Collection (Non-invocable)
 **Maintained By:** AI Dev Framework Team
 **Last Updated:** 2026-03-11
+
+---
+
+**Version:** 1.0.0

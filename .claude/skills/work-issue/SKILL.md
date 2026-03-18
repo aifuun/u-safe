@@ -5,6 +5,7 @@ description: |
   Supports batch processing for multiple issues sequentially.
   TRIGGER when: user wants end-to-end automation ("work on issue #23", "handle issue", "complete issue #45", "work issue", "work on issues 128, 184, 33").
   DO NOT TRIGGER when: user wants individual steps (use skills separately for fine control).
+version: "3.1.0"
 argument-hint: "[issue-number|[issue1,issue2,...]| [--interactive] [--stop-after=phase] [--resume] [--stop-on-error|--continue-on-error]"
 allowed-tools: Skill(*), Bash(git *), Bash(gh *), Read
 disable-model-invocation: false
@@ -121,6 +122,82 @@ elif mode == "interactive":
 
 **Key principle:** If user does NOT specify `--interactive`, always use auto mode.
 
+### Step 0: Display Startup Message (CRITICAL)
+
+**Before starting Phase 1**, AI MUST display a startup message to clarify:
+- Current mode (--auto by default)
+- All 7 workflow phases
+- Checkpoint behavior
+- Estimated time
+- When workflow will stop
+
+**Implementation:**
+```python
+def display_startup_message(mode, issue_number):
+    """Display startup message explaining workflow mode and behavior"""
+
+    if mode == "auto":
+        print(f"""
+🚀 work-issue #{issue_number} starting in --auto mode
+
+Workflow: 7 phases with 2 automated checkpoints
+├─ Phase 1: Create branch + plan (~30s)
+├─ Phase 1.5: Validate plan (~60s)
+│  └─ ✓ Auto-skip if eval score > 90
+├─ Phase 2: Execute implementation (~30-60min)
+├─ Phase 2.5: Validate code (~90s)
+│  └─ ✓ Auto-skip if review score > 90
+└─ Phase 3: Commit + PR + merge (~3min)
+
+⏱️ Total estimated time: 35-65 minutes
+🛑 Will pause only if quality scores ≤ 90
+
+Starting Phase 1: /start-issue #{issue_number}...
+""")
+
+    elif mode == "interactive":
+        print(f"""
+🚀 work-issue #{issue_number} starting in --interactive mode
+
+Workflow: 7 phases with 2 manual checkpoints
+├─ Phase 1: Create branch + plan (~30s)
+├─ Phase 1.5: Validate plan (~60s)
+│  └─ ⏸️  STOP for manual review
+├─ Phase 2: Execute implementation (~30-60min)
+├─ Phase 2.5: Validate code (~90s)
+│  └─ ⏸️  STOP for manual review
+└─ Phase 3: Commit + PR + merge (~3min)
+
+⚠️ You will review results at 2 checkpoints before proceeding
+
+Starting Phase 1: /start-issue #{issue_number}...
+""")
+```
+
+**For batch mode**, display before the batch loop:
+```python
+def display_batch_startup_message(issues, mode):
+    """Display startup message for batch processing"""
+    print(f"""
+🚀 Batch Processing: {len(issues)} issues queued
+
+Mode: --auto (score-based checkpoints)
+Issues: {', '.join(f'#{i}' for i in issues)}
+
+Each issue will run through:
+├─ Phase 1: /start-issue
+├─ Phase 1.5: /eval-plan (auto-skip if score > 90)
+├─ Phase 2: /execute-plan
+├─ Phase 2.5: /review (auto-skip if score > 90)
+└─ Phase 3: /finish-issue
+
+⏱️ Estimated time: ~{len(issues) * 35}-{len(issues) * 65} minutes total
+🛑 Will stop batch on first failure (use --continue-on-error to override)
+
+Starting first issue...
+""")
+```
+
 ### Continuous Execution Pattern (CRITICAL)
 
 **DO NOT STOP between phases** - When executing work-issue, AI must complete the entire workflow in a continuous loop without pausing between sub-skills.
@@ -128,6 +205,10 @@ elif mode == "interactive":
 **Execution loop:**
 ```python
 # CONTINUOUS EXECUTION - DO NOT STOP until workflow complete
+
+# Step 0: Display Startup Message
+# CRITICAL: Show user the workflow mode and expected behavior
+display_startup_message(mode, issue_number)
 
 # Phase 1: Start Issue
 Skill("start-issue", args=str(issue_number))
@@ -886,6 +967,22 @@ if state and state.mode == "batch":
 ```bash
 /work-issue #23
 
+🚀 work-issue #23 starting in --auto mode
+
+Workflow: 7 phases with 2 automated checkpoints
+├─ Phase 1: Create branch + plan (~30s)
+├─ Phase 1.5: Validate plan (~60s)
+│  └─ ✓ Auto-skip if eval score > 90
+├─ Phase 2: Execute implementation (~30-60min)
+├─ Phase 2.5: Validate code (~90s)
+│  └─ ✓ Auto-skip if review score > 90
+└─ Phase 3: Commit + PR + merge (~3min)
+
+⏱️ Total estimated time: 35-65 minutes
+🛑 Will pause only if quality scores ≤ 90
+
+Starting Phase 1: /start-issue #23...
+
 → All phases automatic...
 
 ✅ Issue #23 complete! (35 min total)
@@ -897,6 +994,21 @@ if state and state.mode == "batch":
 
 ```bash
 /work-issue #24 --interactive
+
+🚀 work-issue #24 starting in --interactive mode
+
+Workflow: 7 phases with 2 manual checkpoints
+├─ Phase 1: Create branch + plan (~30s)
+├─ Phase 1.5: Validate plan (~60s)
+│  └─ ⏸️  STOP for manual review
+├─ Phase 2: Execute implementation (~30-60min)
+├─ Phase 2.5: Validate code (~90s)
+│  └─ ⏸️  STOP for manual review
+└─ Phase 3: Commit + PR + merge (~3min)
+
+⚠️ You will review results at 2 checkpoints before proceeding
+
+Starting Phase 1: /start-issue #24...
 
 → Phase 1: /start-issue... ✅
 → Phase 1.5: /eval-plan... ✅ (Score: 85/100)
@@ -950,6 +1062,21 @@ Resume: /work-issue #25 --resume
 /work-issue [128, 184, 33]
 
 🚀 Batch Processing: 3 issues queued
+
+Mode: --auto (score-based checkpoints)
+Issues: #128, #184, #33
+
+Each issue will run through:
+├─ Phase 1: /start-issue
+├─ Phase 1.5: /eval-plan (auto-skip if score > 90)
+├─ Phase 2: /execute-plan
+├─ Phase 2.5: /review (auto-skip if score > 90)
+└─ Phase 3: /finish-issue
+
+⏱️ Estimated time: ~105-195 minutes total
+🛑 Will stop batch on first failure (use --continue-on-error to override)
+
+Starting first issue...
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Issue #128 (1/3): Update documentation

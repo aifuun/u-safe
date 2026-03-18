@@ -7,6 +7,7 @@ description: |
 
   DO NOT TRIGGER when: User is just asking about skills conceptually, wants to use an existing skill, or is discussing skill documentation without creating/modifying anything.
 version: "2.0.0"
+last-updated: "2026-03-15"
 ---
 
 # Skill Creator
@@ -71,8 +72,35 @@ Based on the user interview, fill in these components:
 
 - **name**: Skill identifier
 - **description**: When to trigger, what it does. This is the primary triggering mechanism - include both what the skill does AND specific contexts for when to use it. All "when to use" info goes here, not in the body. Note: currently Claude has a tendency to "undertrigger" skills -- to not use them when they'd be useful. To combat this, please make the skill descriptions a little bit "pushy". So for instance, instead of "How to build a simple fast dashboard to display internal Anthropic data.", you might write "How to build a simple fast dashboard to display internal Anthropic data. Make sure to use this skill whenever the user mentions dashboards, data visualization, internal metrics, or wants to display any kind of company data, even if they don't explicitly ask for a 'dashboard.'"
+- **version**: Always start new skills at `"1.0.0"` (use semantic versioning)
+- **last-updated**: Current date in YYYY-MM-DD format (e.g., "2026-03-15")
 - **compatibility**: Required tools, dependencies (optional, rarely needed)
 - **the rest of the skill :)**
+
+**YAML Frontmatter Template:**
+```yaml
+---
+name: skill-name
+description: |
+  [What the skill does and when to trigger]
+
+  TRIGGER when: [Specific user phrases or contexts]
+
+  DO NOT TRIGGER when: [Contexts to avoid]
+version: "1.0.0"
+last-updated: "YYYY-MM-DD"
+---
+```
+
+**Versioning Guide (Semantic Versioning 2.0.0):**
+- **Major (x.0.0)**: Breaking changes (incompatible with previous version)
+- **Minor (0.x.0)**: New features (backward compatible)
+- **Patch (0.0.x)**: Bug fixes, documentation updates
+
+When updating an existing skill:
+- Change description/triggers/tools → Bump minor version
+- Change workflow/breaking behavior → Bump major version
+- Fix typos/docs only → Bump patch version
 
 ### Skill Writing Guide
 
@@ -139,6 +167,20 @@ ALWAYS use this exact template:
 Input: Added user authentication with JWT tokens
 Output: feat(auth): implement JWT-based authentication
 ```
+
+**Markdown footer** - Every SKILL.md should end with version metadata for easy reference:
+```markdown
+---
+
+**Version:** 1.0.0
+**Pattern:** [workflow-orchestrator | tool-reference | analysis | etc.]
+**Compliance:** ADR-001 ✅ | WORKFLOW_PATTERNS.md ✅
+**Last Updated:** YYYY-MM-DD
+**Changelog:**
+- v1.0.0: Initial release
+```
+
+When updating a skill, add a changelog entry and update both the YAML `version` field and the Markdown footer `**Version:**` field to keep them in sync.
 
 ### Writing Style
 
@@ -487,3 +529,9 @@ Good luck!
 ---
 
 **Version:** 2.0.0
+**Pattern:** Skill creation and improvement orchestrator
+**Compliance:** ADR-001 ✅
+**Last Updated:** 2026-03-15
+**Changelog:**
+- v2.0.0: Added version and last-updated fields to YAML template (Issue #207)
+- v1.0.0: Initial release with skill creation workflow

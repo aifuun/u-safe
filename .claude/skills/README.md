@@ -1,8 +1,8 @@
 # Claude Code Skills System
 
 **Version**: 4.0.0 (Streamlined Edition)
-**Last Updated**: 2026-03-11
-**Active Skills**: 18
+**Last Updated**: 2026-03-15
+**Active Skills**: 20
 **Policy**: Python-only ([ADR-003](../../docs/ADRs/003-python-only-for-skill-scripts.md))
 
 > **Purpose**: Navigation hub for Claude Code skills - quick reference and links to detailed documentation.
@@ -102,7 +102,7 @@ Shared code logic? → Python library (Layer 3, imported by Layer 2)
 
 ## Active Skills Reference
 
-**18 skills** organized by usage frequency. Each skill has detailed `SKILL.md` documentation.
+**20 skills** organized by usage frequency. Each skill has detailed `SKILL.md` documentation.
 
 ### 🔥 High Frequency (Daily/Weekly)
 
@@ -141,6 +141,8 @@ Shared code logic? → Python library (Layer 3, imported by Layer 2)
 
 | Skill | Purpose | Command | Details |
 |-------|---------|---------|---------|
+| **init-docs** | Auto-generate documentation structure | `/init-docs [--profile]` | [SKILL.md](init-docs/SKILL.md) |
+| **check-docs** | Validate documentation structure compliance | `/check-docs [--fix]` | [SKILL.md](check-docs/SKILL.md) |
 | **skill-creator** | Create/update skills with evals | `/skill-creator "create..."` | [SKILL.md](skill-creator/SKILL.md) |
 | **refers** | Official Anthropic skills reference (non-invocable) | N/A | [SKILL.md](refers/SKILL.md) |
 
