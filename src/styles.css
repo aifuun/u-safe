@@ -2,18 +2,268 @@
 @tailwind components;
 @tailwind utilities;
 
-/* 跨平台字体栈 */
+/* ========================================
+   Design Tokens - Foundation
+   Source: docs/spec/UI_UX_Design_System.md
+   ======================================== */
+
 :root {
-  /* 系统字体 - macOS/Windows/Linux 兼容 */
+  /* Typography - 字体系统 */
   --font-family-system: -apple-system, BlinkMacSystemFont, 'Segoe UI',
     'Microsoft YaHei', '微软雅黑', sans-serif;
-
-  /* 等宽字体 - 代码/日志显示 */
   --font-family-mono: 'SF Mono', Monaco, 'Cascadia Code', 'Courier New', monospace;
+
+  /* Font Sizes */
+  --text-xs: 0.75rem;    /* 12px */
+  --text-sm: 0.875rem;   /* 14px */
+  --text-base: 1rem;     /* 16px */
+  --text-lg: 1.125rem;   /* 18px */
+  --text-xl: 1.25rem;    /* 20px */
+  --text-2xl: 1.5rem;    /* 24px */
+  --text-3xl: 1.875rem;  /* 30px */
+
+  /* Font Weights */
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  /* Spacing - 4px base unit */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* Colors - Semantic Tokens */
+  --color-primary: #3B82F6;        /* Blue 500 */
+  --color-primary-hover: #2563EB;  /* Blue 600 */
+  --color-primary-active: #1D4ED8; /* Blue 700 */
+  --color-success: #10B981;        /* Green 500 */
+  --color-warning: #F59E0B;        /* Amber 500 */
+  --color-error: #EF4444;          /* Red 500 */
+  --color-info: #3B82F6;           /* Blue 500 */
+
+  /* Background Colors */
+  --bg-app: #F9FAFB;          /* Gray 50 */
+  --bg-card: #FFFFFF;         /* White */
+  --bg-surface: #F3F4F6;      /* Gray 100 */
+  --bg-elevated: #FFFFFF;     /* White */
+
+  /* Text Colors */
+  --text-primary: #111827;    /* Gray 900 */
+  --text-secondary: #6B7280;  /* Gray 500 */
+  --text-muted: #9CA3AF;      /* Gray 400 */
+  --text-disabled: #D1D5DB;   /* Gray 300 */
+
+  /* Border */
+  --color-border: #E5E7EB;    /* Gray 200 */
+  --border-width: 1px;
+
+  /* Border Radius */
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 24px;
+  --radius-full: 9999px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  --shadow-inset: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);
+
+  /* Animation */
+  --duration-instant: 100ms;
+  --duration-fast: 200ms;
+  --duration-base: 300ms;
+  --duration-slow: 500ms;
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Encryption State Colors */
+  --color-encrypted: #10B981;   /* Green 500 */
+  --color-decrypted: #F59E0B;   /* Amber 500 */
+  --color-encrypting: #3B82F6;  /* Blue 500 */
+}
+
+/* ========================================
+   Global Styles
+   ======================================== */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
 }
 
 body {
+  margin: 0;
+  padding: 0;
   font-family: var(--font-family-system);
+  font-size: var(--text-base);
+  color: var(--text-primary);
+  background: var(--bg-app);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  line-height: 1.5;
+}
+
+/* ========================================
+   Layout System
+   ======================================== */
+
+/* App Layout (used by Layout.tsx) */
+.app-layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: var(--bg-app);
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4) var(--space-6);
+  background: var(--bg-card);
+  border-bottom: var(--border-width) solid var(--color-border);
+  box-shadow: var(--shadow-sm);
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.app-logo {
+  margin: 0;
+  font-size: var(--text-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-primary);
+}
+
+.app-nav {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.nav-item {
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--text-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-out),
+              color var(--duration-fast) var(--ease-out);
+}
+
+.nav-item:hover:not(:disabled) {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+}
+
+.nav-item--active {
+  background: var(--bg-surface);
+  color: var(--color-primary);
+  font-weight: var(--font-weight-semibold);
+}
+
+.nav-item:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-logout {
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--text-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-secondary);
+  background: transparent;
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.btn-logout:hover {
+  background: var(--bg-surface);
+  border-color: var(--color-error);
+  color: var(--color-error);
+}
+
+.app-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ========================================
+   Utility Classes
+   ======================================== */
+
+/* Text Utilities */
+.text-center {
+  text-align: center;
+}
+
+.font-semibold {
+  font-weight: var(--font-weight-semibold);
+}
+
+.font-bold {
+  font-weight: var(--font-weight-bold);
+}
+
+/* Spacing Utilities */
+.mt-4 {
+  margin-top: var(--space-4);
+}
+
+.mb-4 {
+  margin-bottom: var(--space-4);
+}
+
+.p-4 {
+  padding: var(--space-4);
+}
+
+.gap-4 {
+  gap: var(--space-4);
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Focus Styles */
+*:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }

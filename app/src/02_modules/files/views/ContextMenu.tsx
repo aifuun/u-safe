@@ -26,30 +26,30 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ node, position, onClos
 
   // 点击外部关闭菜单
   useEffect(() => {
+    if (!position) return;
+
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         onClose();
       }
     };
 
-    if (position) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [position, onClose]);
 
   // ESC 键关闭菜单
   useEffect(() => {
+    if (!position) return;
+
     const handleEsc = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         onClose();
       }
     };
 
-    if (position) {
-      document.addEventListener('keydown', handleEsc);
-      return () => document.removeEventListener('keydown', handleEsc);
-    }
+    document.addEventListener('keydown', handleEsc);
+    return () => document.removeEventListener('keydown', handleEsc);
   }, [position, onClose]);
 
   const handleAction = useCallback(
