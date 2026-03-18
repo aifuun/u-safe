@@ -1,0 +1,244 @@
+{
+  "allowedPrompts": [
+    {
+      "tool": "Read",
+      "prompt": "*"
+    },
+    {
+      "tool": "Write",
+      "prompt": "*"
+    },
+    {
+      "tool": "Edit",
+      "prompt": "*"
+    },
+    {
+      "tool": "Glob",
+      "prompt": "*"
+    },
+    {
+      "tool": "Grep",
+      "prompt": "*"
+    },
+    {
+      "tool": "TaskCreate",
+      "prompt": "*"
+    },
+    {
+      "tool": "TaskUpdate",
+      "prompt": "*"
+    },
+    {
+      "tool": "TaskList",
+      "prompt": "*"
+    },
+    {
+      "tool": "TaskGet",
+      "prompt": "*"
+    },
+    {
+      "tool": "Bash",
+      "prompt": "git status*"
+    },
+    {
+      "tool": "Bash",
+      "prompt": "git diff*"
+    },
+    {
+      "tool": "Bash",
+      "prompt": "git log*"
+    },
+    {
+      "tool": "Bash",
+      "prompt": "git show*"
+    },
+    {
+      "tool": "Bash",
+      "prompt": "git branch*"
+    },
+    {
+      "tool": "Bash",
+      "prompt": "git checkout*"
+    },
+    {
+      "tool": "Bash",
+      "prompt": "git add*"
+    },
+    {
+      "tool": "Bash",
+      "prompt": "git commit*"
+    },
+    {
+      "tool": "Bash",
+      "prompt": "git push origin*"
+    },
+    {
+      "tool": "Bash",
+      "prompt": "git pull*"
+    },
+    {
+      "tool": "Bash",
+      "prompt": "git fetch*"
+    },
+    {
+      "tool": "Bash",
+      "prompt": "git merge*"
+    },
+    {
+      "tool": "Bash",
+      "prompt": "git rebase*"
+    },
+    {
+      "tool": "Bash",
+      "prompt": "git stash*"
+    },
+    {
+      "tool": "Bash",
+      "prompt": "git worktree*"
+    },
+    {
+      "tool": "Bash",
+      "prompt": "git reset --soft*"
+    },
+    {
+      "tool": "Bash",
+      "prompt": "git reset --mixed*"
+    },
+    {
+      "tool": "Bash",
+      "prompt": "gh issue*"
+    },
+    {
+      "tool": "Bash",
+      "prompt": "gh pr*"
+    },
+    {
+      "tool": "Bash",
+      "prompt": "gh api*"
+    },
+    {
+      "tool": "Bash",
+      "prompt": "gh auth status*"
+    },
+    {
+      "tool": "Bash",
+      "prompt": "npm test*"
+    },
+    {
+      "tool": "Bash",
+      "prompt": "npm run test*"
+    },
+    {
+      "tool": "Bash",
+      "prompt": "npm run lint*"
+    },
+    {
+      "tool": "Bash",
+      "prompt": "npm run build*"
+    },
+    {
+      "tool": "Bash",
+      "prompt": "npm install*"
+    },
+    {
+      "tool": "Bash",
+      "prompt": "npm ci*"
+    },
+    {
+      "tool": "Bash",
+      "prompt": "cargo test*"
+    },
+    {
+      "tool": "Bash",
+      "prompt": "cargo build*"
+    },
+    {
+      "tool": "Bash",
+      "prompt": "cargo run*"
+    },
+    {
+      "tool": "Bash",
+      "prompt": "cargo check*"
+    },
+    {
+      "tool": "Bash",
+      "prompt": "cargo clippy*"
+    },
+    {
+      "tool": "Bash",
+      "prompt": "ls*"
+    },
+    {
+      "tool": "Bash",
+      "prompt": "cat*"
+    },
+    {
+      "tool": "Bash",
+      "prompt": "echo*"
+    },
+    {
+      "tool": "Bash",
+      "prompt": "pwd*"
+    },
+    {
+      "tool": "Bash",
+      "prompt": "cd*"
+    },
+    {
+      "tool": "Bash",
+      "prompt": "mkdir*"
+    },
+    {
+      "tool": "Bash",
+      "prompt": "cp*"
+    },
+    {
+      "tool": "Bash",
+      "prompt": "mv*"
+    },
+    {
+      "tool": "Bash",
+      "prompt": "touch*"
+    },
+    {
+      "tool": "Bash",
+      "prompt": "which*"
+    },
+    {
+      "tool": "Bash",
+      "prompt": "whereis*"
+    },
+    {
+      "tool": "Bash",
+      "prompt": "date*"
+    },
+    {
+      "tool": "Bash",
+      "prompt": "head*"
+    },
+    {
+      "tool": "Bash",
+      "prompt": "tail*"
+    },
+    {
+      "tool": "Bash",
+      "prompt": "grep*"
+    },
+    {
+      "tool": "Bash",
+      "prompt": "find*"
+    },
+    {
+      "tool": "Bash",
+      "prompt": "wc*"
+    },
+    {
+      "tool": "Bash",
+      "prompt": "sort*"
+    },
+    {
+      "tool": "Bash",
+      "prompt": "uniq*"
+    }
+  ]
+}

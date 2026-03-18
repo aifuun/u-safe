@@ -1,0 +1,8 @@
+{
+  "allowedPrompts": [
+    {
+      "tool": "Bash",
+      "prompt": "*"
+    }
+  ]
+}
