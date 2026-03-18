@@ -1,0 +1,172 @@
+/**
+ * 文件树视图样式
+ *
+ * 使用设计 token，遵循 design-tokens.md 规范
+ */
+
+.file-tree-view {
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  background: var(--color-bg-app);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-2);
+}
+
+/* 加载状态 */
+.file-tree-view--loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+}
+
+.file-tree-view__spinner {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+/* 错误状态 */
+.file-tree-view--error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  min-height: 200px;
+  padding: var(--space-4);
+}
+
+.file-tree-view__error {
+  font-size: var(--text-sm);
+  color: var(--color-error);
+  text-align: center;
+}
+
+.file-tree-view__retry {
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-out);
+}
+
+.file-tree-view__retry:hover {
+  background: var(--color-primary-hover);
+}
+
+/* 空状态 */
+.file-tree-view--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+}
+
+.file-tree-view__empty-message {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+/* 树节点 */
+.tree-node {
+  user-select: none;
+}
+
+.tree-node__content {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-out);
+}
+
+.tree-node__content:hover {
+  background: var(--color-bg-surface);
+}
+
+.tree-node__content--selected {
+  background: var(--color-primary);
+  color: white;
+}
+
+.tree-node__content--selected:hover {
+  background: var(--color-primary-hover);
+}
+
+/* 展开/折叠按钮 */
+.tree-node__toggle {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  padding: 0;
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+
+.tree-node__toggle:hover {
+  color: var(--color-text-primary);
+}
+
+.tree-node__content--selected .tree-node__toggle {
+  color: white;
+}
+
+/* 图标 */
+.tree-node__icon {
+  font-size: var(--text-base);
+  flex-shrink: 0;
+}
+
+/* 文件名 */
+.tree-node__name {
+  flex: 1;
+  font-size: var(--text-sm);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 文件大小 */
+.tree-node__size {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.tree-node__content--selected .tree-node__size {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* 子节点容器 */
+.tree-node__children {
+  /* 无额外样式，缩进由 paddingLeft 控制 */
+}
+
+/* 焦点状态（键盘导航） */
+.tree-node__content:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* 减少动画（可访问性） */
+@media (prefers-reduced-motion: reduce) {
+  .tree-node__content,
+  .tree-node__toggle,
+  .file-tree-view__retry {
+    transition: none;
+  }
+}
