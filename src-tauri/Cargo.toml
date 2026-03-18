@@ -28,6 +28,13 @@ rand = "0.8"             # 安全随机数生成
 zeroize = { version = "1.7", features = ["derive"] }  # 内存清零
 uuid = { version = "1.7", features = ["v4"] }  # UUID 生成（临时文件名）
 
+# 文件管理相关依赖
+mime_guess = "2.0"       # 文件类型检测
+
+[dev-dependencies]
+tempfile = "3.10"       # 临时文件/目录（测试用）
+tokio = { version = "1", features = ["macros", "rt"] }  # 异步运行时（测试用）
+
 [features]
 default = ["custom-protocol"]
 custom-protocol = ["tauri/custom-protocol"]

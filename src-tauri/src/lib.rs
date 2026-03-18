@@ -9,6 +9,10 @@ pub mod crypto;
 // File I/O module (文件 I/O 模块)
 pub mod file;
 
+// Commands module (IPC 命令)
+mod commands;
+use commands::{scan_file_tree, encrypt_file, decrypt_file};
+
 use db::{Database, get_default_db_path};
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
@@ -49,7 +53,10 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             hello_world,
             test_db_connection,
-            check_system
+            check_system,
+            scan_file_tree,
+            encrypt_file,
+            decrypt_file
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

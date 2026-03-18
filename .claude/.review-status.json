@@ -1,22 +1,26 @@
 {
-  "timestamp": "2026-03-16T13:35:00Z",
-  "issue_number": 19,
+  "timestamp": "2026-03-17T08:30:00Z",
+  "issue_number": 20,
   "status": "approved",
-  "score": 95,
+  "score": 92,
   "breakdown": {
-    "quality_gates": 95,
-    "architecture": 100,
+    "quality_gates": 90,
+    "architecture": 95,
+    "design_tokens": 100,
     "security": 90,
-    "performance": 95,
-    "pillar_compliance": 95,
-    "adr_compliance": 95
+    "performance": 95
   },
   "issues_count": {
     "blocking": 0,
-    "recommendations": 3
+    "recommendations": 1,
+    "suggestions": 2
   },
-  "valid_until": "2026-03-16T15:05:00Z",
-  "files_changed": 13,
-  "lines_added": 1847,
-  "lines_removed": 5
+  "recommendations": [
+    "Fix unused variable warning in system_info.rs"
+  ],
+  "suggestions": [
+    "Add integration tests for file encryption/decryption",
+    "Consider adding file type icons to FileTreeView"
+  ],
+  "valid_until": "2026-03-17T10:00:00Z"
 }
