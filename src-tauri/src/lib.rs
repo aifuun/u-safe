@@ -9,9 +9,12 @@ pub mod crypto;
 // File I/O module (文件 I/O 模块)
 pub mod file;
 
+// Models module (数据模型)
+pub mod models;
+
 // Commands module (IPC 命令)
 mod commands;
-use commands::{scan_file_tree, encrypt_file, decrypt_file};
+use commands::{scan_file_tree, encrypt_file, decrypt_file, create_tag};
 
 use db::{Database, get_default_db_path};
 
@@ -56,7 +59,8 @@ pub fn run() {
             check_system,
             scan_file_tree,
             encrypt_file,
-            decrypt_file
+            decrypt_file,
+            create_tag
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

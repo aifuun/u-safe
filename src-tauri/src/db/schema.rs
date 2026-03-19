@@ -18,15 +18,21 @@ pub fn initialize_schema(conn: &Connection) -> Result<()> {
         [],
     )?;
 
-    // Create tags table
+    // Create tags table (支持层级标签)
     conn.execute(
         "CREATE TABLE IF NOT EXISTS tags (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL UNIQUE,
-            parent_id INTEGER,
-            color TEXT,
-            created_at TEXT NOT NULL DEFAULT (datetime('now')),
-            FOREIGN KEY (parent_id) REFERENCES tags(id) ON DELETE CASCADE
+            tag_id TEXT PRIMARY KEY,
+            tag_name TEXT NOT NULL,
+            tag_color TEXT,
+            parent_tag_id TEXT,
+            tag_level INTEGER NOT NULL DEFAULT 0,
+            full_path TEXT NOT NULL UNIQUE,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            usage_count INTEGER NOT NULL DEFAULT 0,
+            FOREIGN KEY (parent_tag_id) REFERENCES tags(tag_id) ON DELETE CASCADE,
+            CHECK (tag_level >= 0),
+            CHECK (length(tag_id) = 36)
         )",
         [],
     )?;
@@ -76,7 +82,17 @@ pub fn initialize_schema(conn: &Connection) -> Result<()> {
     )?;
 
     conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_tags_parent ON tags(parent_id)",
+        "CREATE INDEX IF NOT EXISTS idx_tags_parent ON tags(parent_tag_id)",
+        [],
+    )?;
+
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_tags_name ON tags(tag_name)",
+        [],
+    )?;
+
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_tags_usage ON tags(usage_count DESC)",
         [],
     )?;
 
