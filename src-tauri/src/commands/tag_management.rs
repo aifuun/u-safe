@@ -1,7 +1,8 @@
 use crate::db::{Database, get_default_db_path};
-use crate::models::{Tag, CreateTagRequest, UpdateTagRequest};
+use crate::models::{Tag, CreateTagRequest, UpdateTagRequest, TagNode};
 use rusqlite::params;
 use uuid::Uuid;
+use std::collections::{HashMap, HashSet};
 
 /// 错误类型：标签名称重复
 const ERR_TAG_NAME_DUPLICATE: &str = "TagNameDuplicate";
@@ -11,6 +12,10 @@ const ERR_TAG_NOT_FOUND: &str = "TagNotFound";
 const ERR_INVALID_TAG_NAME: &str = "InvalidTagName";
 /// 错误类型：父标签不存在
 const ERR_PARENT_NOT_FOUND: &str = "ParentTagNotFound";
+/// 错误类型：循环依赖
+const ERR_CIRCULAR_DEPENDENCY: &str = "CircularDependency";
+/// 错误类型：超过最大层级深度
+const ERR_MAX_DEPTH_EXCEEDED: &str = "MaxDepthExceeded";
 
 /// 创建标签
 ///
@@ -388,6 +393,197 @@ fn update_children_full_path(
     }
 
     Ok(())
+}
+
+/// 获取标签树
+///
+/// 返回完整的标签层级树结构（最多5层）
+///
+/// # Returns
+/// * `Ok(Vec<TagNode>)` - 成功返回根标签列表，每个根标签包含其子标签树
+/// * `Err(String)` - 查询失败或检测到循环依赖
+///
+/// # Errors
+/// * `CircularDependency` - 检测到标签循环引用
+/// * `MaxDepthExceeded` - 标签嵌套超过5层
+#[tauri::command]
+pub async fn get_tag_tree() -> Result<Vec<TagNode>, String> {
+    log::info!("[tag:tree:query] 开始查询标签树");
+
+    // 打开数据库连接
+    let db_path = get_default_db_path();
+    let db = Database::new(db_path).map_err(|e| {
+        log::error!("[tag:tree:query:failed] 数据库连接失败: {}", e);
+        format!("数据库连接失败: {}", e)
+    })?;
+
+    let conn = db.connection();
+
+    // 查询所有标签
+    let mut stmt = conn
+        .prepare(
+            "SELECT tag_id, tag_name, tag_color, parent_tag_id, tag_level, full_path, created_at, updated_at, usage_count
+             FROM tags
+             ORDER BY tag_level, tag_name",
+        )
+        .map_err(|e| {
+            log::error!("[tag:tree:query:failed] 查询标签失败: {}", e);
+            format!("查询标签失败: {}", e)
+        })?;
+
+    let tags: Vec<Tag> = stmt
+        .query_map([], |row| {
+            Ok(Tag {
+                tag_id: row.get(0)?,
+                tag_name: row.get(1)?,
+                tag_color: row.get(2)?,
+                parent_tag_id: row.get(3)?,
+                tag_level: row.get(4)?,
+                full_path: row.get(5)?,
+                created_at: row.get(6)?,
+                updated_at: row.get(7)?,
+                usage_count: row.get(8)?,
+            })
+        })
+        .map_err(|e| {
+            log::error!("[tag:tree:query:failed] 读取标签失败: {}", e);
+            format!("读取标签失败: {}", e)
+        })?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| {
+            log::error!("[tag:tree:query:failed] 收集标签失败: {}", e);
+            format!("收集标签失败: {}", e)
+        })?;
+
+    log::info!("[tag:tree:query] 查询到 {} 个标签", tags.len());
+
+    // 检测循环依赖
+    detect_circular_dependency(&tags)?;
+
+    // 构建标签树
+    let tree = build_tag_tree(tags)?;
+
+    log::info!("[tag:tree:query:success] 返回 {} 个根标签", tree.len());
+    Ok(tree)
+}
+
+/// 检测标签系统中的循环依赖
+///
+/// 使用深度优先搜索检测是否存在循环引用
+fn detect_circular_dependency(tags: &[Tag]) -> Result<(), String> {
+    // 构建父子关系映射
+    let mut parent_map: HashMap<String, String> = HashMap::new();
+    for tag in tags {
+        if let Some(ref parent_id) = tag.parent_tag_id {
+            parent_map.insert(tag.tag_id.clone(), parent_id.clone());
+        }
+    }
+
+    // 对每个标签进行循环检测
+    for tag in tags {
+        let mut visited = HashSet::new();
+        let mut current_id = tag.tag_id.clone();
+
+        // 向上追溯父标签
+        loop {
+            if visited.contains(&current_id) {
+                // 发现循环
+                log::error!("[circular_dependency:detected] tag_id={}", tag.tag_id);
+                return Err(format!("{}:检测到标签循环引用", ERR_CIRCULAR_DEPENDENCY));
+            }
+
+            visited.insert(current_id.clone());
+
+            // 获取父标签
+            match parent_map.get(&current_id) {
+                Some(parent_id) => {
+                    current_id = parent_id.clone();
+                }
+                None => {
+                    // 到达根标签，无循环
+                    break;
+                }
+            }
+
+            // 检查深度（防止无限循环，最多5层）
+            if visited.len() > 5 {
+                log::error!("[circular_dependency:detected] 超过最大深度: tag_id={}", tag.tag_id);
+                return Err(format!("{}:标签嵌套深度超过5层", ERR_MAX_DEPTH_EXCEEDED));
+            }
+        }
+    }
+
+    Ok(())
+}
+
+/// 构建标签树结构
+///
+/// 将扁平的标签列表转换为嵌套的树结构
+fn build_tag_tree(tags: Vec<Tag>) -> Result<Vec<TagNode>, String> {
+    // 将所有标签转换为 TagNode，并存入 HashMap
+    let mut tag_map: HashMap<String, TagNode> = HashMap::new();
+    for tag in tags {
+        let tag_id = tag.tag_id.clone();
+        let node = TagNode::from_tag(tag);
+        tag_map.insert(tag_id, node);
+    }
+
+    // 收集根标签 ID
+    let mut root_ids: Vec<String> = Vec::new();
+    let tag_ids: Vec<String> = tag_map.keys().cloned().collect();
+
+    for tag_id in &tag_ids {
+        let node = tag_map.get(tag_id).unwrap();
+        if node.tag.parent_tag_id.is_none() {
+            root_ids.push(tag_id.clone());
+        }
+    }
+
+    // 构建父子关系
+    let mut parent_child_map: HashMap<String, Vec<String>> = HashMap::new();
+    for tag_id in &tag_ids {
+        let node = tag_map.get(tag_id).unwrap();
+        if let Some(ref parent_id) = node.tag.parent_tag_id {
+            parent_child_map
+                .entry(parent_id.clone())
+                .or_insert_with(Vec::new)
+                .push(tag_id.clone());
+        }
+    }
+
+    // 递归构建树（从 tag_map 中移除节点并组装）
+    fn build_subtree(
+        tag_id: &str,
+        tag_map: &mut HashMap<String, TagNode>,
+        parent_child_map: &HashMap<String, Vec<String>>,
+    ) -> Option<TagNode> {
+        // 从 map 中取出当前节点
+        let mut node = tag_map.remove(tag_id)?;
+
+        // 获取所有子标签 ID
+        if let Some(child_ids) = parent_child_map.get(tag_id) {
+            for child_id in child_ids {
+                if let Some(child_node) = build_subtree(child_id, tag_map, parent_child_map) {
+                    node.add_child(child_node);
+                }
+            }
+        }
+
+        Some(node)
+    }
+
+    // 构建所有根标签的子树
+    let mut tree: Vec<TagNode> = Vec::new();
+    for root_id in root_ids {
+        if let Some(root_node) = build_subtree(&root_id, &mut tag_map, &parent_child_map) {
+            tree.push(root_node);
+        }
+    }
+
+    // 按名称排序根标签
+    tree.sort_by(|a, b| a.tag.tag_name.cmp(&b.tag.tag_name));
+
+    Ok(tree)
 }
 
 #[cfg(test)]
