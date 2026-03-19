@@ -1,177 +1,121 @@
-import { useState } from 'react';
-import { invoke } from '@tauri-apps/api/core';
-import { TagTree } from './components/TagTree';
-import { TagCreateForm } from './components/TagCreateForm';
-import { TagEditForm } from './components/TagEditForm';
-import { DeleteTagDialog } from './components/DeleteTagDialog';
-import { TagNode, Tag } from './types/tag';
+import { ViewSwitcher } from './components/ViewSwitcher';
+import { AllFilesView } from './components/AllFilesView';
+import { TagTreeWithSelection } from './components/TagTreeWithSelection';
+import { TagFilter } from './components/TagFilter';
+import { SearchBar } from './components/SearchBar';
+import { TagFileList } from './components/TagFileList';
+import { EncryptedFilesView } from './components/EncryptedFilesView';
+import { RecentFilesView } from './components/RecentFilesView';
+import { useViewStore } from './stores/viewStore';
 import './App.css';
 
 function App() {
-  const [selectedTag, setSelectedTag] = useState<string | null>(null);
-  const [showCreateForm, setShowCreateForm] = useState(false);
-  const [editingTag, setEditingTag] = useState<Tag | null>(null);
-  const [parentForNew, setParentForNew] = useState<TagNode | null>(null);
-  const [deletingTag, setDeletingTag] = useState<TagNode | null>(null);
-  const [refreshKey, setRefreshKey] = useState(0);
+  // Zustand store - 视图状态管理
+  const {
+    currentView,
+    setView,
+    selectedTagIds,
+    setSelectedTagIds,
+    filterMode,
+    setFilterMode,
+    recursive,
+    setRecursive,
+    searchQuery,
+    setSearchQuery,
+    resetTagView,
+  } = useViewStore();
 
-  const handleTagSelect = (tagId: string) => {
-    console.log('[app] 选中标签:', tagId);
-    setSelectedTag(tagId);
+  const handleSelectionChange = (tagIds: string[]) => {
+    console.log('[app] 标签选择变化:', tagIds);
+    setSelectedTagIds(tagIds);
   };
 
-  const handleTagEdit = (node: TagNode) => {
-    console.log('[app] 编辑标签:', node);
-    // Convert TagNode to Tag (remove children)
-    const tag: Tag = {
-      tag_id: node.tag_id,
-      tag_name: node.tag_name,
-      tag_color: node.tag_color,
-      parent_tag_id: node.parent_tag_id,
-      tag_level: node.tag_level,
-      full_path: node.full_path,
-      created_at: node.created_at,
-      updated_at: node.updated_at,
-      usage_count: node.usage_count,
-    };
-    setEditingTag(tag);
+  const handleClearFilters = () => {
+    console.log('[app] 清除过滤器');
+    resetTagView();
   };
 
-  const handleTagDelete = (node: TagNode) => {
-    console.log('[app] 删除标签:', node);
-    setDeletingTag(node);
+  const handleFileClick = (fileId: number) => {
+    console.log('[app] 文件点击:', fileId);
+    // TODO: 实现文件详情/操作
   };
 
-  const handleDeleteConfirm = async (tagId: string, force: boolean) => {
-    try {
-      console.log('[app] 确认删除标签:', tagId, 'force=', force);
-      await invoke('delete_tag', { tagId, force });
-      console.log('[app] 删除成功');
-      setDeletingTag(null);
-      // 刷新标签树
-      setRefreshKey(prev => prev + 1);
-    } catch (err) {
-      console.error('[app] 删除失败:', err);
-      throw err; // Re-throw to let dialog handle error display
-    }
-  };
-
-  const handleDeleteCancel = () => {
-    console.log('[app] 取消删除');
-    setDeletingTag(null);
-  };
-
-  const handleAddChild = (parent: TagNode) => {
-    console.log('[app] 添加子标签:', parent);
-    setParentForNew(parent);
-    setShowCreateForm(true);
-  };
-
-  const handleCreateSuccess = (tag: Tag) => {
-    console.log('[app] 创建成功:', tag);
-    setShowCreateForm(false);
-    setParentForNew(null);
-    // 刷新标签树
-    setRefreshKey(prev => prev + 1);
-  };
-
-  const handleUpdateSuccess = (tag: Tag) => {
-    console.log('[app] 更新成功:', tag);
-    setEditingTag(null);
-    // 刷新标签树
-    setRefreshKey(prev => prev + 1);
+  const handleViewChange = (view: typeof currentView) => {
+    console.info('[app:view:switch]', { from: currentView, to: view });
+    setView(view);
   };
 
   return (
     <div className="app">
       <header className="app-header">
-        <h1>U-Safe 标签系统 Demo</h1>
-        <p className="app-subtitle">Phase 1.5: 标签删除 + 级联检查</p>
+        <div className="header-top">
+          <h1>U-Safe 标签系统 Demo</h1>
+          <p className="app-subtitle">Phase 4: View Switching（视图切换）</p>
+        </div>
+        <div className="header-nav">
+          <ViewSwitcher currentView={currentView} onViewChange={handleViewChange} />
+        </div>
       </header>
 
       <main className="app-main">
-        <aside className="app-sidebar">
-          <div className="sidebar-header">
-            <button
-              className="btn-create-tag"
-              onClick={() => {
-                setParentForNew(null);
-                setShowCreateForm(true);
-              }}
-            >
-              ➕ 创建标签
-            </button>
-          </div>
-
-          <TagTree
-            key={refreshKey}
-            onTagSelect={handleTagSelect}
-            onTagEdit={handleTagEdit}
-            onTagDelete={handleTagDelete}
-            onAddChild={handleAddChild}
-          />
-        </aside>
-
-        <section className="app-content">
-          {showCreateForm && (
-            <div className="form-container">
-              <h2>创建标签</h2>
-              {parentForNew && (
-                <p className="form-hint">
-                  父标签: <strong>{parentForNew.full_path}</strong>
-                </p>
-              )}
-              <TagCreateForm
-                parentTag={parentForNew as any}
-                onSuccess={handleCreateSuccess}
-                onError={(err) => alert(`创建失败: ${err}`)}
+        {/* 标签视图: 侧边栏 + 主内容区 */}
+        {currentView === 'tag-view' && (
+          <>
+            <aside className="app-sidebar">
+              <TagTreeWithSelection
+                selectedTagIds={selectedTagIds}
+                onSelectionChange={handleSelectionChange}
               />
-              <button
-                className="btn-cancel"
-                onClick={() => {
-                  setShowCreateForm(false);
-                  setParentForNew(null);
-                }}
-              >
-                取消
-              </button>
-            </div>
-          )}
+            </aside>
 
-          {editingTag && (
-            <div className="form-container">
-              <h2>编辑标签</h2>
-              <p className="form-hint">
-                路径: <strong>{editingTag.full_path}</strong>
-              </p>
-              <TagEditForm
-                tag={editingTag}
-                onSuccess={handleUpdateSuccess}
-                onError={(err) => alert(`更新失败: ${err}`)}
-                onCancel={() => setEditingTag(null)}
-              />
-            </div>
-          )}
+            <section className="app-content">
+              <div className="content-toolbar">
+                <TagFilter
+                  filterMode={filterMode}
+                  recursive={recursive}
+                  selectedCount={selectedTagIds.length}
+                  onFilterModeChange={setFilterMode}
+                  onRecursiveChange={setRecursive}
+                  onClear={handleClearFilters}
+                />
+                <SearchBar
+                  onSearch={setSearchQuery}
+                  placeholder="搜索文件名..."
+                />
+              </div>
 
-          {!showCreateForm && !editingTag && (
-            <div className="content-placeholder">
-              <h2>标签详情</h2>
-              {selectedTag ? (
-                <p>选中的标签 ID: <code>{selectedTag}</code></p>
-              ) : (
-                <p className="hint">从左侧选择一个标签</p>
-              )}
-            </div>
-          )}
-        </section>
+              <div className="content-body">
+                <TagFileList
+                  selectedTagIds={selectedTagIds}
+                  filterMode={filterMode}
+                  recursive={recursive}
+                  nameQuery={searchQuery}
+                  onFileClick={handleFileClick}
+                />
+              </div>
+            </section>
+          </>
+        )}
+
+        {/* 其他视图: 全宽内容区 */}
+        {currentView === 'all-files' && (
+          <section className="app-content app-content--full">
+            <AllFilesView onFileClick={handleFileClick} />
+          </section>
+        )}
+
+        {currentView === 'encrypted-only' && (
+          <section className="app-content app-content--full">
+            <EncryptedFilesView onFileClick={handleFileClick} />
+          </section>
+        )}
+
+        {currentView === 'recent' && (
+          <section className="app-content app-content--full">
+            <RecentFilesView onFileClick={handleFileClick} days={7} />
+          </section>
+        )}
       </main>
-
-      {/* 删除标签对话框 */}
-      <DeleteTagDialog
-        tagNode={deletingTag}
-        onConfirm={handleDeleteConfirm}
-        onCancel={handleDeleteCancel}
-      />
     </div>
   );
 }

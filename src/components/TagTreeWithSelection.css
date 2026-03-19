@@ -1,0 +1,257 @@
+/* TagTreeWithSelection Component (Phase 3)
+ * 支持多选的标签树样式
+ */
+
+.tag-tree-sel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--bg-card);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+/* 头部 */
+.tag-tree-sel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3);
+  border-bottom: var(--border-width) solid var(--color-border);
+  background: var(--bg-surface);
+}
+
+.tag-tree-sel-title {
+  font-size: var(--text-base);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.tag-tree-sel-refresh-btn {
+  padding: var(--space-1);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: var(--text-base);
+  border-radius: var(--radius-sm);
+  transition: background var(--duration-fast) var(--ease-out);
+}
+
+.tag-tree-sel-refresh-btn:hover {
+  background: var(--bg-card);
+}
+
+.tag-tree-sel-refresh-btn:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* 内容区域 */
+.tag-tree-sel-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-2);
+}
+
+/* 标签节点 */
+.tag-tree-sel-node {
+  margin-bottom: var(--space-1);
+}
+
+.tag-tree-sel-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  transition: background var(--duration-fast) var(--ease-out);
+}
+
+.tag-tree-sel-item:hover {
+  background: var(--bg-surface);
+}
+
+.tag-tree-sel-item--selected {
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.tag-tree-sel-item--selected:hover {
+  background: rgba(59, 130, 246, 0.15);
+}
+
+/* 展开/折叠按钮 */
+.tag-tree-sel-toggle {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: var(--text-xs);
+  border-radius: var(--radius-sm);
+  transition: background var(--duration-fast) var(--ease-out),
+              color var(--duration-fast) var(--ease-out);
+}
+
+.tag-tree-sel-toggle:hover {
+  background: var(--bg-card);
+  color: var(--text-primary);
+}
+
+.tag-tree-sel-toggle:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.tag-tree-sel-spacer {
+  width: 20px;
+  flex-shrink: 0;
+}
+
+/* 复选框 */
+.tag-tree-sel-checkbox {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.tag-tree-sel-checkbox:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* 标签标签 */
+.tag-tree-sel-label {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+  user-select: none;
+}
+
+.tag-tree-sel-color {
+  flex-shrink: 0;
+  width: 12px;
+  height: 12px;
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.tag-tree-sel-name {
+  flex: 1;
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tag-tree-sel-count {
+  flex-shrink: 0;
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  background: var(--bg-surface);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+/* 子标签 */
+.tag-tree-sel-children {
+  margin-top: var(--space-1);
+}
+
+/* Loading 状态 */
+.tag-tree-sel-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-8);
+  color: var(--text-secondary);
+}
+
+.tag-tree-sel-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: var(--radius-full);
+  animation: tag-tree-sel-spin 0.8s linear infinite;
+}
+
+@keyframes tag-tree-sel-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Error 状态 */
+.tag-tree-sel-error {
+  padding: var(--space-4);
+  text-align: center;
+}
+
+.tag-tree-sel-error-message {
+  font-size: var(--text-sm);
+  color: var(--color-error);
+  margin-bottom: var(--space-3);
+}
+
+.tag-tree-sel-retry-btn {
+  padding: var(--space-2) var(--space-4);
+  border: var(--border-width) solid var(--color-border);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-out);
+}
+
+.tag-tree-sel-retry-btn:hover {
+  background: var(--bg-surface);
+}
+
+.tag-tree-sel-retry-btn:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* Empty 状态 */
+.tag-tree-sel-empty {
+  padding: var(--space-8);
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.tag-tree-sel-empty p {
+  margin: 0;
+  font-size: var(--text-sm);
+}
+
+.tag-tree-sel-empty-hint {
+  margin-top: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+/* 无障碍：减少动画 */
+@media (prefers-reduced-motion: reduce) {
+  .tag-tree-sel-item,
+  .tag-tree-sel-toggle,
+  .tag-tree-sel-retry-btn {
+    transition: none;
+  }
+
+  .tag-tree-sel-spinner {
+    animation: none;
+  }
+}

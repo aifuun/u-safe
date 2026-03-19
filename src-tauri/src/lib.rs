@@ -19,7 +19,8 @@ use commands::{
     create_tag, update_tag, get_tag_tree, delete_tag, get_tag_info,
     add_tag_to_file, remove_tag_from_file,
     add_tags_to_file, remove_tags_from_file,
-    get_file_tags, get_tag_files
+    get_file_tags, get_tag_files, search_files,
+    get_all_files, get_encrypted_files, get_recent_files
 };
 
 use db::{Database, get_default_db_path};
@@ -76,7 +77,11 @@ pub fn run() {
             add_tags_to_file,
             remove_tags_from_file,
             get_file_tags,
-            get_tag_files
+            get_tag_files,
+            search_files,
+            get_all_files,
+            get_encrypted_files,
+            get_recent_files
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

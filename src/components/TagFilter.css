@@ -1,0 +1,140 @@
+/* TagFilter Component
+ * 标签过滤器样式
+ */
+
+.tag-filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3);
+  background: var(--bg-card);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.tag-filter__section {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.tag-filter__label {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  font-weight: var(--font-weight-medium);
+}
+
+/* 模式切换按钮组 */
+.tag-filter__mode-group {
+  display: flex;
+  gap: var(--space-1);
+  background: var(--bg-surface);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1);
+}
+
+.tag-filter__mode-btn {
+  padding: var(--space-2) var(--space-3);
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-weight: var(--font-weight-medium);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-out),
+              color var(--duration-fast) var(--ease-out);
+}
+
+.tag-filter__mode-btn:hover {
+  background: var(--bg-card);
+  color: var(--text-primary);
+}
+
+.tag-filter__mode-btn--active {
+  background: var(--color-primary);
+  color: white;
+}
+
+.tag-filter__mode-btn:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* 复选框 */
+.tag-filter__checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.tag-filter__checkbox-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.tag-filter__checkbox-label input[type="checkbox"]:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* 计数和清除按钮 */
+.tag-filter__count {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.tag-filter__count strong {
+  color: var(--color-primary);
+  font-weight: var(--font-weight-semibold);
+}
+
+.tag-filter__clear-btn {
+  padding: var(--space-2) var(--space-3);
+  border: var(--border-width) solid var(--color-border);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-out),
+              color var(--duration-fast) var(--ease-out),
+              border-color var(--duration-fast) var(--ease-out);
+}
+
+.tag-filter__clear-btn:hover {
+  background: var(--color-error);
+  color: white;
+  border-color: var(--color-error);
+}
+
+.tag-filter__clear-btn:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* 响应式：移动端垂直布局 */
+@media (max-width: 768px) {
+  .tag-filter {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .tag-filter__section {
+    justify-content: space-between;
+  }
+}
+
+/* 无障碍：减少动画 */
+@media (prefers-reduced-motion: reduce) {
+  .tag-filter__mode-btn,
+  .tag-filter__clear-btn {
+    transition: none;
+  }
+}

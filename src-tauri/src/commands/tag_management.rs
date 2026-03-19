@@ -1406,6 +1406,388 @@ fn get_all_descendant_tag_ids(
     Ok(all_descendants)
 }
 
+// ============================================================================
+// Phase 3: Tag View & Search (标签视图和搜索)
+// ============================================================================
+
+/// 搜索文件（根据标签组合）
+///
+/// # Arguments
+/// * `tag_ids` - 标签 ID 列表
+/// * `filter_mode` - 过滤模式："AND" (文件必须有所有标签) 或 "OR" (文件有任一标签即可)
+/// * `recursive` - 是否递归包含子标签
+/// * `name_query` - 文件名搜索查询（可选，不区分大小写）
+///
+/// # Returns
+/// * `Ok(Vec<FileInfo>)` - 匹配的文件列表
+/// * `Err(String)` - 搜索失败
+///
+/// # Errors
+/// * 无效的 filter_mode（必须是 "AND" 或 "OR"）
+/// * 数据库查询失败
+#[tauri::command]
+pub async fn search_files(
+    tag_ids: Vec<String>,
+    filter_mode: String,
+    recursive: Option<bool>,
+    name_query: Option<String>,
+) -> Result<Vec<FileInfo>, String> {
+    let recursive = recursive.unwrap_or(false);
+    log::info!(
+        "[file:search:start] tags={}, mode={}, recursive={}, name_query={:?}",
+        tag_ids.len(),
+        filter_mode,
+        recursive,
+        name_query
+    );
+
+    // 验证 filter_mode
+    if filter_mode != "AND" && filter_mode != "OR" {
+        log::error!("[file:search:failed] 无效的 filter_mode: {}", filter_mode);
+        return Err(format!("无效的过滤模式，必须是 'AND' 或 'OR': {}", filter_mode));
+    }
+
+    // 如果没有标签，返回空数组
+    if tag_ids.is_empty() {
+        log::info!("[file:search:empty] 没有提供标签，返回空结果");
+        return Ok(Vec::new());
+    }
+
+    // 打开数据库连接
+    let db_path = get_default_db_path();
+    let db = Database::new(db_path).map_err(|e| {
+        log::error!("[file:search:failed] 数据库连接失败: {}", e);
+        format!("数据库连接失败: {}", e)
+    })?;
+
+    let conn = db.connection();
+
+    // 收集所有相关标签 ID（包含递归子标签）
+    let mut all_tag_ids = tag_ids.clone();
+    if recursive {
+        for tag_id in &tag_ids {
+            let descendant_ids = get_all_descendant_tag_ids(&conn, tag_id)?;
+            all_tag_ids.extend(descendant_ids);
+        }
+        // 去重
+        all_tag_ids.sort();
+        all_tag_ids.dedup();
+    }
+
+    log::info!(
+        "[file:search] 扩展后的标签数: {} (原始: {})",
+        all_tag_ids.len(),
+        tag_ids.len()
+    );
+
+    // 构建查询
+    let files = if filter_mode == "AND" {
+        // AND 模式：文件必须包含所有指定的标签
+        search_files_with_and_mode(&conn, &all_tag_ids, &name_query)?
+    } else {
+        // OR 模式：文件包含任一标签即可
+        search_files_with_or_mode(&conn, &all_tag_ids, &name_query)?
+    };
+
+    log::info!(
+        "[file:search:done] results={}, tags={}, mode={}, recursive={}",
+        files.len(),
+        tag_ids.len(),
+        filter_mode,
+        recursive
+    );
+
+    Ok(files)
+}
+
+/// AND 模式：文件必须包含所有指定的标签
+fn search_files_with_and_mode(
+    conn: &rusqlite::Connection,
+    tag_ids: &[String],
+    name_query: &Option<String>,
+) -> Result<Vec<FileInfo>, String> {
+    // 构建查询：找到包含所有标签的文件
+    // 策略：使用 GROUP BY + HAVING COUNT(DISTINCT tag_id) = ?
+    let mut query = format!(
+        "SELECT f.id, f.file_path, f.original_name, f.file_size, f.is_encrypted, f.created_at
+         FROM files f
+         INNER JOIN file_tags ft ON f.id = ft.file_id
+         WHERE ft.tag_id IN ({})",
+        tag_ids.iter().map(|_| "?").collect::<Vec<_>>().join(",")
+    );
+
+    // 添加文件名过滤（如果提供）
+    let pattern = if let Some(ref query_str) = name_query {
+        if !query_str.trim().is_empty() {
+            query.push_str(" AND f.original_name LIKE ?");
+            Some(format!("%{}%", query_str.trim()))
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
+    // GROUP BY 和 HAVING 检查是否包含所有标签
+    query.push_str(&format!(
+        " GROUP BY f.id
+         HAVING COUNT(DISTINCT ft.tag_id) = {}
+         ORDER BY f.created_at DESC",
+        tag_ids.len()
+    ));
+
+    let mut stmt = conn.prepare(&query).map_err(|e| {
+        log::error!("[file:search:and:failed] 查询失败: {}", e);
+        format!("查询失败: {}", e)
+    })?;
+
+    // 绑定参数
+    let mut params: Vec<&dyn rusqlite::ToSql> =
+        tag_ids.iter().map(|id| id as &dyn rusqlite::ToSql).collect();
+
+    if let Some(ref p) = pattern {
+        params.push(p as &dyn rusqlite::ToSql);
+    }
+
+    let files: Vec<FileInfo> = stmt
+        .query_map(params.as_slice(), |row| {
+            Ok(FileInfo {
+                id: row.get(0)?,
+                file_path: row.get(1)?,
+                original_name: row.get(2)?,
+                file_size: row.get(3)?,
+                is_encrypted: row.get::<_, i32>(4)? != 0,
+                created_at: row.get(5)?,
+            })
+        })
+        .map_err(|e| {
+            log::error!("[file:search:and:failed] 读取文件失败: {}", e);
+            format!("读取文件失败: {}", e)
+        })?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| {
+            log::error!("[file:search:and:failed] 收集文件失败: {}", e);
+            format!("收集文件失败: {}", e)
+        })?;
+
+    Ok(files)
+}
+
+/// OR 模式：文件包含任一标签即可
+fn search_files_with_or_mode(
+    conn: &rusqlite::Connection,
+    tag_ids: &[String],
+    name_query: &Option<String>,
+) -> Result<Vec<FileInfo>, String> {
+    // 构建查询：找到包含任一标签的文件
+    let mut query = format!(
+        "SELECT DISTINCT f.id, f.file_path, f.original_name, f.file_size, f.is_encrypted, f.created_at
+         FROM files f
+         INNER JOIN file_tags ft ON f.id = ft.file_id
+         WHERE ft.tag_id IN ({})",
+        tag_ids.iter().map(|_| "?").collect::<Vec<_>>().join(",")
+    );
+
+    // 添加文件名过滤（如果提供）
+    let pattern = if let Some(ref query_str) = name_query {
+        if !query_str.trim().is_empty() {
+            query.push_str(" AND f.original_name LIKE ?");
+            Some(format!("%{}%", query_str.trim()))
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
+    query.push_str(" ORDER BY f.created_at DESC");
+
+    let mut stmt = conn.prepare(&query).map_err(|e| {
+        log::error!("[file:search:or:failed] 查询失败: {}", e);
+        format!("查询失败: {}", e)
+    })?;
+
+    // 绑定参数
+    let mut params: Vec<&dyn rusqlite::ToSql> =
+        tag_ids.iter().map(|id| id as &dyn rusqlite::ToSql).collect();
+
+    if let Some(ref p) = pattern {
+        params.push(p as &dyn rusqlite::ToSql);
+    }
+
+    let files: Vec<FileInfo> = stmt
+        .query_map(params.as_slice(), |row| {
+            Ok(FileInfo {
+                id: row.get(0)?,
+                file_path: row.get(1)?,
+                original_name: row.get(2)?,
+                file_size: row.get(3)?,
+                is_encrypted: row.get::<_, i32>(4)? != 0,
+                created_at: row.get(5)?,
+            })
+        })
+        .map_err(|e| {
+            log::error!("[file:search:or:failed] 读取文件失败: {}", e);
+            format!("读取文件失败: {}", e)
+        })?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| {
+            log::error!("[file:search:or:failed] 收集文件失败: {}", e);
+            format!("收集文件失败: {}", e)
+        })?;
+
+    Ok(files)
+}
+
+/// 获取所有文件（不过滤）
+///
+/// # Returns
+/// * `Ok(Vec<FileInfo>)` - 所有文件列表
+/// * `Err(String)` - 查询失败
+#[tauri::command]
+pub async fn get_all_files() -> Result<Vec<FileInfo>, String> {
+    log::info!("[files:query:all]");
+
+    let db_path = get_default_db_path();
+    let db = Database::new(db_path).map_err(|e| {
+        log::error!("[files:query:all:failed] 数据库连接失败: {}", e);
+        format!("数据库连接失败: {}", e)
+    })?;
+
+    let conn = db.connection();
+
+    // 查询所有文件
+    let mut stmt = conn
+        .prepare(
+            "SELECT id, file_path, original_name, file_size, is_encrypted, created_at
+             FROM files
+             ORDER BY created_at DESC"
+        )
+        .map_err(|e| {
+            log::error!("[files:query:all:failed] 查询失败: {}", e);
+            format!("查询文件失败: {}", e)
+        })?;
+
+    let files = stmt
+        .query_map([], |row| {
+            Ok(FileInfo {
+                id: row.get(0)?,
+                file_path: row.get(1)?,
+                original_name: row.get(2)?,
+                file_size: row.get(3)?,
+                is_encrypted: row.get(4)?,
+                created_at: row.get(5)?,
+            })
+        })
+        .map_err(|e| format!("映射文件数据失败: {}", e))?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| format!("收集文件数据失败: {}", e))?;
+
+    log::info!("[files:query:all] count={}", files.len());
+    Ok(files)
+}
+
+/// 获取所有已加密文件
+///
+/// # Returns
+/// * `Ok(Vec<FileInfo>)` - 已加密文件列表
+/// * `Err(String)` - 查询失败
+#[tauri::command]
+pub async fn get_encrypted_files() -> Result<Vec<FileInfo>, String> {
+    log::info!("[files:query:encrypted]");
+
+    let db_path = get_default_db_path();
+    let db = Database::new(db_path).map_err(|e| {
+        log::error!("[files:query:encrypted:failed] 数据库连接失败: {}", e);
+        format!("数据库连接失败: {}", e)
+    })?;
+
+    let conn = db.connection();
+
+    // 查询已加密文件
+    let mut stmt = conn
+        .prepare(
+            "SELECT id, file_path, original_name, file_size, is_encrypted, created_at
+             FROM files
+             WHERE is_encrypted = 1
+             ORDER BY created_at DESC"
+        )
+        .map_err(|e| {
+            log::error!("[files:query:encrypted:failed] 查询失败: {}", e);
+            format!("查询加密文件失败: {}", e)
+        })?;
+
+    let files = stmt
+        .query_map([], |row| {
+            Ok(FileInfo {
+                id: row.get(0)?,
+                file_path: row.get(1)?,
+                original_name: row.get(2)?,
+                file_size: row.get(3)?,
+                is_encrypted: row.get(4)?,
+                created_at: row.get(5)?,
+            })
+        })
+        .map_err(|e| format!("映射文件数据失败: {}", e))?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| format!("收集文件数据失败: {}", e))?;
+
+    log::info!("[files:query:encrypted] count={}", files.len());
+    Ok(files)
+}
+
+/// 获取最近添加的文件
+///
+/// # Arguments
+/// * `days` - 最近 N 天
+///
+/// # Returns
+/// * `Ok(Vec<FileInfo>)` - 最近文件列表
+/// * `Err(String)` - 查询失败
+#[tauri::command]
+pub async fn get_recent_files(days: i64) -> Result<Vec<FileInfo>, String> {
+    log::info!("[files:query:recent] days={}", days);
+
+    let db_path = get_default_db_path();
+    let db = Database::new(db_path).map_err(|e| {
+        log::error!("[files:query:recent:failed] 数据库连接失败: {}", e);
+        format!("数据库连接失败: {}", e)
+    })?;
+
+    let conn = db.connection();
+
+    // 查询最近 N 天的文件
+    let mut stmt = conn
+        .prepare(
+            "SELECT id, file_path, original_name, file_size, is_encrypted, created_at
+             FROM files
+             WHERE created_at >= datetime('now', ? || ' days')
+             ORDER BY created_at DESC"
+        )
+        .map_err(|e| {
+            log::error!("[files:query:recent:failed] 查询失败: {}", e);
+            format!("查询最近文件失败: {}", e)
+        })?;
+
+    let files = stmt
+        .query_map(params![-days], |row| {
+            Ok(FileInfo {
+                id: row.get(0)?,
+                file_path: row.get(1)?,
+                original_name: row.get(2)?,
+                file_size: row.get(3)?,
+                is_encrypted: row.get(4)?,
+                created_at: row.get(5)?,
+            })
+        })
+        .map_err(|e| format!("映射文件数据失败: {}", e))?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| format!("收集文件数据失败: {}", e))?;
+
+    log::info!("[files:query:recent] days={}, count={}", days, files.len());
+    Ok(files)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
