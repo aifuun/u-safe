@@ -41,11 +41,11 @@ pub fn initialize_schema(conn: &Connection) -> Result<()> {
     conn.execute(
         "CREATE TABLE IF NOT EXISTS file_tags (
             file_id INTEGER NOT NULL,
-            tag_id INTEGER NOT NULL,
+            tag_id TEXT NOT NULL,
             created_at TEXT NOT NULL DEFAULT (datetime('now')),
             PRIMARY KEY (file_id, tag_id),
             FOREIGN KEY (file_id) REFERENCES files(id) ON DELETE CASCADE,
-            FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+            FOREIGN KEY (tag_id) REFERENCES tags(tag_id) ON DELETE CASCADE
         )",
         [],
     )?;
