@@ -64,6 +64,17 @@ pub struct UpdateTagRequest {
     pub color: Option<String>,
 }
 
+/// 标签树节点（包含子标签）
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TagNode {
+    /// 标签基础信息
+    #[serde(flatten)]
+    pub tag: Tag,
+
+    /// 子标签列表
+    pub children: Vec<TagNode>,
+}
+
 impl Tag {
     /// 创建新标签实例
     pub fn new(
@@ -86,6 +97,21 @@ impl Tag {
             updated_at: now,
             usage_count: 0,
         }
+    }
+}
+
+impl TagNode {
+    /// 从 Tag 创建 TagNode
+    pub fn from_tag(tag: Tag) -> Self {
+        Self {
+            tag,
+            children: Vec::new(),
+        }
+    }
+
+    /// 添加子节点
+    pub fn add_child(&mut self, child: TagNode) {
+        self.children.push(child);
     }
 }
 
@@ -120,5 +146,20 @@ mod tests {
 
         assert_eq!(request.name, "项目A");
         assert!(request.parent_id.is_some());
+    }
+
+    #[test]
+    fn test_tag_node_creation() {
+        let tag = Tag::new(
+            "test-id".to_string(),
+            "工作".to_string(),
+            None,
+            None,
+            0,
+            "工作".to_string(),
+        );
+
+        let node = TagNode::from_tag(tag);
+        assert_eq!(node.children.len(), 0);
     }
 }

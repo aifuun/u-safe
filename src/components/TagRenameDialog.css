@@ -1,0 +1,240 @@
+/* 标签重命名对话框样式 */
+
+.tag-rename-dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.tag-rename-dialog {
+  background: var(--color-bg-surface, #ffffff);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xl);
+  width: 90%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+/* Header */
+.tag-rename-dialog__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--color-border, #e5e7eb);
+}
+
+.tag-rename-dialog__header h2 {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--color-text-primary, #111827);
+}
+
+.tag-rename-dialog__close-btn {
+  background: none;
+  border: none;
+  font-size: var(--text-xl);
+  color: var(--color-text-secondary, #6b7280);
+  cursor: pointer;
+  padding: var(--space-1);
+  border-radius: var(--radius-sm);
+  transition: background var(--duration-fast) var(--ease-out);
+}
+
+.tag-rename-dialog__close-btn:hover:not(:disabled) {
+  background: var(--color-bg-elevated, #f3f4f6);
+}
+
+.tag-rename-dialog__close-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Body */
+.tag-rename-dialog__body {
+  padding: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.tag-rename-dialog__current-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.tag-rename-dialog__current-info label {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--color-text-secondary, #6b7280);
+}
+
+.tag-rename-dialog__current-tag {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--color-bg-elevated, #f3f4f6);
+  border-radius: var(--radius-md);
+  font-size: var(--text-base);
+  color: var(--color-text-primary, #111827);
+}
+
+.tag-rename-dialog__color-badge {
+  width: 16px;
+  height: 16px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+}
+
+.tag-rename-dialog__input-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.tag-rename-dialog__input-group label {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--color-text-secondary, #6b7280);
+}
+
+.tag-rename-dialog__input {
+  padding: var(--space-3);
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: var(--radius-md);
+  font-size: var(--text-base);
+  color: var(--color-text-primary, #111827);
+  transition: border-color var(--duration-fast) var(--ease-out);
+}
+
+.tag-rename-dialog__input:focus {
+  outline: none;
+  border-color: var(--color-primary, #3b82f6);
+}
+
+.tag-rename-dialog__input:disabled {
+  background: var(--color-bg-elevated, #f3f4f6);
+  cursor: not-allowed;
+}
+
+.tag-rename-dialog__char-count {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted, #9ca3af);
+  text-align: right;
+}
+
+/* Warning */
+.tag-rename-dialog__warning {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: rgba(251, 191, 36, 0.1);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  color: var(--color-text-primary, #111827);
+}
+
+.tag-rename-dialog__warning-icon {
+  flex-shrink: 0;
+  font-size: var(--text-base);
+}
+
+/* Error */
+.tag-rename-dialog__error {
+  padding: var(--space-3);
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  color: var(--color-error, #ef4444);
+}
+
+/* Footer */
+.tag-rename-dialog__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-top: 1px solid var(--color-border, #e5e7eb);
+}
+
+.tag-rename-dialog__btn {
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-out);
+  border: none;
+}
+
+.tag-rename-dialog__btn--cancel {
+  background: var(--color-bg-elevated, #f3f4f6);
+  color: var(--color-text-primary, #111827);
+}
+
+.tag-rename-dialog__btn--cancel:hover:not(:disabled) {
+  background: var(--color-bg-surface, #e5e7eb);
+}
+
+.tag-rename-dialog__btn--primary {
+  background: var(--color-primary, #3b82f6);
+  color: #ffffff;
+}
+
+.tag-rename-dialog__btn--primary:hover:not(:disabled) {
+  background: var(--color-primary-hover, #2563eb);
+}
+
+.tag-rename-dialog__btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Focus state accessibility */
+.tag-rename-dialog__btn:focus-visible {
+  outline: 2px solid var(--color-primary, #3b82f6);
+  outline-offset: 2px;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .tag-rename-dialog__close-btn,
+  .tag-rename-dialog__input,
+  .tag-rename-dialog__btn {
+    transition: none;
+  }
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .tag-rename-dialog {
+    width: 95%;
+    max-width: none;
+  }
+
+  .tag-rename-dialog__body {
+    padding: var(--space-4);
+  }
+
+  .tag-rename-dialog__footer {
+    flex-direction: column;
+  }
+
+  .tag-rename-dialog__btn {
+    width: 100%;
+  }
+}

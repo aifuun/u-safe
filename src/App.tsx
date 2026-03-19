@@ -1,105 +1,121 @@
-import { useState } from 'react';
-import { invoke } from '@tauri-apps/api/core';
-import { TagCreateForm } from './components/TagCreateForm';
-
-interface Tag {
-  tag_id: string;
-  tag_name: string;
-  tag_color?: string;
-  parent_tag_id?: string;
-  tag_level: number;
-  full_path: string;
-  created_at: string;
-  updated_at: string;
-  usage_count: number;
-}
+import { ViewSwitcher } from './components/ViewSwitcher';
+import { AllFilesView } from './components/AllFilesView';
+import { TagTreeWithSelection } from './components/TagTreeWithSelection';
+import { TagFilter } from './components/TagFilter';
+import { SearchBar } from './components/SearchBar';
+import { TagFileList } from './components/TagFileList';
+import { EncryptedFilesView } from './components/EncryptedFilesView';
+import { RecentFilesView } from './components/RecentFilesView';
+import { useViewStore } from './stores/viewStore';
+import './App.css';
 
 function App() {
-  const [message, setMessage] = useState('');
-  const [createdTags, setCreatedTags] = useState<Tag[]>([]);
+  // Zustand store - 视图状态管理
+  const {
+    currentView,
+    setView,
+    selectedTagIds,
+    setSelectedTagIds,
+    filterMode,
+    setFilterMode,
+    recursive,
+    setRecursive,
+    searchQuery,
+    setSearchQuery,
+    resetTagView,
+  } = useViewStore();
 
-  const testIPC = async () => {
-    try {
-      const response = await invoke<string>('hello_world');
-      setMessage(response);
-    } catch (error) {
-      setMessage(`Error: ${error}`);
-    }
+  const handleSelectionChange = (tagIds: string[]) => {
+    console.log('[app] 标签选择变化:', tagIds);
+    setSelectedTagIds(tagIds);
   };
 
-  const testDatabase = async () => {
-    try {
-      const response = await invoke<string>('test_db_connection');
-      setMessage(response);
-    } catch (error) {
-      setMessage(`Error: ${error}`);
-    }
+  const handleClearFilters = () => {
+    console.log('[app] 清除过滤器');
+    resetTagView();
   };
 
-  const handleTagCreated = (tag: Tag) => {
-    setCreatedTags((prev) => [...prev, tag]);
-    setMessage(`✅ 成功创建标签: ${tag.tag_name} (${tag.full_path})`);
+  const handleFileClick = (fileId: number) => {
+    console.log('[app] 文件点击:', fileId);
+    // TODO: 实现文件详情/操作
   };
 
-  const handleTagError = (error: string) => {
-    setMessage(`❌ 创建失败: ${error}`);
+  const handleViewChange = (view: typeof currentView) => {
+    console.info('[app:view:switch]', { from: currentView, to: view });
+    setView(view);
   };
 
   return (
-    <div className="container">
-      <h1>U-Safe - 万能保险箱</h1>
-      <p>欢迎使用 U盘文件加密管理工具</p>
-
-      <div className="card">
-        <h2>Phase 1.1: 标签创建功能测试</h2>
-        <p>Issue #21 - Tag System Implementation</p>
-        {message && <p className="message">{message}</p>}
-
-        <div style={{ display: 'flex', gap: '10px', marginTop: '10px', marginBottom: '20px' }}>
-          <button onClick={() => setMessage('Hello from U-Safe!')}>
-            测试 React
-          </button>
-          <button onClick={testIPC}>
-            测试 IPC (Rust)
-          </button>
-          <button onClick={testDatabase}>
-            测试数据库连接
-          </button>
+    <div className="app">
+      <header className="app-header">
+        <div className="header-top">
+          <h1>U-Safe 标签系统 Demo</h1>
+          <p className="app-subtitle">Phase 4: View Switching（视图切换）</p>
         </div>
+        <div className="header-nav">
+          <ViewSwitcher currentView={currentView} onViewChange={handleViewChange} />
+        </div>
+      </header>
 
-        <hr style={{ margin: '20px 0', border: 'none', borderTop: '1px solid #e5e7eb' }} />
+      <main className="app-main">
+        {/* 标签视图: 侧边栏 + 主内容区 */}
+        {currentView === 'tag-view' && (
+          <>
+            <aside className="app-sidebar">
+              <TagTreeWithSelection
+                selectedTagIds={selectedTagIds}
+                onSelectionChange={handleSelectionChange}
+              />
+            </aside>
 
-        <TagCreateForm
-          onSuccess={handleTagCreated}
-          onError={handleTagError}
-        />
+            <section className="app-content">
+              <div className="content-toolbar">
+                <TagFilter
+                  filterMode={filterMode}
+                  recursive={recursive}
+                  selectedCount={selectedTagIds.length}
+                  onFilterModeChange={setFilterMode}
+                  onRecursiveChange={setRecursive}
+                  onClear={handleClearFilters}
+                />
+                <SearchBar
+                  onSearch={setSearchQuery}
+                  placeholder="搜索文件名..."
+                />
+              </div>
 
-        {createdTags.length > 0 && (
-          <div style={{ marginTop: '20px' }}>
-            <h3>已创建的标签</h3>
-            <ul style={{ listStyle: 'none', padding: 0 }}>
-              {createdTags.map((tag) => (
-                <li
-                  key={tag.tag_id}
-                  style={{
-                    padding: '8px',
-                    margin: '4px 0',
-                    background: '#f3f4f6',
-                    borderRadius: '4px',
-                    borderLeft: `4px solid ${tag.tag_color || '#3b82f6'}`,
-                  }}
-                >
-                  <strong>{tag.tag_name}</strong> - {tag.full_path}
-                  <br />
-                  <small style={{ color: '#6b7280' }}>
-                    Level: {tag.tag_level} | ID: {tag.tag_id.slice(0, 8)}...
-                  </small>
-                </li>
-              ))}
-            </ul>
-          </div>
+              <div className="content-body">
+                <TagFileList
+                  selectedTagIds={selectedTagIds}
+                  filterMode={filterMode}
+                  recursive={recursive}
+                  nameQuery={searchQuery}
+                  onFileClick={handleFileClick}
+                />
+              </div>
+            </section>
+          </>
         )}
-      </div>
+
+        {/* 其他视图: 全宽内容区 */}
+        {currentView === 'all-files' && (
+          <section className="app-content app-content--full">
+            <AllFilesView onFileClick={handleFileClick} />
+          </section>
+        )}
+
+        {currentView === 'encrypted-only' && (
+          <section className="app-content app-content--full">
+            <EncryptedFilesView onFileClick={handleFileClick} />
+          </section>
+        )}
+
+        {currentView === 'recent' && (
+          <section className="app-content app-content--full">
+            <RecentFilesView onFileClick={handleFileClick} days={7} />
+          </section>
+        )}
+      </main>
     </div>
   );
 }

@@ -1,30 +1,38 @@
-import { useState, FormEvent } from 'react';
+import { useState, FormEvent, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { Tag, CreateTagRequest } from '../types/tag';
-import './TagCreateForm.css';
+import { Tag, UpdateTagRequest } from '../types/tag';
+import './TagEditForm.css';
 
-interface TagCreateFormProps {
+interface TagEditFormProps {
+  tag: Tag;
   onSuccess?: (tag: Tag) => void;
   onError?: (error: string) => void;
-  parentTag?: Tag | null;
+  onCancel?: () => void;
 }
 
 /**
- * 标签创建表单组件
+ * 标签编辑表单组件
  *
  * 功能：
- * - 输入标签名称（必填，≤50字符）
- * - 选择颜色（可选）
- * - 选择父标签（可选）
+ * - 预填充当前标签信息
+ * - 编辑标签名称（可选）
+ * - 编辑标签颜色（可选）
  * - 客户端验证
- * - 调用 create_tag IPC 命令
+ * - 调用 update_tag IPC 命令
  * - 错误处理和提示
  */
-export function TagCreateForm({ onSuccess, onError, parentTag = null }: TagCreateFormProps) {
-  const [name, setName] = useState('');
-  const [color, setColor] = useState('#3B82F6'); // 默认蓝色
+export function TagEditForm({ tag, onSuccess, onError, onCancel }: TagEditFormProps) {
+  const [name, setName] = useState(tag.tag_name);
+  const [color, setColor] = useState(tag.tag_color || '#3B82F6');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationError, setValidationError] = useState('');
+
+  // 标签变化时更新表单
+  useEffect(() => {
+    setName(tag.tag_name);
+    setColor(tag.tag_color || '#3B82F6');
+    setValidationError('');
+  }, [tag]);
 
   // 客户端验证
   const validateName = (value: string): string | null => {
@@ -37,9 +45,23 @@ export function TagCreateForm({ onSuccess, onError, parentTag = null }: TagCreat
     return null;
   };
 
+  // 检查表单是否有变化
+  const hasChanges = (): boolean => {
+    return (
+      name.trim() !== tag.tag_name ||
+      color !== (tag.tag_color || '#3B82F6')
+    );
+  };
+
   // 处理表单提交
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+
+    // 检查是否有变化
+    if (!hasChanges()) {
+      setValidationError('没有修改内容');
+      return;
+    }
 
     // 客户端验证
     const error = validateName(name);
@@ -52,36 +74,35 @@ export function TagCreateForm({ onSuccess, onError, parentTag = null }: TagCreat
     setValidationError('');
 
     try {
-      console.log('[tag:create] 开始创建标签', { name, parentTag, color });
+      console.log('[tag:update] 开始更新标签', { id: tag.tag_id, name, color });
 
-      const request: CreateTagRequest = {
-        name: name.trim(),
-        color,
+      const request: UpdateTagRequest = {
+        id: tag.tag_id,
       };
 
-      // 如果有父标签，添加 parent_id
-      if (parentTag) {
-        request.parent_id = parentTag.tag_id;
+      // 只发送有变化的字段
+      if (name.trim() !== tag.tag_name) {
+        request.name = name.trim();
+      }
+
+      if (color !== (tag.tag_color || '#3B82F6')) {
+        request.color = color;
       }
 
       // 调用 Rust IPC 命令
-      const newTag = await invoke<Tag>('create_tag', { request });
+      const updatedTag = await invoke<Tag>('update_tag', { request });
 
-      console.log('[tag:create:success]', newTag);
-
-      // 重置表单
-      setName('');
-      setColor('#3B82F6');
+      console.log('[tag:update:success]', updatedTag);
 
       // 调用成功回调
       if (onSuccess) {
-        onSuccess(newTag);
+        onSuccess(updatedTag);
       }
     } catch (error) {
-      console.error('[tag:create:failed]', error);
+      console.error('[tag:update:failed]', error);
 
       // 解析错误信息
-      const errorMessage = typeof error === 'string' ? error : '创建标签失败';
+      const errorMessage = typeof error === 'string' ? error : '更新标签失败';
 
       setValidationError(errorMessage);
 
@@ -95,22 +116,20 @@ export function TagCreateForm({ onSuccess, onError, parentTag = null }: TagCreat
   };
 
   return (
-    <form className="tag-create-form" onSubmit={handleSubmit}>
+    <form className="tag-edit-form" onSubmit={handleSubmit}>
       <div className="form-header">
-        <h3 className="form-title">创建标签</h3>
-        {parentTag && (
-          <p className="parent-tag-info">
-            父标签: <span className="parent-tag-name">{parentTag.full_path}</span>
-          </p>
-        )}
+        <h3 className="form-title">编辑标签</h3>
+        <p className="tag-path-info">
+          路径: <span className="tag-path">{tag.full_path}</span>
+        </p>
       </div>
 
       <div className="form-group">
-        <label htmlFor="tag-name" className="form-label">
+        <label htmlFor="tag-name-edit" className="form-label">
           标签名称 <span className="required">*</span>
         </label>
         <input
-          id="tag-name"
+          id="tag-name-edit"
           type="text"
           className="form-input"
           value={name}
@@ -123,7 +142,7 @@ export function TagCreateForm({ onSuccess, onError, parentTag = null }: TagCreat
           disabled={isSubmitting}
           aria-required="true"
           aria-invalid={!!validationError}
-          aria-describedby={validationError ? 'tag-name-error' : undefined}
+          aria-describedby={validationError ? 'tag-name-edit-error' : undefined}
         />
         <div className="char-count">
           {name.length} / 50
@@ -131,12 +150,12 @@ export function TagCreateForm({ onSuccess, onError, parentTag = null }: TagCreat
       </div>
 
       <div className="form-group">
-        <label htmlFor="tag-color" className="form-label">
+        <label htmlFor="tag-color-edit" className="form-label">
           标签颜色
         </label>
         <div className="color-picker-container">
           <input
-            id="tag-color"
+            id="tag-color-edit"
             type="color"
             className="color-picker"
             value={color}
@@ -149,7 +168,7 @@ export function TagCreateForm({ onSuccess, onError, parentTag = null }: TagCreat
 
       {validationError && (
         <div
-          id="tag-name-error"
+          id="tag-name-edit-error"
           className="error-message"
           role="alert"
         >
@@ -159,11 +178,19 @@ export function TagCreateForm({ onSuccess, onError, parentTag = null }: TagCreat
 
       <div className="form-actions">
         <button
+          type="button"
+          className="btn btn-secondary"
+          onClick={onCancel}
+          disabled={isSubmitting}
+        >
+          取消
+        </button>
+        <button
           type="submit"
           className="btn btn-primary"
-          disabled={isSubmitting || !name.trim()}
+          disabled={isSubmitting || !hasChanges()}
         >
-          {isSubmitting ? '创建中...' : '创建标签'}
+          {isSubmitting ? '保存中...' : '保存更改'}
         </button>
       </div>
     </form>

@@ -1,0 +1,205 @@
+/* TagFileList Component
+ * 标签文件列表样式
+ */
+
+.tag-file-list {
+  padding: var(--space-4);
+}
+
+/* 头部 */
+.tag-file-list__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-4);
+}
+
+.tag-file-list__header h3 {
+  font-size: var(--text-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.tag-file-list__count {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+/* 文件网格 */
+.tag-file-list__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--space-4);
+}
+
+/* 文件卡片 */
+.tag-file-card {
+  background: var(--bg-card);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  cursor: pointer;
+  transition: box-shadow var(--duration-fast) var(--ease-out),
+              border-color var(--duration-fast) var(--ease-out);
+}
+
+.tag-file-card:hover {
+  box-shadow: var(--shadow-md);
+  border-color: var(--color-primary);
+}
+
+.tag-file-card:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.tag-file-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-3);
+}
+
+.tag-file-card__icon {
+  font-size: var(--text-2xl);
+}
+
+.tag-file-card__status {
+  font-size: var(--text-xs);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-xs);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font-weight: var(--font-weight-medium);
+}
+
+.tag-file-card__status--encrypted {
+  background: var(--color-encrypted);
+  color: white;
+}
+
+.tag-file-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.tag-file-card__name {
+  font-size: var(--text-base);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-primary);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tag-file-card__meta {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* Loading 状态 */
+.tag-file-list__loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-10);
+  color: var(--text-secondary);
+}
+
+.tag-file-list__spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: var(--radius-full);
+  animation: tag-file-spin 0.8s linear infinite;
+}
+
+@keyframes tag-file-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Error 状态 */
+.tag-file-list__error {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: rgba(239, 68, 68, 0.1);
+  border: var(--border-width) solid var(--color-error);
+  border-radius: var(--radius-md);
+  color: var(--color-error);
+}
+
+.tag-file-list__error-icon {
+  font-size: var(--text-2xl);
+  flex-shrink: 0;
+}
+
+.tag-file-list__error h3 {
+  margin: 0 0 var(--space-1) 0;
+  font-size: var(--text-base);
+  font-weight: var(--font-weight-semibold);
+}
+
+.tag-file-list__error p {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+/* Empty 状态 */
+.tag-file-list__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-10);
+  text-align: center;
+}
+
+.tag-file-list__empty-icon {
+  font-size: 4rem;
+  opacity: 0.5;
+}
+
+.tag-file-list__empty h3 {
+  font-size: var(--text-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.tag-file-list__empty p {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+/* 响应式：移动端单列 */
+@media (max-width: 768px) {
+  .tag-file-list__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* 无障碍：减少动画 */
+@media (prefers-reduced-motion: reduce) {
+  .tag-file-card {
+    transition: none;
+  }
+
+  .tag-file-list__spinner {
+    animation: none;
+  }
+}
