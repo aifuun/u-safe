@@ -16,6 +16,10 @@ const ERR_PARENT_NOT_FOUND: &str = "ParentTagNotFound";
 const ERR_CIRCULAR_DEPENDENCY: &str = "CircularDependency";
 /// 错误类型：超过最大层级深度
 const ERR_MAX_DEPTH_EXCEEDED: &str = "MaxDepthExceeded";
+/// 错误类型：标签有子标签
+const ERR_TAG_HAS_CHILDREN: &str = "TagHasChildren";
+/// 错误类型：标签关联文件
+const ERR_TAG_HAS_FILES: &str = "TagHasFiles";
 
 /// 创建标签
 ///
@@ -584,6 +588,252 @@ fn build_tag_tree(tags: Vec<Tag>) -> Result<Vec<TagNode>, String> {
     tree.sort_by(|a, b| a.tag.tag_name.cmp(&b.tag.tag_name));
 
     Ok(tree)
+}
+
+/// 删除标签
+///
+/// # Arguments
+/// * `tag_id` - 要删除的标签 ID
+/// * `force` - 是否强制删除（删除所有子标签和解除文件关联）
+///
+/// # Returns
+/// * `Ok(())` - 删除成功
+/// * `Err(String)` - 删除失败，返回错误信息
+///
+/// # Errors
+/// * `TagNotFound` - 标签不存在
+/// * `TagHasChildren` - 标签有子标签（force=false 时）
+/// * `TagHasFiles` - 标签关联文件（force=false 时）
+#[tauri::command]
+pub async fn delete_tag(tag_id: String, force: Option<bool>) -> Result<(), String> {
+    let force = force.unwrap_or(false);
+    log::info!("[tag:delete] tag_id={}, force={}", tag_id, force);
+
+    // 打开数据库连接
+    let db_path = get_default_db_path();
+    let db = Database::new(db_path).map_err(|e| {
+        log::error!("[tag:delete:failed] 数据库连接失败: {}", e);
+        format!("数据库连接失败: {}", e)
+    })?;
+
+    let conn = db.connection();
+
+    // 验证标签是否存在
+    let tag_exists: Result<bool, rusqlite::Error> = conn.query_row(
+        "SELECT COUNT(*) FROM tags WHERE tag_id = ?1",
+        params![tag_id],
+        |row| {
+            let count: i64 = row.get(0)?;
+            Ok(count > 0)
+        },
+    );
+
+    match tag_exists {
+        Ok(true) => {},
+        Ok(false) | Err(_) => {
+            log::warn!("[tag:delete:failed] 标签不存在: {}", tag_id);
+            return Err(format!("{}:标签不存在", ERR_TAG_NOT_FOUND));
+        }
+    }
+
+    // 检查是否有子标签
+    let children_count: Result<i64, rusqlite::Error> = conn.query_row(
+        "SELECT COUNT(*) FROM tags WHERE parent_tag_id = ?1",
+        params![tag_id],
+        |row| row.get(0),
+    );
+
+    let has_children = children_count.unwrap_or(0) > 0;
+    if has_children && !force {
+        log::warn!("[tag:delete:blocked] 标签有子标签: {}", tag_id);
+        return Err(format!("{}:标签有子标签，无法删除。使用 force=true 递归删除所有子标签", ERR_TAG_HAS_CHILDREN));
+    }
+
+    // 检查是否关联文件
+    let file_count: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM file_tags WHERE tag_id = ?1",
+        params![tag_id],
+        |row| row.get(0),
+    ).unwrap_or(0);
+
+    let has_files = file_count > 0;
+    if has_files && !force {
+        log::warn!("[tag:delete:blocked] 标签关联文件: {}, count={}", tag_id, file_count);
+        return Err(format!("{}:标签关联 {} 个文件，无法删除。使用 force=true 解除所有文件关联", ERR_TAG_HAS_FILES, file_count));
+    }
+
+    // 开始事务
+    let tx = conn.unchecked_transaction().map_err(|e| {
+        log::error!("[tag:delete:failed] 开启事务失败: {}", e);
+        format!("开启事务失败: {}", e)
+    })?;
+
+    // 如果 force=true，递归删除所有子标签
+    if force && has_children {
+        delete_children_recursive(&tx, &tag_id)?;
+    }
+
+    // 删除标签（CASCADE DELETE 会自动删除 file_tags 中的关联）
+    let rows_affected = tx
+        .execute("DELETE FROM tags WHERE tag_id = ?1", params![tag_id])
+        .map_err(|e| {
+            log::error!("[tag:delete:failed] 删除失败: {}", e);
+            format!("删除标签失败: {}", e)
+        })?;
+
+    if rows_affected == 0 {
+        log::warn!("[tag:delete:failed] 标签不存在: {}", tag_id);
+        return Err(format!("{}:标签不存在", ERR_TAG_NOT_FOUND));
+    }
+
+    // 提交事务
+    tx.commit().map_err(|e| {
+        log::error!("[tag:delete:failed] 提交事务失败: {}", e);
+        format!("提交事务失败: {}", e)
+    })?;
+
+    log::info!("[tag:delete:success] tag_id={}, force={}", tag_id, force);
+    Ok(())
+}
+
+/// 递归删除所有子标签
+///
+/// 用于 force 删除时，删除所有子孙标签
+fn delete_children_recursive(
+    tx: &rusqlite::Transaction,
+    parent_id: &str,
+) -> Result<(), String> {
+    // 查询所有直接子标签
+    let mut stmt = tx
+        .prepare("SELECT tag_id FROM tags WHERE parent_tag_id = ?1")
+        .map_err(|e| {
+            log::error!("[tag:delete:children:failed] 查询子标签失败: {}", e);
+            format!("查询子标签失败: {}", e)
+        })?;
+
+    let child_ids: Vec<String> = stmt
+        .query_map(params![parent_id], |row| row.get(0))
+        .map_err(|e| {
+            log::error!("[tag:delete:children:failed] 读取子标签失败: {}", e);
+            format!("读取子标签失败: {}", e)
+        })?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| {
+            log::error!("[tag:delete:children:failed] 收集子标签失败: {}", e);
+            format!("收集子标签失败: {}", e)
+        })?;
+
+    // 递归删除每个子标签
+    for child_id in child_ids {
+        // 先递归删除孙标签
+        delete_children_recursive(tx, &child_id)?;
+
+        // 删除当前子标签
+        tx.execute("DELETE FROM tags WHERE tag_id = ?1", params![child_id])
+            .map_err(|e| {
+                log::error!("[tag:delete:children:failed] 删除子标签失败: {}", e);
+                format!("删除子标签失败: {}", e)
+            })?;
+
+        log::info!("[tag:delete:child] 已删除子标签: {}", child_id);
+    }
+
+    Ok(())
+}
+
+/// 获取标签详情（包括关联信息）
+///
+/// 用于删除前的预检查，返回标签关联的文件数和子标签数
+///
+/// # Arguments
+/// * `tag_id` - 标签 ID
+///
+/// # Returns
+/// * `Ok((children_count, files_count))` - (子标签数, 关联文件数)
+/// * `Err(String)` - 标签不存在
+#[tauri::command]
+pub async fn get_tag_info(tag_id: String) -> Result<(i64, i64), String> {
+    log::info!("[tag:info] tag_id={}", tag_id);
+
+    // 打开数据库连接
+    let db_path = get_default_db_path();
+    let db = Database::new(db_path).map_err(|e| {
+        log::error!("[tag:info:failed] 数据库连接失败: {}", e);
+        format!("数据库连接失败: {}", e)
+    })?;
+
+    let conn = db.connection();
+
+    // 验证标签是否存在
+    let tag_exists: Result<bool, rusqlite::Error> = conn.query_row(
+        "SELECT COUNT(*) FROM tags WHERE tag_id = ?1",
+        params![tag_id],
+        |row| {
+            let count: i64 = row.get(0)?;
+            Ok(count > 0)
+        },
+    );
+
+    match tag_exists {
+        Ok(true) => {},
+        Ok(false) | Err(_) => {
+            log::warn!("[tag:info:failed] 标签不存在: {}", tag_id);
+            return Err(format!("{}:标签不存在", ERR_TAG_NOT_FOUND));
+        }
+    }
+
+    // 查询子标签数（递归统计所有子孙标签）
+    let children_count = count_descendants(&conn, &tag_id)?;
+
+    // 查询关联文件数
+    let files_count: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM file_tags WHERE tag_id = ?1",
+            params![tag_id],
+            |row| row.get(0),
+        )
+        .map_err(|e| {
+            log::error!("[tag:info:failed] 查询文件数失败: {}", e);
+            format!("查询文件数失败: {}", e)
+        })?;
+
+    log::info!("[tag:info:success] tag_id={}, children={}, files={}", tag_id, children_count, files_count);
+    Ok((children_count, files_count))
+}
+
+/// 递归统计所有子孙标签数量
+fn count_descendants(
+    conn: &rusqlite::Connection,
+    parent_id: &str,
+) -> Result<i64, String> {
+    // 查询直接子标签
+    let mut stmt = conn
+        .prepare("SELECT tag_id FROM tags WHERE parent_tag_id = ?1")
+        .map_err(|e| {
+            log::error!("[tag:count_descendants:failed] 查询子标签失败: {}", e);
+            format!("查询子标签失败: {}", e)
+        })?;
+
+    let child_ids: Vec<String> = stmt
+        .query_map(params![parent_id], |row| row.get(0))
+        .map_err(|e| {
+            log::error!("[tag:count_descendants:failed] 读取子标签失败: {}", e);
+            format!("读取子标签失败: {}", e)
+        })?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| {
+            log::error!("[tag:count_descendants:failed] 收集子标签失败: {}", e);
+            format!("收集子标签失败: {}", e)
+        })?;
+
+    let mut total = child_ids.len() as i64;
+
+    // 递归统计孙标签
+    for child_id in child_ids {
+        total += count_descendants(conn, &child_id)?;
+    }
+
+    Ok(total)
 }
 
 #[cfg(test)]
