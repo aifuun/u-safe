@@ -14,7 +14,13 @@ pub mod models;
 
 // Commands module (IPC 命令)
 mod commands;
-use commands::{scan_file_tree, encrypt_file, decrypt_file, create_tag, update_tag, get_tag_tree, delete_tag, get_tag_info};
+use commands::{
+    scan_file_tree, encrypt_file, decrypt_file,
+    create_tag, update_tag, get_tag_tree, delete_tag, get_tag_info,
+    add_tag_to_file, remove_tag_from_file,
+    add_tags_to_file, remove_tags_from_file,
+    get_file_tags, get_tag_files
+};
 
 use db::{Database, get_default_db_path};
 
@@ -64,7 +70,13 @@ pub fn run() {
             update_tag,
             get_tag_tree,
             delete_tag,
-            get_tag_info
+            get_tag_info,
+            add_tag_to_file,
+            remove_tag_from_file,
+            add_tags_to_file,
+            remove_tags_from_file,
+            get_file_tags,
+            get_tag_files
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

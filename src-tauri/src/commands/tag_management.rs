@@ -3,6 +3,7 @@ use crate::models::{Tag, CreateTagRequest, UpdateTagRequest, TagNode};
 use rusqlite::params;
 use uuid::Uuid;
 use std::collections::{HashMap, HashSet};
+use serde::{Serialize, Deserialize};
 
 /// 错误类型：标签名称重复
 const ERR_TAG_NAME_DUPLICATE: &str = "TagNameDuplicate";
@@ -834,6 +835,575 @@ fn count_descendants(
     }
 
     Ok(total)
+}
+
+// ============================================================================
+// Phase 2: File-Tag Association (文件-标签关联)
+// ============================================================================
+
+/// 错误类型：文件不存在
+const ERR_FILE_NOT_FOUND: &str = "FileNotFound";
+
+/// 为文件添加单个标签
+///
+/// # Arguments
+/// * `file_id` - 文件 ID (files 表主键)
+/// * `tag_id` - 标签 ID (tags 表主键)
+///
+/// # Returns
+/// * `Ok(())` - 添加成功（幂等：已存在则返回成功）
+/// * `Err(String)` - 添加失败，返回错误信息
+///
+/// # Errors
+/// * `FileNotFound` - 文件不存在
+/// * `TagNotFound` - 标签不存在
+#[tauri::command]
+pub async fn add_tag_to_file(file_id: i64, tag_id: String) -> Result<(), String> {
+    log::info!("[file-tag:add] file_id={}, tag_id={}", file_id, tag_id);
+
+    // 打开数据库连接
+    let db_path = get_default_db_path();
+    let db = Database::new(db_path).map_err(|e| {
+        log::error!("[file-tag:add:failed] 数据库连接失败: {}", e);
+        format!("数据库连接失败: {}", e)
+    })?;
+
+    let conn = db.connection();
+
+    // 验证文件是否存在
+    let file_exists: Result<bool, rusqlite::Error> = conn.query_row(
+        "SELECT COUNT(*) FROM files WHERE id = ?1",
+        params![file_id],
+        |row| {
+            let count: i64 = row.get(0)?;
+            Ok(count > 0)
+        },
+    );
+
+    match file_exists {
+        Ok(true) => {},
+        Ok(false) | Err(_) => {
+            log::warn!("[file-tag:add:failed] 文件不存在: file_id={}", file_id);
+            return Err(format!("{}:文件不存在", ERR_FILE_NOT_FOUND));
+        }
+    }
+
+    // 验证标签是否存在
+    let tag_exists: Result<bool, rusqlite::Error> = conn.query_row(
+        "SELECT COUNT(*) FROM tags WHERE tag_id = ?1",
+        params![tag_id],
+        |row| {
+            let count: i64 = row.get(0)?;
+            Ok(count > 0)
+        },
+    );
+
+    match tag_exists {
+        Ok(true) => {},
+        Ok(false) | Err(_) => {
+            log::warn!("[file-tag:add:failed] 标签不存在: tag_id={}", tag_id);
+            return Err(format!("{}:标签不存在", ERR_TAG_NOT_FOUND));
+        }
+    }
+
+    // 检查关联是否已存在（幂等性）
+    let association_exists: Result<bool, rusqlite::Error> = conn.query_row(
+        "SELECT COUNT(*) FROM file_tags WHERE file_id = ?1 AND tag_id = ?2",
+        params![file_id, tag_id],
+        |row| {
+            let count: i64 = row.get(0)?;
+            Ok(count > 0)
+        },
+    );
+
+    if association_exists.unwrap_or(false) {
+        log::info!("[file-tag:add:skip] 关联已存在: file_id={}, tag_id={}", file_id, tag_id);
+        return Ok(()); // 幂等：已存在则返回成功
+    }
+
+    // 插入关联记录
+    let now = chrono::Utc::now().to_rfc3339();
+    conn.execute(
+        "INSERT INTO file_tags (file_id, tag_id, created_at) VALUES (?1, ?2, ?3)",
+        params![file_id, tag_id, now],
+    )
+    .map_err(|e| {
+        log::error!("[file-tag:add:failed] 插入失败: {}", e);
+        format!("添加标签失败: {}", e)
+    })?;
+
+    // 更新标签使用计数
+    conn.execute(
+        "UPDATE tags SET usage_count = usage_count + 1, updated_at = ?1 WHERE tag_id = ?2",
+        params![now, tag_id],
+    )
+    .map_err(|e| {
+        log::warn!("[file-tag:add] 更新使用计数失败: {}", e);
+        // 不影响主流程，仅记录警告
+    })
+    .ok();
+
+    log::info!("[file-tag:add:success] file_id={}, tag_id={}", file_id, tag_id);
+    Ok(())
+}
+
+/// 为文件移除单个标签
+///
+/// # Arguments
+/// * `file_id` - 文件 ID
+/// * `tag_id` - 标签 ID
+///
+/// # Returns
+/// * `Ok(())` - 移除成功（幂等：不存在则返回成功）
+/// * `Err(String)` - 移除失败
+#[tauri::command]
+pub async fn remove_tag_from_file(file_id: i64, tag_id: String) -> Result<(), String> {
+    log::info!("[file-tag:remove] file_id={}, tag_id={}", file_id, tag_id);
+
+    // 打开数据库连接
+    let db_path = get_default_db_path();
+    let db = Database::new(db_path).map_err(|e| {
+        log::error!("[file-tag:remove:failed] 数据库连接失败: {}", e);
+        format!("数据库连接失败: {}", e)
+    })?;
+
+    let conn = db.connection();
+
+    // 删除关联记录（幂等：不存在也返回成功）
+    let rows_affected = conn
+        .execute(
+            "DELETE FROM file_tags WHERE file_id = ?1 AND tag_id = ?2",
+            params![file_id, tag_id],
+        )
+        .map_err(|e| {
+            log::error!("[file-tag:remove:failed] 删除失败: {}", e);
+            format!("移除标签失败: {}", e)
+        })?;
+
+    if rows_affected > 0 {
+        // 更新标签使用计数（仅当确实删除了关联时）
+        let now = chrono::Utc::now().to_rfc3339();
+        conn.execute(
+            "UPDATE tags SET usage_count = MAX(0, usage_count - 1), updated_at = ?1 WHERE tag_id = ?2",
+            params![now, tag_id],
+        )
+        .map_err(|e| {
+            log::warn!("[file-tag:remove] 更新使用计数失败: {}", e);
+            // 不影响主流程，仅记录警告
+        })
+        .ok();
+
+        log::info!("[file-tag:remove:success] file_id={}, tag_id={}", file_id, tag_id);
+    } else {
+        log::info!("[file-tag:remove:skip] 关联不存在: file_id={}, tag_id={}", file_id, tag_id);
+    }
+
+    Ok(())
+}
+
+/// 批量为文件添加标签
+///
+/// # Arguments
+/// * `file_id` - 文件 ID
+/// * `tag_ids` - 标签 ID 列表
+///
+/// # Returns
+/// * `Ok((success_count, failed_tags))` - (成功数量, 失败的标签列表)
+/// * `Err(String)` - 操作失败
+#[tauri::command]
+pub async fn add_tags_to_file(file_id: i64, tag_ids: Vec<String>) -> Result<(usize, Vec<String>), String> {
+    log::info!("[file-tag:batch:start] file_id={}, count={}", file_id, tag_ids.len());
+
+    // 打开数据库连接
+    let db_path = get_default_db_path();
+    let db = Database::new(db_path).map_err(|e| {
+        log::error!("[file-tag:batch:failed] 数据库连接失败: {}", e);
+        format!("数据库连接失败: {}", e)
+    })?;
+
+    let conn = db.connection();
+
+    // 验证文件是否存在
+    let file_exists: Result<bool, rusqlite::Error> = conn.query_row(
+        "SELECT COUNT(*) FROM files WHERE id = ?1",
+        params![file_id],
+        |row| {
+            let count: i64 = row.get(0)?;
+            Ok(count > 0)
+        },
+    );
+
+    match file_exists {
+        Ok(true) => {},
+        Ok(false) | Err(_) => {
+            log::warn!("[file-tag:batch:failed] 文件不存在: file_id={}", file_id);
+            return Err(format!("{}:文件不存在", ERR_FILE_NOT_FOUND));
+        }
+    }
+
+    // 开始事务
+    let tx = conn.unchecked_transaction().map_err(|e| {
+        log::error!("[file-tag:batch:failed] 开启事务失败: {}", e);
+        format!("开启事务失败: {}", e)
+    })?;
+
+    let now = chrono::Utc::now().to_rfc3339();
+    let mut success_count = 0;
+    let mut failed_tags: Vec<String> = Vec::new();
+
+    for tag_id in tag_ids.iter() {
+        // 验证标签是否存在
+        let tag_exists: Result<bool, rusqlite::Error> = tx.query_row(
+            "SELECT COUNT(*) FROM tags WHERE tag_id = ?1",
+            params![tag_id],
+            |row| {
+                let count: i64 = row.get(0)?;
+                Ok(count > 0)
+            },
+        );
+
+        if !tag_exists.unwrap_or(false) {
+            log::warn!("[file-tag:batch] 标签不存在: tag_id={}", tag_id);
+            failed_tags.push(tag_id.clone());
+            continue;
+        }
+
+        // 检查关联是否已存在
+        let association_exists: Result<bool, rusqlite::Error> = tx.query_row(
+            "SELECT COUNT(*) FROM file_tags WHERE file_id = ?1 AND tag_id = ?2",
+            params![file_id, tag_id],
+            |row| {
+                let count: i64 = row.get(0)?;
+                Ok(count > 0)
+            },
+        );
+
+        if association_exists.unwrap_or(false) {
+            log::info!("[file-tag:batch] 关联已存在，跳过: tag_id={}", tag_id);
+            success_count += 1; // 幂等：已存在计为成功
+            continue;
+        }
+
+        // 插入关联记录
+        match tx.execute(
+            "INSERT INTO file_tags (file_id, tag_id, created_at) VALUES (?1, ?2, ?3)",
+            params![file_id, tag_id, now],
+        ) {
+            Ok(_) => {
+                // 更新标签使用计数
+                tx.execute(
+                    "UPDATE tags SET usage_count = usage_count + 1, updated_at = ?1 WHERE tag_id = ?2",
+                    params![now, tag_id],
+                )
+                .ok();
+                success_count += 1;
+            }
+            Err(e) => {
+                log::error!("[file-tag:batch] 插入失败: tag_id={}, error={}", tag_id, e);
+                failed_tags.push(tag_id.clone());
+            }
+        }
+    }
+
+    // 提交事务
+    tx.commit().map_err(|e| {
+        log::error!("[file-tag:batch:failed] 提交事务失败: {}", e);
+        format!("提交事务失败: {}", e)
+    })?;
+
+    log::info!(
+        "[file-tag:batch:done] file_id={}, success={}, failed={}",
+        file_id,
+        success_count,
+        failed_tags.len()
+    );
+
+    Ok((success_count, failed_tags))
+}
+
+/// 批量为文件移除标签
+///
+/// # Arguments
+/// * `file_id` - 文件 ID
+/// * `tag_ids` - 标签 ID 列表
+///
+/// # Returns
+/// * `Ok(removed_count)` - 实际移除的关联数量
+/// * `Err(String)` - 操作失败
+#[tauri::command]
+pub async fn remove_tags_from_file(file_id: i64, tag_ids: Vec<String>) -> Result<usize, String> {
+    log::info!("[file-tag:batch_remove:start] file_id={}, count={}", file_id, tag_ids.len());
+
+    // 打开数据库连接
+    let db_path = get_default_db_path();
+    let db = Database::new(db_path).map_err(|e| {
+        log::error!("[file-tag:batch_remove:failed] 数据库连接失败: {}", e);
+        format!("数据库连接失败: {}", e)
+    })?;
+
+    let conn = db.connection();
+
+    // 开始事务
+    let tx = conn.unchecked_transaction().map_err(|e| {
+        log::error!("[file-tag:batch_remove:failed] 开启事务失败: {}", e);
+        format!("开启事务失败: {}", e)
+    })?;
+
+    let now = chrono::Utc::now().to_rfc3339();
+    let mut removed_count = 0;
+
+    for tag_id in tag_ids.iter() {
+        // 删除关联记录
+        match tx.execute(
+            "DELETE FROM file_tags WHERE file_id = ?1 AND tag_id = ?2",
+            params![file_id, tag_id],
+        ) {
+            Ok(rows) => {
+                if rows > 0 {
+                    // 更新标签使用计数
+                    tx.execute(
+                        "UPDATE tags SET usage_count = MAX(0, usage_count - 1), updated_at = ?1 WHERE tag_id = ?2",
+                        params![now, tag_id],
+                    )
+                    .ok();
+                    removed_count += rows;
+                }
+            }
+            Err(e) => {
+                log::error!("[file-tag:batch_remove] 删除失败: tag_id={}, error={}", tag_id, e);
+                // 继续处理其他标签，不中断事务
+            }
+        }
+    }
+
+    // 提交事务
+    tx.commit().map_err(|e| {
+        log::error!("[file-tag:batch_remove:failed] 提交事务失败: {}", e);
+        format!("提交事务失败: {}", e)
+    })?;
+
+    log::info!(
+        "[file-tag:batch_remove:done] file_id={}, removed={}",
+        file_id,
+        removed_count
+    );
+
+    Ok(removed_count)
+}
+
+/// 获取文件的所有标签
+///
+/// # Arguments
+/// * `file_id` - 文件 ID
+///
+/// # Returns
+/// * `Ok(Vec<Tag>)` - 标签列表（按创建时间排序）
+/// * `Err(String)` - 查询失败
+#[tauri::command]
+pub async fn get_file_tags(file_id: i64) -> Result<Vec<Tag>, String> {
+    log::info!("[file-tag:query] file_id={}", file_id);
+
+    // 打开数据库连接
+    let db_path = get_default_db_path();
+    let db = Database::new(db_path).map_err(|e| {
+        log::error!("[file-tag:query:failed] 数据库连接失败: {}", e);
+        format!("数据库连接失败: {}", e)
+    })?;
+
+    let conn = db.connection();
+
+    // 查询文件的所有标签（JOIN tags 表获取标签详情）
+    let mut stmt = conn
+        .prepare(
+            "SELECT t.tag_id, t.tag_name, t.tag_color, t.parent_tag_id, t.tag_level, t.full_path,
+                    t.created_at, t.updated_at, t.usage_count
+             FROM tags t
+             INNER JOIN file_tags ft ON t.tag_id = ft.tag_id
+             WHERE ft.file_id = ?1
+             ORDER BY ft.created_at ASC",
+        )
+        .map_err(|e| {
+            log::error!("[file-tag:query:failed] 查询失败: {}", e);
+            format!("查询文件标签失败: {}", e)
+        })?;
+
+    let tags: Vec<Tag> = stmt
+        .query_map(params![file_id], |row| {
+            Ok(Tag {
+                tag_id: row.get(0)?,
+                tag_name: row.get(1)?,
+                tag_color: row.get(2)?,
+                parent_tag_id: row.get(3)?,
+                tag_level: row.get(4)?,
+                full_path: row.get(5)?,
+                created_at: row.get(6)?,
+                updated_at: row.get(7)?,
+                usage_count: row.get(8)?,
+            })
+        })
+        .map_err(|e| {
+            log::error!("[file-tag:query:failed] 读取标签失败: {}", e);
+            format!("读取标签失败: {}", e)
+        })?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| {
+            log::error!("[file-tag:query:failed] 收集标签失败: {}", e);
+            format!("收集标签失败: {}", e)
+        })?;
+
+    log::info!("[file-tag:query:success] file_id={}, count={}", file_id, tags.len());
+    Ok(tags)
+}
+
+/// 文件信息结构（简化版）
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FileInfo {
+    pub id: i64,
+    pub file_path: String,
+    pub original_name: String,
+    pub file_size: i64,
+    pub is_encrypted: bool,
+    pub created_at: String,
+}
+
+/// 获取标签关联的所有文件
+///
+/// # Arguments
+/// * `tag_id` - 标签 ID
+/// * `recursive` - 是否递归查询子标签的文件（默认 false）
+///
+/// # Returns
+/// * `Ok(Vec<FileInfo>)` - 文件列表
+/// * `Err(String)` - 查询失败
+#[tauri::command]
+pub async fn get_tag_files(tag_id: String, recursive: Option<bool>) -> Result<Vec<FileInfo>, String> {
+    let recursive = recursive.unwrap_or(false);
+    log::info!("[tag-files:query] tag_id={}, recursive={}", tag_id, recursive);
+
+    // 打开数据库连接
+    let db_path = get_default_db_path();
+    let db = Database::new(db_path).map_err(|e| {
+        log::error!("[tag-files:query:failed] 数据库连接失败: {}", e);
+        format!("数据库连接失败: {}", e)
+    })?;
+
+    let conn = db.connection();
+
+    // 验证标签是否存在
+    let tag_exists: Result<bool, rusqlite::Error> = conn.query_row(
+        "SELECT COUNT(*) FROM tags WHERE tag_id = ?1",
+        params![tag_id],
+        |row| {
+            let count: i64 = row.get(0)?;
+            Ok(count > 0)
+        },
+    );
+
+    match tag_exists {
+        Ok(true) => {},
+        Ok(false) | Err(_) => {
+            log::warn!("[tag-files:query:failed] 标签不存在: tag_id={}", tag_id);
+            return Err(format!("{}:标签不存在", ERR_TAG_NOT_FOUND));
+        }
+    }
+
+    // 收集所有相关标签 ID（包含当前标签和递归子标签）
+    let mut tag_ids = vec![tag_id.clone()];
+    if recursive {
+        let descendant_ids = get_all_descendant_tag_ids(&conn, &tag_id)?;
+        tag_ids.extend(descendant_ids);
+    }
+
+    // 查询所有相关标签的文件（去重）
+    let placeholders = tag_ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
+    let query = format!(
+        "SELECT DISTINCT f.id, f.file_path, f.original_name, f.file_size, f.is_encrypted, f.created_at
+         FROM files f
+         INNER JOIN file_tags ft ON f.id = ft.file_id
+         WHERE ft.tag_id IN ({})
+         ORDER BY f.created_at DESC",
+        placeholders
+    );
+
+    let mut stmt = conn.prepare(&query).map_err(|e| {
+        log::error!("[tag-files:query:failed] 查询失败: {}", e);
+        format!("查询标签文件失败: {}", e)
+    })?;
+
+    let params: Vec<&dyn rusqlite::ToSql> = tag_ids.iter().map(|id| id as &dyn rusqlite::ToSql).collect();
+    let files: Vec<FileInfo> = stmt
+        .query_map(params.as_slice(), |row| {
+            Ok(FileInfo {
+                id: row.get(0)?,
+                file_path: row.get(1)?,
+                original_name: row.get(2)?,
+                file_size: row.get(3)?,
+                is_encrypted: row.get::<_, i32>(4)? != 0,
+                created_at: row.get(5)?,
+            })
+        })
+        .map_err(|e| {
+            log::error!("[tag-files:query:failed] 读取文件失败: {}", e);
+            format!("读取文件失败: {}", e)
+        })?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| {
+            log::error!("[tag-files:query:failed] 收集文件失败: {}", e);
+            format!("收集文件失败: {}", e)
+        })?;
+
+    log::info!(
+        "[tag-files:query:success] tag_id={}, recursive={}, count={}",
+        tag_id,
+        recursive,
+        files.len()
+    );
+    Ok(files)
+}
+
+/// 递归获取所有子孙标签 ID
+///
+/// # Arguments
+/// * `conn` - 数据库连接
+/// * `parent_id` - 父标签 ID
+///
+/// # Returns
+/// * `Ok(Vec<String>)` - 所有子孙标签 ID 列表
+/// * `Err(String)` - 查询失败
+fn get_all_descendant_tag_ids(
+    conn: &rusqlite::Connection,
+    parent_id: &str,
+) -> Result<Vec<String>, String> {
+    let mut all_descendants = Vec::new();
+
+    // 查询直接子标签
+    let mut stmt = conn
+        .prepare("SELECT tag_id FROM tags WHERE parent_tag_id = ?1")
+        .map_err(|e| {
+            log::error!("[tag:descendants:failed] 查询子标签失败: {}", e);
+            format!("查询子标签失败: {}", e)
+        })?;
+
+    let child_ids: Vec<String> = stmt
+        .query_map(params![parent_id], |row| row.get(0))
+        .map_err(|e| {
+            log::error!("[tag:descendants:failed] 读取子标签失败: {}", e);
+            format!("读取子标签失败: {}", e)
+        })?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| {
+            log::error!("[tag:descendants:failed] 收集子标签失败: {}", e);
+            format!("收集子标签失败: {}", e)
+        })?;
+
+    // 递归收集孙标签
+    for child_id in child_ids {
+        all_descendants.push(child_id.clone());
+        let grandchildren = get_all_descendant_tag_ids(conn, &child_id)?;
+        all_descendants.extend(grandchildren);
+    }
+
+    Ok(all_descendants)
 }
 
 #[cfg(test)]
