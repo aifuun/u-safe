@@ -1,0 +1,203 @@
+/* TagCreateForm.css - 遵循 design-system.md 规范 */
+
+.tag-create-form {
+  padding: var(--space-6);
+  background: var(--bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Form Header */
+.form-header {
+  margin-bottom: var(--space-5);
+}
+
+.form-title {
+  font-size: var(--text-lg);
+  font-weight: var(--font-weight-bold);
+  line-height: 1.5;
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.parent-tag-info {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  margin-top: var(--space-2);
+}
+
+.parent-tag-name {
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-primary);
+}
+
+/* Form Group */
+.form-group {
+  margin-bottom: var(--space-4);
+}
+
+.form-label {
+  display: block;
+  font-size: var(--text-sm);
+  font-weight: var(--font-weight-semibold);
+  margin-bottom: var(--space-2);
+  color: var(--text-primary);
+}
+
+.required {
+  color: var(--color-error);
+}
+
+/* Input Field */
+.form-input {
+  width: 100%;
+  padding: var(--space-3);
+  font-size: var(--text-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  transition: border-color var(--duration-fast) var(--ease-out);
+}
+
+.form-input:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-color: var(--color-primary);
+}
+
+.form-input:disabled {
+  background: var(--bg-surface);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.form-input[aria-invalid="true"] {
+  border-color: var(--color-error);
+}
+
+.form-input::placeholder {
+  color: var(--text-muted);
+}
+
+/* Character Count */
+.char-count {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  text-align: right;
+  margin-top: var(--space-1);
+}
+
+/* Color Picker */
+.color-picker-container {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.color-picker {
+  width: 48px;
+  height: 48px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.color-picker:hover:not(:disabled) {
+  box-shadow: var(--shadow-md);
+}
+
+.color-picker:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.color-picker:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.color-value {
+  font-family: var(--font-family-mono);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+/* Error Message */
+.error-message {
+  padding: var(--space-3);
+  background: #fef2f2;
+  border: 1px solid var(--color-error);
+  border-radius: var(--radius-sm);
+  color: var(--color-error);
+  font-size: var(--text-sm);
+  margin-bottom: var(--space-4);
+}
+
+/* Form Actions */
+.form-actions {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: flex-end;
+}
+
+/* Button Styles (遵循 BUTTONS.md) */
+.btn {
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--text-sm);
+  font-weight: var(--font-weight-semibold);
+  border-radius: var(--radius-sm);
+  border: none;
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-out);
+}
+
+.btn-primary {
+  background: var(--color-primary);
+  color: #ffffff;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+}
+
+.btn-primary:active:not(:disabled) {
+  background: var(--color-primary-active);
+}
+
+.btn-primary:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.btn-primary:disabled {
+  background: var(--bg-surface);
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+
+/* Accessibility: Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  .form-input,
+  .color-picker,
+  .btn {
+    transition: none;
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .tag-create-form {
+    padding: var(--space-4);
+  }
+
+  .form-actions {
+    flex-direction: column;
+  }
+
+  .btn {
+    width: 100%;
+  }
+}
