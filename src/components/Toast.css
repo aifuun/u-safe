@@ -1,0 +1,125 @@
+/* Toast 容器 */
+.toast-container {
+  position: fixed;
+  top: var(--space-4);
+  right: var(--space-4);
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  pointer-events: none;
+}
+
+/* Toast */
+.toast {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-bg-surface, #ffffff);
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  min-width: 300px;
+  max-width: 500px;
+  pointer-events: auto;
+  animation: toastSlideIn 0.2s ease-out;
+}
+
+@keyframes toastSlideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Toast 类型 */
+.toast--success {
+  border-left: 4px solid var(--color-success, #10b981);
+}
+
+.toast--error {
+  border-left: 4px solid var(--color-error, #ef4444);
+}
+
+.toast--info {
+  border-left: 4px solid var(--color-primary, #3b82f6);
+}
+
+/* Icon */
+.toast__icon {
+  font-size: var(--text-lg);
+  flex-shrink: 0;
+}
+
+/* Message */
+.toast__message {
+  flex: 1;
+  font-size: var(--text-sm);
+  color: var(--color-text-primary, #1f2937);
+  line-height: 1.5;
+}
+
+/* Close button */
+.toast__close {
+  padding: var(--space-1);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  font-size: var(--text-base);
+  color: var(--color-text-muted, #9ca3af);
+  transition: background var(--duration-fast) var(--ease-out);
+  flex-shrink: 0;
+}
+
+.toast__close:hover {
+  background: var(--color-bg-hover, #f3f4f6);
+  color: var(--color-text-primary, #1f2937);
+}
+
+.toast__close:focus-visible {
+  outline: 2px solid var(--color-primary, #3b82f6);
+  outline-offset: 2px;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    animation: none;
+  }
+
+  .toast__close {
+    transition: none;
+  }
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .toast-container {
+    left: var(--space-2);
+    right: var(--space-2);
+    top: auto;
+    bottom: var(--space-4);
+  }
+
+  .toast {
+    min-width: unset;
+    width: 100%;
+  }
+
+  @keyframes toastSlideIn {
+    from {
+      transform: translateY(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+}

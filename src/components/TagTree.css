@@ -70,6 +70,29 @@
   background: var(--color-bg-hover, #f3f4f6);
 }
 
+/* 拖拽状态 */
+.tag-tree-item--dragging {
+  opacity: 0.5;
+  cursor: move;
+}
+
+.tag-tree-item--drop-target {
+  background: var(--color-primary, #3b82f6);
+  color: white;
+  box-shadow: 0 0 0 2px var(--color-primary, #3b82f6);
+}
+
+.tag-tree-item--drop-target .tag-tree-name,
+.tag-tree-item--drop-target .tag-tree-count {
+  color: white;
+}
+
+.tag-tree-item--drop-invalid {
+  background: var(--color-error-light, #fee2e2);
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
 /* Toggle button */
 .tag-tree-toggle {
   width: 20px;

@@ -1788,6 +1788,678 @@ pub async fn get_recent_files(days: i64) -> Result<Vec<FileInfo>, String> {
     Ok(files)
 }
 
+// ================================
+// Phase 6: 扩展功能 - Extensions
+// ================================
+
+/// 批量操作结果
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BulkOperationResult {
+    pub total_files: usize,
+    pub total_tags: usize,
+    pub associations_added: usize,
+    pub failures: Vec<String>,
+}
+
+/// 批量添加标签到多个文件
+///
+/// # Arguments
+/// * `file_ids` - 文件 ID 列表
+/// * `tag_ids` - 标签 ID 列表
+///
+/// # Returns
+/// * `Ok(BulkOperationResult)` - 操作结果
+#[tauri::command]
+pub async fn bulk_add_tags(file_ids: Vec<i64>, tag_ids: Vec<String>) -> Result<BulkOperationResult, String> {
+    log::info!("[bulk:add_tags] files={}, tags={}", file_ids.len(), tag_ids.len());
+
+    let db_path = get_default_db_path();
+    let db = Database::new(db_path).map_err(|e| {
+        log::error!("[bulk:add_tags:failed] 数据库连接失败: {}", e);
+        format!("数据库连接失败: {}", e)
+    })?;
+
+    let conn = db.connection();
+    let mut associations_added = 0;
+    let mut failures = Vec::new();
+    let now = chrono::Utc::now().to_rfc3339();
+
+    // 开始事务
+    conn.execute("BEGIN TRANSACTION", []).map_err(|e| {
+        log::error!("[bulk:add_tags:failed] 开始事务失败: {}", e);
+        format!("开始事务失败: {}", e)
+    })?;
+
+    for file_id in &file_ids {
+        for tag_id in &tag_ids {
+            // 检查关联是否已存在（幂等性）
+            let exists: Result<i64, rusqlite::Error> = conn.query_row(
+                "SELECT COUNT(*) FROM file_tags WHERE file_id = ?1 AND tag_id = ?2",
+                params![file_id, tag_id],
+                |row| row.get(0),
+            );
+
+            match exists {
+                Ok(count) if count > 0 => {
+                    // 关联已存在，跳过
+                    continue;
+                }
+                Ok(_) => {
+                    // 添加关联
+                    match conn.execute(
+                        "INSERT INTO file_tags (file_id, tag_id, created_at) VALUES (?1, ?2, ?3)",
+                        params![file_id, tag_id, now],
+                    ) {
+                        Ok(_) => {
+                            associations_added += 1;
+                            // 更新标签使用计数
+                            let _ = conn.execute(
+                                "UPDATE tags SET usage_count = usage_count + 1 WHERE tag_id = ?1",
+                                params![tag_id],
+                            );
+                        }
+                        Err(e) => {
+                            failures.push(format!("文件 {} + 标签 {}: {}", file_id, tag_id, e));
+                        }
+                    }
+                }
+                Err(e) => {
+                    failures.push(format!("检查关联失败 (文件 {} + 标签 {}): {}", file_id, tag_id, e));
+                }
+            }
+        }
+    }
+
+    // 提交事务
+    conn.execute("COMMIT", []).map_err(|e| {
+        log::error!("[bulk:add_tags:failed] 提交事务失败: {}", e);
+        let _ = conn.execute("ROLLBACK", []);
+        format!("提交事务失败: {}", e)
+    })?;
+
+    let result = BulkOperationResult {
+        total_files: file_ids.len(),
+        total_tags: tag_ids.len(),
+        associations_added,
+        failures,
+    };
+
+    log::info!(
+        "[bulk:add_tags:success] files={}, tags={}, associations={}",
+        result.total_files,
+        result.total_tags,
+        result.associations_added
+    );
+
+    Ok(result)
+}
+
+/// 批量从多个文件移除标签
+///
+/// # Arguments
+/// * `file_ids` - 文件 ID 列表
+/// * `tag_ids` - 标签 ID 列表
+#[tauri::command]
+pub async fn bulk_remove_tags(file_ids: Vec<i64>, tag_ids: Vec<String>) -> Result<BulkOperationResult, String> {
+    log::info!("[bulk:remove_tags] files={}, tags={}", file_ids.len(), tag_ids.len());
+
+    let db_path = get_default_db_path();
+    let db = Database::new(db_path).map_err(|e| {
+        log::error!("[bulk:remove_tags:failed] 数据库连接失败: {}", e);
+        format!("数据库连接失败: {}", e)
+    })?;
+
+    let conn = db.connection();
+    let mut associations_removed = 0;
+    let mut failures = Vec::new();
+
+    // 开始事务
+    conn.execute("BEGIN TRANSACTION", []).map_err(|e| {
+        log::error!("[bulk:remove_tags:failed] 开始事务失败: {}", e);
+        format!("开始事务失败: {}", e)
+    })?;
+
+    for file_id in &file_ids {
+        for tag_id in &tag_ids {
+            match conn.execute(
+                "DELETE FROM file_tags WHERE file_id = ?1 AND tag_id = ?2",
+                params![file_id, tag_id],
+            ) {
+                Ok(rows) => {
+                    if rows > 0 {
+                        associations_removed += rows;
+                        // 更新标签使用计数
+                        let _ = conn.execute(
+                            "UPDATE tags SET usage_count = usage_count - 1 WHERE tag_id = ?1 AND usage_count > 0",
+                            params![tag_id],
+                        );
+                    }
+                }
+                Err(e) => {
+                    failures.push(format!("文件 {} - 标签 {}: {}", file_id, tag_id, e));
+                }
+            }
+        }
+    }
+
+    // 提交事务
+    conn.execute("COMMIT", []).map_err(|e| {
+        log::error!("[bulk:remove_tags:failed] 提交事务失败: {}", e);
+        let _ = conn.execute("ROLLBACK", []);
+        format!("提交事务失败: {}", e)
+    })?;
+
+    let result = BulkOperationResult {
+        total_files: file_ids.len(),
+        total_tags: tag_ids.len(),
+        associations_added: associations_removed,
+        failures,
+    };
+
+    log::info!(
+        "[bulk:remove_tags:success] files={}, tags={}, associations={}",
+        result.total_files,
+        result.total_tags,
+        result.associations_added
+    );
+
+    Ok(result)
+}
+
+/// 批量删除结果
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BulkDeleteResult {
+    pub deleted_tags: usize,
+    pub deleted_children: usize,
+    pub affected_files: usize,
+}
+
+/// 批量删除标签
+///
+/// # Arguments
+/// * `tag_ids` - 要删除的标签 ID 列表
+/// * `force` - 是否强制删除（包括子标签和文件关联）
+#[tauri::command]
+pub async fn bulk_delete_tags(tag_ids: Vec<String>, force: bool) -> Result<BulkDeleteResult, String> {
+    log::info!("[bulk:delete_tags] tags={}, force={}", tag_ids.len(), force);
+
+    let db_path = get_default_db_path();
+    let db = Database::new(db_path).map_err(|e| {
+        log::error!("[bulk:delete_tags:failed] 数据库连接失败: {}", e);
+        format!("数据库连接失败: {}", e)
+    })?;
+
+    let conn = db.connection();
+    let mut deleted_tags = 0;
+    let mut deleted_children = 0;
+    let mut affected_files = 0;
+
+    // 开始事务
+    conn.execute("BEGIN TRANSACTION", []).map_err(|e| {
+        log::error!("[bulk:delete_tags:failed] 开始事务失败: {}", e);
+        format!("开始事务失败: {}", e)
+    })?;
+
+    for tag_id in &tag_ids {
+        // 检查是否有子标签
+        let child_count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM tags WHERE parent_tag_id = ?1",
+                params![tag_id],
+                |row| row.get(0),
+            )
+            .unwrap_or(0);
+
+        if child_count > 0 && !force {
+            conn.execute("ROLLBACK", []).ok();
+            return Err(format!("{}:标签 {} 有 {} 个子标签", ERR_TAG_HAS_CHILDREN, tag_id, child_count));
+        }
+
+        // 检查是否关联文件
+        let file_count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM file_tags WHERE tag_id = ?1",
+                params![tag_id],
+                |row| row.get(0),
+            )
+            .unwrap_or(0);
+
+        if file_count > 0 && !force {
+            conn.execute("ROLLBACK", []).ok();
+            return Err(format!("{}:标签 {} 关联 {} 个文件", ERR_TAG_HAS_FILES, tag_id, file_count));
+        }
+
+        // 如果强制删除，先删除所有子标签
+        if force && child_count > 0 {
+            let child_ids = get_all_descendant_tag_ids(&conn, tag_id).unwrap_or_default();
+            for child_id in &child_ids {
+                // 删除子标签的文件关联
+                let child_file_count: i64 = conn
+                    .query_row(
+                        "SELECT COUNT(*) FROM file_tags WHERE tag_id = ?1",
+                        params![child_id],
+                        |row| row.get(0),
+                    )
+                    .unwrap_or(0);
+
+                conn.execute("DELETE FROM file_tags WHERE tag_id = ?1", params![child_id]).ok();
+                affected_files += child_file_count as usize;
+
+                // 删除子标签
+                conn.execute("DELETE FROM tags WHERE tag_id = ?1", params![child_id]).ok();
+                deleted_children += 1;
+            }
+        }
+
+        // 删除标签的文件关联
+        conn.execute("DELETE FROM file_tags WHERE tag_id = ?1", params![tag_id]).ok();
+        affected_files += file_count as usize;
+
+        // 删除标签本身
+        match conn.execute("DELETE FROM tags WHERE tag_id = ?1", params![tag_id]) {
+            Ok(rows) => {
+                deleted_tags += rows;
+            }
+            Err(e) => {
+                log::error!("[bulk:delete_tags:failed] 删除标签失败 {}: {}", tag_id, e);
+            }
+        }
+    }
+
+    // 提交事务
+    conn.execute("COMMIT", []).map_err(|e| {
+        log::error!("[bulk:delete_tags:failed] 提交事务失败: {}", e);
+        let _ = conn.execute("ROLLBACK", []);
+        format!("提交事务失败: {}", e)
+    })?;
+
+    let result = BulkDeleteResult {
+        deleted_tags,
+        deleted_children,
+        affected_files,
+    };
+
+    log::info!(
+        "[bulk:delete_tags:success] deleted={}, children={}, files={}",
+        result.deleted_tags,
+        result.deleted_children,
+        result.affected_files
+    );
+
+    Ok(result)
+}
+
+/// 标签导出格式
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TagExport {
+    pub version: String,
+    pub exported_at: String,
+    pub tags: Vec<TagExportNode>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TagExportNode {
+    pub tag_name: String,
+    pub tag_color: Option<String>,
+    pub children: Vec<TagExportNode>,
+}
+
+/// 导出标签树为 JSON
+#[tauri::command]
+pub async fn export_tags() -> Result<String, String> {
+    log::info!("[tag:export] 开始导出标签...");
+
+    let db_path = get_default_db_path();
+    let db = Database::new(db_path).map_err(|e| {
+        log::error!("[tag:export:failed] 数据库连接失败: {}", e);
+        format!("数据库连接失败: {}", e)
+    })?;
+
+    let conn = db.connection();
+
+    // 查询所有标签
+    let mut stmt = conn
+        .prepare(
+            "SELECT tag_id, tag_name, tag_color, parent_tag_id, tag_level, full_path, created_at, updated_at, usage_count
+             FROM tags
+             ORDER BY tag_level, tag_name",
+        )
+        .map_err(|e| {
+            log::error!("[tag:export:failed] 查询标签失败: {}", e);
+            format!("查询标签失败: {}", e)
+        })?;
+
+    let tags: Vec<Tag> = stmt
+        .query_map([], |row| {
+            Ok(Tag {
+                tag_id: row.get(0)?,
+                tag_name: row.get(1)?,
+                tag_color: row.get(2)?,
+                parent_tag_id: row.get(3)?,
+                tag_level: row.get(4)?,
+                full_path: row.get(5)?,
+                created_at: row.get(6)?,
+                updated_at: row.get(7)?,
+                usage_count: row.get(8)?,
+            })
+        })
+        .map_err(|e| {
+            log::error!("[tag:export:failed] 映射标签数据失败: {}", e);
+            format!("映射标签数据失败: {}", e)
+        })?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| {
+            log::error!("[tag:export:failed] 收集标签数据失败: {}", e);
+            format!("收集标签数据失败: {}", e)
+        })?;
+
+    // 构建标签树
+    let tag_tree = build_tag_tree(tags)?;
+
+    // 转换为导出格式
+    let export_nodes = tag_tree
+        .into_iter()
+        .map(|node| convert_to_export_node(&node))
+        .collect::<Result<Vec<_>, String>>()?;
+
+    let export = TagExport {
+        version: "1.0".to_string(),
+        exported_at: chrono::Utc::now().to_rfc3339(),
+        tags: export_nodes,
+    };
+
+    let json = serde_json::to_string_pretty(&export).map_err(|e| {
+        log::error!("[tag:export:failed] JSON 序列化失败: {}", e);
+        format!("JSON 序列化失败: {}", e)
+    })?;
+
+    log::info!("[tag:export:success] 导出 {} 个根标签", export.tags.len());
+    Ok(json)
+}
+
+/// 转换标签节点为导出格式
+fn convert_to_export_node(node: &TagNode) -> Result<TagExportNode, String> {
+    let children = node
+        .children
+        .iter()
+        .map(|child| convert_to_export_node(child))
+        .collect::<Result<Vec<_>, String>>()?;
+
+    Ok(TagExportNode {
+        tag_name: node.tag.tag_name.clone(),
+        tag_color: node.tag.tag_color.clone(),
+        children,
+    })
+}
+
+/// 导入结果
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ImportResult {
+    pub imported_tags: usize,
+    pub skipped_duplicates: usize,
+    pub errors: Vec<String>,
+}
+
+/// 从 JSON 导入标签树
+///
+/// # Arguments
+/// * `json_data` - JSON 格式的标签数据
+#[tauri::command]
+pub async fn import_tags(json_data: String) -> Result<ImportResult, String> {
+    log::info!("[tag:import] 开始导入标签...");
+
+    let export: TagExport = serde_json::from_str(&json_data).map_err(|e| {
+        log::error!("[tag:import:failed] JSON 解析失败: {}", e);
+        format!("JSON 解析失败: {}", e)
+    })?;
+
+    let db_path = get_default_db_path();
+    let db = Database::new(db_path).map_err(|e| {
+        log::error!("[tag:import:failed] 数据库连接失败: {}", e);
+        format!("数据库连接失败: {}", e)
+    })?;
+
+    let conn = db.connection();
+    let mut imported_tags = 0;
+    let mut skipped_duplicates = 0;
+    let mut errors = Vec::new();
+
+    // 开始事务
+    conn.execute("BEGIN TRANSACTION", []).map_err(|e| {
+        log::error!("[tag:import:failed] 开始事务失败: {}", e);
+        format!("开始事务失败: {}", e)
+    })?;
+
+    for tag in &export.tags {
+        match import_tag_node(&conn, tag, None, 0, &mut imported_tags, &mut skipped_duplicates, &mut errors) {
+            Ok(_) => {}
+            Err(e) => {
+                errors.push(format!("导入标签 {} 失败: {}", tag.tag_name, e));
+            }
+        }
+    }
+
+    // 提交事务
+    conn.execute("COMMIT", []).map_err(|e| {
+        log::error!("[tag:import:failed] 提交事务失败: {}", e);
+        let _ = conn.execute("ROLLBACK", []);
+        format!("提交事务失败: {}", e)
+    })?;
+
+    let result = ImportResult {
+        imported_tags,
+        skipped_duplicates,
+        errors,
+    };
+
+    log::info!(
+        "[tag:import:success] imported={}, skipped={}, errors={}",
+        result.imported_tags,
+        result.skipped_duplicates,
+        result.errors.len()
+    );
+
+    Ok(result)
+}
+
+/// 递归导入标签节点
+fn import_tag_node(
+    conn: &rusqlite::Connection,
+    node: &TagExportNode,
+    parent_id: Option<String>,
+    level: i32,
+    imported: &mut usize,
+    skipped: &mut usize,
+    errors: &mut Vec<String>,
+) -> Result<String, String> {
+    // 检查是否已存在同名标签
+    let existing: Result<String, rusqlite::Error> = if let Some(ref pid) = parent_id {
+        conn.query_row(
+            "SELECT tag_id FROM tags WHERE parent_tag_id = ?1 AND tag_name = ?2",
+            params![pid, node.tag_name],
+            |row| row.get(0),
+        )
+    } else {
+        conn.query_row(
+            "SELECT tag_id FROM tags WHERE parent_tag_id IS NULL AND tag_name = ?1",
+            params![node.tag_name],
+            |row| row.get(0),
+        )
+    };
+
+    let tag_id = match existing {
+        Ok(id) => {
+            *skipped += 1;
+            id
+        }
+        Err(_) => {
+            // 创建新标签
+            let tag_id = Uuid::new_v4().to_string();
+            let full_path = if let Some(ref pid) = parent_id {
+                let parent_path: String = conn
+                    .query_row(
+                        "SELECT full_path FROM tags WHERE tag_id = ?1",
+                        params![pid],
+                        |row| row.get(0),
+                    )
+                    .map_err(|e| format!("查询父标签路径失败: {}", e))?;
+                format!("{}/{}", parent_path, node.tag_name)
+            } else {
+                node.tag_name.clone()
+            };
+
+            let now = chrono::Utc::now().to_rfc3339();
+
+            conn.execute(
+                "INSERT INTO tags (tag_id, tag_name, tag_color, parent_tag_id, tag_level, full_path, created_at, updated_at, usage_count)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, 0)",
+                params![tag_id, node.tag_name, node.tag_color, parent_id, level, full_path, now, now],
+            )
+            .map_err(|e| format!("插入标签失败: {}", e))?;
+
+            *imported += 1;
+            tag_id
+        }
+    };
+
+    // 递归导入子标签
+    for child in &node.children {
+        import_tag_node(conn, child, Some(tag_id.clone()), level + 1, imported, skipped, errors)?;
+    }
+
+    Ok(tag_id)
+}
+
+/// 标签统计信息
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TagStatistics {
+    pub total_tags: usize,
+    pub total_files: usize,
+    pub total_associations: usize,
+    pub most_used_tags: Vec<(Tag, i32)>,
+    pub orphaned_tags: Vec<Tag>,
+    pub max_depth_used: i32,
+    pub avg_files_per_tag: f64,
+}
+
+/// 获取标签统计信息
+#[tauri::command]
+pub async fn get_tag_statistics() -> Result<TagStatistics, String> {
+    log::info!("[tag:statistics] 查询标签统计...");
+
+    let db_path = get_default_db_path();
+    let db = Database::new(db_path).map_err(|e| {
+        log::error!("[tag:statistics:failed] 数据库连接失败: {}", e);
+        format!("数据库连接失败: {}", e)
+    })?;
+
+    let conn = db.connection();
+
+    // 总标签数
+    let total_tags: i64 = conn
+        .query_row("SELECT COUNT(*) FROM tags", [], |row| row.get(0))
+        .unwrap_or(0);
+
+    // 总文件数
+    let total_files: i64 = conn
+        .query_row("SELECT COUNT(*) FROM files", [], |row| row.get(0))
+        .unwrap_or(0);
+
+    // 总关联数
+    let total_associations: i64 = conn
+        .query_row("SELECT COUNT(*) FROM file_tags", [], |row| row.get(0))
+        .unwrap_or(0);
+
+    // 最常用的标签（Top 10）
+    let mut stmt = conn
+        .prepare(
+            "SELECT tag_id, tag_name, tag_color, parent_tag_id, tag_level, full_path, created_at, updated_at, usage_count
+             FROM tags
+             WHERE usage_count > 0
+             ORDER BY usage_count DESC
+             LIMIT 10",
+        )
+        .map_err(|e| format!("查询最常用标签失败: {}", e))?;
+
+    let most_used_tags: Vec<(Tag, i32)> = stmt
+        .query_map([], |row| {
+            let tag = Tag {
+                tag_id: row.get(0)?,
+                tag_name: row.get(1)?,
+                tag_color: row.get(2)?,
+                parent_tag_id: row.get(3)?,
+                tag_level: row.get(4)?,
+                full_path: row.get(5)?,
+                created_at: row.get(6)?,
+                updated_at: row.get(7)?,
+                usage_count: row.get(8)?,
+            };
+            let usage_count: i32 = row.get(8)?;
+            Ok((tag, usage_count))
+        })
+        .map_err(|e| format!("映射标签数据失败: {}", e))?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| format!("收集标签数据失败: {}", e))?;
+
+    // 孤立标签（没有文件关联）
+    let mut stmt = conn
+        .prepare(
+            "SELECT tag_id, tag_name, tag_color, parent_tag_id, tag_level, full_path, created_at, updated_at, usage_count
+             FROM tags
+             WHERE usage_count = 0",
+        )
+        .map_err(|e| format!("查询孤立标签失败: {}", e))?;
+
+    let orphaned_tags: Vec<Tag> = stmt
+        .query_map([], |row| {
+            Ok(Tag {
+                tag_id: row.get(0)?,
+                tag_name: row.get(1)?,
+                tag_color: row.get(2)?,
+                parent_tag_id: row.get(3)?,
+                tag_level: row.get(4)?,
+                full_path: row.get(5)?,
+                created_at: row.get(6)?,
+                updated_at: row.get(7)?,
+                usage_count: row.get(8)?,
+            })
+        })
+        .map_err(|e| format!("映射孤立标签数据失败: {}", e))?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| format!("收集孤立标签数据失败: {}", e))?;
+
+    // 最大深度
+    let max_depth_used: i32 = conn
+        .query_row("SELECT MAX(tag_level) FROM tags", [], |row| row.get(0))
+        .unwrap_or(0);
+
+    // 平均每个标签的文件数
+    let avg_files_per_tag = if total_tags > 0 {
+        total_associations as f64 / total_tags as f64
+    } else {
+        0.0
+    };
+
+    let statistics = TagStatistics {
+        total_tags: total_tags as usize,
+        total_files: total_files as usize,
+        total_associations: total_associations as usize,
+        most_used_tags,
+        orphaned_tags,
+        max_depth_used,
+        avg_files_per_tag,
+    };
+
+    log::info!(
+        "[tag:statistics:success] tags={}, files={}, associations={}",
+        statistics.total_tags,
+        statistics.total_files,
+        statistics.total_associations
+    );
+
+    Ok(statistics)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
