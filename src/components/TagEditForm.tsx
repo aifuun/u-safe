@@ -1,24 +1,7 @@
 import { useState, FormEvent, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { Tag, UpdateTagRequest } from '../types/tag';
 import './TagEditForm.css';
-
-interface Tag {
-  tag_id: string;
-  tag_name: string;
-  tag_color?: string;
-  parent_tag_id?: string;
-  tag_level: number;
-  full_path: string;
-  created_at: string;
-  updated_at: string;
-  usage_count: number;
-}
-
-interface UpdateTagRequest {
-  id: string;
-  name?: string;
-  color?: string;
-}
 
 interface TagEditFormProps {
   tag: Tag;

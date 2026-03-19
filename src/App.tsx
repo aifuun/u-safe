@@ -1,105 +1,145 @@
 import { useState } from 'react';
-import { invoke } from '@tauri-apps/api/core';
+import { TagTree } from './components/TagTree';
 import { TagCreateForm } from './components/TagCreateForm';
-
-interface Tag {
-  tag_id: string;
-  tag_name: string;
-  tag_color?: string;
-  parent_tag_id?: string;
-  tag_level: number;
-  full_path: string;
-  created_at: string;
-  updated_at: string;
-  usage_count: number;
-}
+import { TagEditForm } from './components/TagEditForm';
+import { TagNode, Tag } from './types/tag';
+import './App.css';
 
 function App() {
-  const [message, setMessage] = useState('');
-  const [createdTags, setCreatedTags] = useState<Tag[]>([]);
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [editingTag, setEditingTag] = useState<Tag | null>(null);
+  const [parentForNew, setParentForNew] = useState<TagNode | null>(null);
 
-  const testIPC = async () => {
-    try {
-      const response = await invoke<string>('hello_world');
-      setMessage(response);
-    } catch (error) {
-      setMessage(`Error: ${error}`);
-    }
+  const handleTagSelect = (tagId: string) => {
+    console.log('[app] 选中标签:', tagId);
+    setSelectedTag(tagId);
   };
 
-  const testDatabase = async () => {
-    try {
-      const response = await invoke<string>('test_db_connection');
-      setMessage(response);
-    } catch (error) {
-      setMessage(`Error: ${error}`);
-    }
+  const handleTagEdit = (node: TagNode) => {
+    console.log('[app] 编辑标签:', node);
+    // Convert TagNode to Tag (remove children)
+    const tag: Tag = {
+      tag_id: node.tag_id,
+      tag_name: node.tag_name,
+      tag_color: node.tag_color,
+      parent_tag_id: node.parent_tag_id,
+      tag_level: node.tag_level,
+      full_path: node.full_path,
+      created_at: node.created_at,
+      updated_at: node.updated_at,
+      usage_count: node.usage_count,
+    };
+    setEditingTag(tag);
   };
 
-  const handleTagCreated = (tag: Tag) => {
-    setCreatedTags((prev) => [...prev, tag]);
-    setMessage(`✅ 成功创建标签: ${tag.tag_name} (${tag.full_path})`);
+  const handleTagDelete = (node: TagNode) => {
+    console.log('[app] 删除标签:', node);
+    // TODO: Implement delete with confirmation dialog (Phase 1.5)
+    alert(`删除标签功能将在 Phase 1.5 实现\n标签: ${node.tag_name}`);
   };
 
-  const handleTagError = (error: string) => {
-    setMessage(`❌ 创建失败: ${error}`);
+  const handleAddChild = (parent: TagNode) => {
+    console.log('[app] 添加子标签:', parent);
+    setParentForNew(parent);
+    setShowCreateForm(true);
+  };
+
+  const handleCreateSuccess = (tag: Tag) => {
+    console.log('[app] 创建成功:', tag);
+    setShowCreateForm(false);
+    setParentForNew(null);
+    // Tree will auto-refresh
+  };
+
+  const handleUpdateSuccess = (tag: Tag) => {
+    console.log('[app] 更新成功:', tag);
+    setEditingTag(null);
+    // Tree will auto-refresh
   };
 
   return (
-    <div className="container">
-      <h1>U-Safe - 万能保险箱</h1>
-      <p>欢迎使用 U盘文件加密管理工具</p>
+    <div className="app">
+      <header className="app-header">
+        <h1>U-Safe 标签系统 Demo</h1>
+        <p className="app-subtitle">Phase 1.3: 层级标签树</p>
+      </header>
 
-      <div className="card">
-        <h2>Phase 1.1: 标签创建功能测试</h2>
-        <p>Issue #21 - Tag System Implementation</p>
-        {message && <p className="message">{message}</p>}
-
-        <div style={{ display: 'flex', gap: '10px', marginTop: '10px', marginBottom: '20px' }}>
-          <button onClick={() => setMessage('Hello from U-Safe!')}>
-            测试 React
-          </button>
-          <button onClick={testIPC}>
-            测试 IPC (Rust)
-          </button>
-          <button onClick={testDatabase}>
-            测试数据库连接
-          </button>
-        </div>
-
-        <hr style={{ margin: '20px 0', border: 'none', borderTop: '1px solid #e5e7eb' }} />
-
-        <TagCreateForm
-          onSuccess={handleTagCreated}
-          onError={handleTagError}
-        />
-
-        {createdTags.length > 0 && (
-          <div style={{ marginTop: '20px' }}>
-            <h3>已创建的标签</h3>
-            <ul style={{ listStyle: 'none', padding: 0 }}>
-              {createdTags.map((tag) => (
-                <li
-                  key={tag.tag_id}
-                  style={{
-                    padding: '8px',
-                    margin: '4px 0',
-                    background: '#f3f4f6',
-                    borderRadius: '4px',
-                    borderLeft: `4px solid ${tag.tag_color || '#3b82f6'}`,
-                  }}
-                >
-                  <strong>{tag.tag_name}</strong> - {tag.full_path}
-                  <br />
-                  <small style={{ color: '#6b7280' }}>
-                    Level: {tag.tag_level} | ID: {tag.tag_id.slice(0, 8)}...
-                  </small>
-                </li>
-              ))}
-            </ul>
+      <main className="app-main">
+        <aside className="app-sidebar">
+          <div className="sidebar-header">
+            <button
+              className="btn-create-tag"
+              onClick={() => {
+                setParentForNew(null);
+                setShowCreateForm(true);
+              }}
+            >
+              ➕ 创建标签
+            </button>
           </div>
-        )}
-      </div>
+
+          <TagTree
+            onTagSelect={handleTagSelect}
+            onTagEdit={handleTagEdit}
+            onTagDelete={handleTagDelete}
+            onAddChild={handleAddChild}
+          />
+        </aside>
+
+        <section className="app-content">
+          {showCreateForm && (
+            <div className="form-container">
+              <h2>创建标签</h2>
+              {parentForNew && (
+                <p className="form-hint">
+                  父标签: <strong>{parentForNew.full_path}</strong>
+                </p>
+              )}
+              <TagCreateForm
+                parentTag={parentForNew as any}
+                onSuccess={handleCreateSuccess}
+                onError={(err) => alert(`创建失败: ${err}`)}
+              />
+              <button
+                className="btn-cancel"
+                onClick={() => {
+                  setShowCreateForm(false);
+                  setParentForNew(null);
+                }}
+              >
+                取消
+              </button>
+            </div>
+          )}
+
+          {editingTag && (
+            <div className="form-container">
+              <h2>编辑标签</h2>
+              <p className="form-hint">
+                路径: <strong>{editingTag.full_path}</strong>
+              </p>
+              <TagEditForm
+                tag={editingTag}
+                onSuccess={handleUpdateSuccess}
+                onError={(err) => alert(`更新失败: ${err}`)}
+                onCancel={() => setEditingTag(null)}
+              />
+            </div>
+          )}
+
+          {!showCreateForm && !editingTag && (
+            <div className="content-placeholder">
+              <h2>标签详情</h2>
+              {selectedTag ? (
+                <p>选中的标签 ID: <code>{selectedTag}</code></p>
+              ) : (
+                <p className="hint">从左侧选择一个标签</p>
+              )}
+            </div>
+          )}
+        </section>
+      </main>
     </div>
   );
 }

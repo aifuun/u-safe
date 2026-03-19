@@ -1,24 +1,7 @@
 import { useState, FormEvent } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { Tag, CreateTagRequest } from '../types/tag';
 import './TagCreateForm.css';
-
-interface Tag {
-  tag_id: string;
-  tag_name: string;
-  tag_color?: string;
-  parent_tag_id?: string;
-  tag_level: number;
-  full_path: string;
-  created_at: string;
-  updated_at: string;
-  usage_count: number;
-}
-
-interface CreateTagRequest {
-  name: string;
-  parent_id?: string;
-  color?: string;
-}
 
 interface TagCreateFormProps {
   onSuccess?: (tag: Tag) => void;
