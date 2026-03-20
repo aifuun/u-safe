@@ -1102,7 +1102,10 @@ Updates status as each phase completes, automatically unlocking the next.
 ---
 
 **Version:** 2.0.0
+**Last Updated:** 2026-03-18
+**Changelog:**
+- v2.0.0 (2026-03-18): Major redesign - replace solve-issue v1.0 with auto-solve-issue v2.0 (Issue #258)
+
 **Pattern:** Meta-Workflow Orchestrator (Task dependencies + Subagents)
 **Status:** Experimental
 **Compliance:** ADR-001 ✅
-**Last Updated:** 2026-03-18

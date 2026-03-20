@@ -17,11 +17,12 @@ This skill automates documentation structure migration for existing projects:
 1. Validates target project and captures baseline score
 2. Renames old `docs/` to `docs.old/` (backup)
 3. Rebuilds standard `docs/` structure (`/init-docs`)
-4. Generates migration mapping (COPY/MERGE/MOVE operations)
-5. Executes content migration from `docs.old/`
-6. Auto-generates `docs/README.md` index
-7. Validates new structure (`/check-docs`)
-8. Generates detailed migration report
+4. Verifies DOCUMENTATION_MANUAL.md was copied
+5. Generates migration mapping (COPY/MERGE/MOVE operations)
+6. Executes content migration from `docs.old/`
+7. Auto-generates `docs/README.md` index
+8. Validates new structure (`/check-docs`)
+9. Generates detailed migration report
 
 **Why it's needed:**
 Manual documentation migration is error-prone and time-consuming (2-3 hours). This skill automates the entire process in ~10 minutes with safety checks and rollback capability.
@@ -180,12 +181,19 @@ for dir in "${EXPECTED_DIRS[@]}"; do
     fi
 done
 
-echo "✅ Standard structure created"
+# Verify DOCUMENTATION_MANUAL.md was copied
+if [ ! -f "docs/DOCUMENTATION_MANUAL.md" ]; then
+    echo "⚠️  DOCUMENTATION_MANUAL.md not found (expected from /init-docs)"
+    echo "This manual provides documentation standards reference"
+fi
+
+echo "✅ Standard structure created (includes 10 files)"
 ```
 
 **Output**:
 - Standard `docs/` structure created
 - All required directories present
+- DOCUMENTATION_MANUAL.md copied to docs/
 - Ready for content migration
 
 ### Step 4: Generate Migration Mapping
@@ -342,8 +350,8 @@ cat > docs/README.md <<'EOF'
 
 ## 📏 Documentation Standards
 
-- 📘 [Complete Standards](../../ai-dev/docs/DOCUMENTATION_MANUAL.md)
-- 📋 [Migration Guide](../../ai-dev/docs/DOCUMENTATION_MIGRATION_GUIDE.md)
+- 📘 [Complete Standards](DOCUMENTATION_MANUAL.md) - Local copy in this project
+- 📋 [Migration Guide](../../ai-dev/docs/DOCUMENTATION_MIGRATION_GUIDE.md) - Framework reference
 - ✅ [Validation Tool](/check-docs)
 
 ---
@@ -511,7 +519,8 @@ cd ~/dev/ai-dev
 # 📊 Baseline score: 65/100
 # 🔍 Detected profile: tauri
 # ✅ Backup created: docs.old/
-# ✅ Standard structure created
+# ✅ Standard structure created (includes 10 files)
+# ✅ DOCUMENTATION_MANUAL.md copied
 # 📋 Migration mapping...
 # ✅ Migration complete
 # 📊 New score: 95/100
@@ -579,6 +588,9 @@ Fast because:
 ---
 
 **Version:** 1.0.0
+**Last Updated:** 2026-03-16
+**Changelog:**
+- v1.0.0 (2026-03-16): Initial release - documentation migration skill
+
 **Pattern:** Tool-Reference (automated migration workflow)
 **Compliance:** ADR-001 ✅
-**Last Updated:** 2026-03-16

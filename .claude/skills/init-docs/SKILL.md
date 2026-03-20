@@ -1,3 +1,15 @@
+---
+name: init-docs
+version: "1.0.0"
+description: |
+  Auto-generate standard documentation structure for projects with profile-aware customization.
+  TRIGGER when: user wants to initialize documentation ("initialize docs", "create documentation structure", "set up docs").
+  DO NOT TRIGGER when: user wants to check existing docs (use /check-docs).
+allowed-tools: Bash(mkdir *), Bash(cp *), Bash(ls *), Read, Write, Glob
+disable-model-invocation: false
+user-invocable: true
+---
+
 # Init Docs - Auto-generate Documentation Structure
 
 Auto-generate standard documentation structure for projects with profile-aware customization.
@@ -10,9 +22,10 @@ This skill automatically creates a comprehensive documentation structure followi
 1. **Auto-detects project profile** from `.framework-install` (tauri, tauri-aws, nextjs-aws)
 2. **Creates standard directories** - docs/ADRs/, docs/architecture/, docs/api/, docs/guides/, docs/diagrams/
 3. **Generates template files** - README, PRD, ARCHITECTURE, SCHEMA, API, SETUP, TEST_PLAN, DEPLOYMENT
-4. **Substitutes variables** - projectName, profile, techStack from project context
-5. **Handles existing content** gracefully with --force option
-6. **Supports dry-run** preview mode
+4. **Copies documentation manual** - DOCUMENTATION_MANUAL.md from framework to target project
+5. **Substitutes variables** - projectName, profile, techStack from project context
+6. **Handles existing content** gracefully with --force option
+7. **Supports dry-run** preview mode
 
 **Why it's needed:**
 Starting a new project requires creating consistent documentation structure. Manual setup is error-prone, inconsistent across projects, and time-consuming (15-30 minutes). This skill automates the entire process in <10 seconds.
@@ -245,6 +258,7 @@ Task Progress:
 - [ ] Step 2: Validate environment
 - [ ] Step 3: Create directory structure
 - [ ] Step 4: Generate template files (unless --minimal)
+- [ ] Step 4.5: Copy DOCUMENTATION_MANUAL.md
 - [ ] Step 5: Create ADR index
 - [ ] Step 6: Report success
 ```
@@ -338,7 +352,7 @@ done
 
 ### Step 4: Generate Template Files
 
-**Template files (8 total):**
+**Template files (9 total - 8 templates + DOCUMENTATION_MANUAL.md):**
 
 1. **README.md** - Documentation navigation hub
    ```markdown
@@ -444,6 +458,48 @@ fi
 
 **Skip if --minimal:** Only create directories, no files
 
+### Step 4.5: Copy Documentation Manual
+
+**Purpose:** Copy the documentation standards reference from framework to target project.
+
+**Source file:** `docs/DOCUMENTATION_MANUAL.md` (in framework)
+**Target location:** `docs/DOCUMENTATION_MANUAL.md` (in target project)
+
+**Copy operation:**
+```bash
+# Define paths
+SOURCE_MANUAL="$FRAMEWORK_ROOT/docs/DOCUMENTATION_MANUAL.md"
+TARGET_MANUAL="$TARGET_PROJECT/docs/DOCUMENTATION_MANUAL.md"
+
+# Check if source exists
+if [ -f "$SOURCE_MANUAL" ]; then
+    if [ "$DRY_RUN" = "true" ]; then
+        echo "Would copy: DOCUMENTATION_MANUAL.md"
+    else
+        cp "$SOURCE_MANUAL" "$TARGET_MANUAL"
+        echo "✓ Copied: DOCUMENTATION_MANUAL.md"
+    fi
+else
+    echo "⚠️  DOCUMENTATION_MANUAL.md not found in framework"
+    echo "Expected: $SOURCE_MANUAL"
+fi
+```
+
+**What the manual contains:**
+- Standard documentation directory structure
+- File naming conventions
+- Required files checklist
+- Quality checklist
+- Examples and templates
+
+**Why copy it:**
+- Provides local reference for documentation standards
+- Enables offline usage
+- Required by `/maintain-project` skill for validation
+- Ensures consistency across projects
+
+**Skip if --minimal:** No, always copy (even in minimal mode for reference)
+
 ### Step 5: Create ADR Index
 
 **ADR README.md:**
@@ -467,7 +523,7 @@ Use: /adr "Decision title"
 
 Created:
 ✓ 6 directories
-✓ 9 files (8 templates + ADR index)
+✓ 10 files (8 templates + DOCUMENTATION_MANUAL.md + ADR index)
 
 Profile: tauri
 Location: docs/
@@ -484,7 +540,7 @@ Next steps:
 
 Would create:
 □ 6 directories
-□ 9 files
+□ 10 files
 
 Run without --dry-run to execute
 ```
@@ -555,7 +611,7 @@ Fix: Check directory permissions
 🎉 Documentation structure created!
 
 Profile: tauri (auto-detected)
-Files: 9
+Files: 10
 Directories: 6
 
 Next: Customize templates in docs/
@@ -592,7 +648,8 @@ Would create directories:
 Would create files:
 □ docs/README.md
 □ docs/PRD.md
-... (8 more files)
+□ docs/DOCUMENTATION_MANUAL.md
+... (7 more files)
 
 Run without --dry-run to execute
 ```
@@ -618,7 +675,7 @@ Run without --dry-run to execute
 
 🎉 Documentation structure recreated!
 
-Files: 9
+Files: 10
 Backup: docs.backup/ (restore if needed)
 
 Next: Review new structure

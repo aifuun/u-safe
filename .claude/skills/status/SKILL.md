@@ -4,7 +4,7 @@ description: |
   Display concise project status including git state, latest commits, open issues, and active plans.
   TRIGGER when: user asks for project status, current state, what's happening, progress check, or "where are we".
   DO NOT TRIGGER when: user wants detailed overview (use /overview), or wants to start/finish issues.
-version: "1.0.0"
+version: "2.0.0"
 ---
 
 # Status - Quick Project Status Check
@@ -257,11 +257,11 @@ Slightly slower than simple status but provides strategic context.
 
 ---
 
-**Version**: 2.0.0
-**Pattern**: Simple (SKILL.md only, no scripts)
-**Compliance**: ADR-001 ✅
-**Updated**: 2026-03-09 - Three-layer structure (long/mid/short-term)
+**Version:** 2.0.0
+**Last Updated:** 2026-03-09
+**Changelog:**
+- v2.0.0 (2026-03-09): Three-layer structure - long/mid/short-term planning
+- v1.0.0 (Initial): Initial release - basic status display
 
----
-
-**Version:** 1.0.0
+**Pattern:** Simple (SKILL.md only, no scripts)
+**Compliance:** ADR-001 ✅

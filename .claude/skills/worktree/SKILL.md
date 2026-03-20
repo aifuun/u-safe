@@ -347,5 +347,8 @@ Remove these worktrees? [y/N]: y
 ---
 
 **Version:** 1.0.0
+**Last Updated:** 2026-03-10
+**Changelog:**
+- v1.0.0 (2026-03-10): Initial release - git worktree management for parallel development
 **Pattern:** Tool-Reference (guides Claude through workflow)
 **Compliance:** ADR-001 Section 4 ✅

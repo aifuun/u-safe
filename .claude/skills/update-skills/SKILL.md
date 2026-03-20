@@ -733,6 +733,13 @@ This is a **workflow skill** and must follow the standard pattern:
 
 ---
 
-**Version:** 2.1.0
+**Version:** 2.4.0
+**Last Updated:** 2026-03-14
+**Changelog:**
+- v2.4.0 (2026-03-14): Simplify --clean mode documentation (Issue #256)
+- v2.3.0 (2026-03-13): Add --clean parameter for complete directory replacement (Issue #210)
+- v2.0.0 (2026-03-10): Upgrade to semantic version comparison (Issue #214)
+- v1.0.0 (Initial): Created update-skills skill (Issue #70)
+
 **Pattern:** Tool-Reference (guides sync process)
 **Compliance:** ADR-001 Section 4 ✅

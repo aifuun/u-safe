@@ -404,5 +404,8 @@ This is a **workflow skill** and must follow the standard pattern:
 ---
 
 **Version:** 2.1.0
+**Last Updated:** 2026-03-12
+**Changelog:**
+- v2.1.0 (2026-03-12): Sync pillar documentation between projects
 **Pattern:** Tool-Reference (guides sync process)
 **Compliance:** ADR-001 Section 4 ✅

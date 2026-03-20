@@ -414,5 +414,8 @@ If no worktree path found:
 ---
 
 **Version:** 2.1.0
+**Last Updated:** 2026-03-10
+**Changelog:**
+- v2.1.0 (2026-03-10): Get next task from implementation plan
 **Pattern:** Tool-Reference (guides task navigation)
 **Compliance:** ADR-001 Section 4 ✅

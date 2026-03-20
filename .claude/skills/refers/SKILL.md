@@ -53,10 +53,10 @@ This is **NOT** an invocable skill. It's a reference collection of official Anth
 
 ---
 
+**Version:** 1.0.0
+**Last Updated:** 2026-03-11
+**Changelog:**
+- v1.0.0 (2026-03-11): Initial release - reference collection (non-invocable)
+
 **Type:** Reference Collection (Non-invocable)
 **Maintained By:** AI Dev Framework Team
-**Last Updated:** 2026-03-11
-
----
-
-**Version:** 1.0.0

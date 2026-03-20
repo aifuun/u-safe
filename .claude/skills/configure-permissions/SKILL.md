@@ -4,7 +4,7 @@ description: |
   Configure Claude Code permissions for work-issue auto mode.
   TRIGGER when: user wants to configure permissions ("configure permissions", "set up auto mode", "enable work-issue auto mode"), after framework sync with --configure-permissions flag, during project initialization.
   DO NOT TRIGGER when: user just wants to read about permissions, asks conceptual questions about auto mode, or wants to modify permissions manually.
-version: "2.0.0"
+version: "2.0.1"
 allowed-tools: Bash(python3 *), Read, Write, Glob
 disable-model-invocation: false
 user-invocable: true
@@ -97,67 +97,163 @@ After creating tasks, proceed with configuration execution.
 
 ## Required Permissions by Profile
 
+### Official Tool Reference
+
+**Documentation**: [Claude Code Tools Reference](https://code.claude.com/docs/en/tools-reference.md)
+
+**Available tools** (see official docs for complete list):
+
+| Tool | Purpose | Path Pattern Format |
+|------|---------|---------------------|
+| `Bash` | Terminal commands | Command string (e.g., "git add *") |
+| `Read` | Read files | Gitignore-style globs (e.g., "**/*.ts") |
+| `Write` | Write new files | Gitignore-style globs |
+| `Edit` | Edit existing files | Gitignore-style globs |
+| `Glob` | File pattern matching | Gitignore-style globs |
+| `Grep` | Search file contents | Gitignore-style globs |
+| `NotebookEdit` | Edit Jupyter notebooks | Gitignore-style globs (e.g., "**/*.ipynb") |
+| `TaskCreate` | Create tasks | "*" (all) |
+| `TaskUpdate` | Update tasks | "*" (all) |
+| `TaskGet` | Get task details | "*" (all) |
+| `TaskList` | List tasks | "*" (all) |
+| `TaskOutput` | Read task output | "*" (all) |
+| `TaskStop` | Stop background tasks | "*" (all) |
+| `Agent` | Invoke subagents | Agent name (e.g., "Agent(Explore)", "Agent(Plan)") |
+| `WebFetch` | Fetch web content | URL pattern (e.g., "https://github.com/*") |
+| `WebSearch` | Web search | "*" (all) |
+| `Skill` | Invoke skills | Skill name (e.g., "work-issue") |
+
+**Path pattern format** (gitignore specification):
+- `*` - Match any characters except `/`
+- `**` - Match any characters including `/`
+- `**/*.ts` - All TypeScript files recursively
+- `.env*` - All files starting with `.env`
+- `**/secrets/**` - All files in any `secrets/` directory
+
+**Permission structure:**
+```json
+{
+  "permissions": {
+    "toolname": {
+      "prompts": ["pattern1", "pattern2"],
+      "blocked": ["blocked1", "blocked2"]
+    }
+  }
+}
+```
+
+**Note**: Tool names are **lowercase** in settings.json (e.g., `bash`, `read`, `write`), but **PascalCase** in tool references.
+
 ### Minimal (all profiles)
 
 **File operation and task management tools:**
 ```json
 {
-  "allowedPrompts": [
-    // File operations (for execute-plan implementation)
-    {"tool": "Read", "prompt": "*"},
-    {"tool": "Write", "prompt": "*"},
-    {"tool": "Edit", "prompt": "*"},
-    {"tool": "Glob", "prompt": "*"},
-    {"tool": "Grep", "prompt": "*"},
-    // Task management (for progress tracking)
-    {"tool": "TaskCreate", "prompt": "*"},
-    {"tool": "TaskUpdate", "prompt": "*"},
-    {"tool": "TaskList", "prompt": "*"},
-    {"tool": "TaskGet", "prompt": "*"},
-    // Git write operations
-    {"tool": "Bash", "prompt": "git add *"},
-    {"tool": "Bash", "prompt": "git commit *"},
-    {"tool": "Bash", "prompt": "git push *"},
-    {"tool": "Bash", "prompt": "git checkout *"},
-    {"tool": "Bash", "prompt": "git branch *"},
-    {"tool": "Bash", "prompt": "git fetch *"},
-    {"tool": "Bash", "prompt": "git merge *"},
-    {"tool": "Bash", "prompt": "git worktree *"},
-    {"tool": "Bash", "prompt": "git rebase *"},
-    {"tool": "Bash", "prompt": "git reset *"},
-    {"tool": "Bash", "prompt": "git stash *"},
-    // Git read operations (for execute-plan validation)
-    {"tool": "Bash", "prompt": "git status *"},
-    {"tool": "Bash", "prompt": "git diff *"},
-    {"tool": "Bash", "prompt": "git log *"},
-    // GitHub CLI
-    {"tool": "Bash", "prompt": "gh issue *"},
-    {"tool": "Bash", "prompt": "gh pr *"},
-    {"tool": "Bash", "prompt": "gh api *"},
-    {"tool": "Bash", "prompt": "gh auth *"}
-  ]
+  "permissions": {
+    "read": {
+      "prompts": ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx", "**/*.json", "**/*.md"],
+      "blocked": [".env*", "**/.env*", "**/secrets/**", "**/*secret*", "**/*password*"]
+    },
+    "write": {
+      "prompts": ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx", "**/*.json", "**/*.md"],
+      "blocked": [".env*", "**/.env*", "**/secrets/**", "**/node_modules/**"]
+    },
+    "edit": {
+      "prompts": ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx", "**/*.json", "**/*.md"],
+      "blocked": [".env*", "**/.env*", "**/secrets/**"]
+    },
+    "glob": {
+      "prompts": ["**/*"],
+      "blocked": [".env*", "**/.env*", "**/secrets/**"]
+    },
+    "grep": {
+      "prompts": ["**/*"],
+      "blocked": [".env*", "**/.env*", "**/secrets/**"]
+    },
+    "notebookedit": {
+      "prompts": ["**/*.ipynb"],
+      "blocked": []
+    },
+    "taskcreate": {"prompts": ["*"], "blocked": []},
+    "taskupdate": {"prompts": ["*"], "blocked": []},
+    "taskget": {"prompts": ["*"], "blocked": []},
+    "tasklist": {"prompts": ["*"], "blocked": []},
+    "taskoutput": {"prompts": ["*"], "blocked": []},
+    "taskstop": {"prompts": ["*"], "blocked": []},
+    "agent": {
+      "prompts": ["Agent(Explore)", "Agent(Plan)"],
+      "blocked": []
+    },
+    "webfetch": {
+      "prompts": [
+        "https://github.com/*",
+        "https://docs.rs/*",
+        "https://developer.mozilla.org/*",
+        "https://stackoverflow.com/*"
+      ],
+      "blocked": []
+    },
+    "websearch": {"prompts": ["*"], "blocked": []},
+    "bash": {
+      "prompts": [
+        "git add *", "git commit *", "git push *",
+        "git checkout *", "git branch *", "git fetch *",
+        "git merge *", "git worktree *",
+        "git status *", "git diff *", "git log *",
+        "gh issue *", "gh pr *"
+      ],
+      "blocked": ["git push --force", "git reset --hard", "rm -rf", "sudo *"]
+    }
+  }
 }
 ```
 
 ### Node.js Projects (tauri, tauri-aws, nextjs-aws)
 
-**Additional permissions:**
+**Additional bash permissions:**
 ```json
-{"tool": "Bash", "prompt": "npm test"},
-{"tool": "Bash", "prompt": "npm run lint"},
-{"tool": "Bash", "prompt": "npm run build"},
-{"tool": "Bash", "prompt": "npm install"},
-{"tool": "Bash", "prompt": "npm ci"}
+{
+  "bash": {
+    "prompts": [
+      "npm test",
+      "npm run lint",
+      "npm run build",
+      "npm install",
+      "npm ci"
+    ]
+  }
+}
 ```
 
 ### Python Projects
 
-**Additional permissions:**
+**Additional bash permissions:**
 ```json
-{"tool": "Bash", "prompt": "pytest *"},
-{"tool": "Bash", "prompt": "python -m pytest *"},
-{"tool": "Bash", "prompt": "python -m *"},
-{"tool": "Bash", "prompt": "pip install *"}
+{
+  "bash": {
+    "prompts": [
+      "pytest *",
+      "python -m pytest *",
+      "python -m *"
+    ]
+  }
+}
+```
+
+### Rust Projects (Tauri)
+
+**Additional bash permissions:**
+```json
+{
+  "bash": {
+    "prompts": [
+      "cargo test",
+      "cargo build",
+      "cargo clippy",
+      "cargo run"
+    ]
+  }
+}
 ```
 
 ## Mode Selection: Template vs Profile
@@ -181,13 +277,116 @@ Use permission templates for explicit permission levels:
 - Learning or code review (--minimal, --read-only)
 
 **Templates available:**
-- `all` - Full automation (grants everything `["*"]`)
+- `all` - Full automation (grants everything, **zero prompts**)
+  - Bash: `["*"]` - All commands allowed
+  - File operations: `["*", "**/*"]` - All files in all directories (no folder prompts)
+  - Task tools: `["*"]` - All task operations
+  - Web tools: `["*"]` - All web operations
+  - Skill: `["*"]` - All skill invocations
+  - **Use case**: Trusted environments, CI/CD, maximum automation
+  - **Note**: No blocked operations - complete trust required
 - `safe` - Safe automation (blocks destructive operations)
 - `minimal` - Basic operations (git read, tests only)
 - `read-only` - No modifications (git read only)
 - Custom templates - Create your own in `framework/.claude-template/permission-templates/`
 
 **See:** `framework/.claude-template/permission-templates/README.md` for complete template documentation
+
+### Template: --all (Full Automation)
+
+**The --all template provides complete, unrestricted access with zero permission prompts.**
+
+**What it includes:**
+
+```json
+{
+  "permissions": {
+    "bash": {
+      "prompts": ["*"],
+      "blocked": []
+    },
+    "read": {
+      "prompts": ["*", "**/*"],
+      "blocked": []
+    },
+    "write": {
+      "prompts": ["*", "**/*"],
+      "blocked": []
+    },
+    "edit": {
+      "prompts": ["*", "**/*"],
+      "blocked": []
+    },
+    "glob": {
+      "prompts": ["*", "**/*"],
+      "blocked": []
+    },
+    "grep": {
+      "prompts": ["*", "**/*"],
+      "blocked": []
+    },
+    "notebookedit": {
+      "prompts": ["*", "**/*.ipynb"],
+      "blocked": []
+    },
+    "taskcreate": {"prompts": ["*"], "blocked": []},
+    "taskupdate": {"prompts": ["*"], "blocked": []},
+    "taskget": {"prompts": ["*"], "blocked": []},
+    "tasklist": {"prompts": ["*"], "blocked": []},
+    "taskoutput": {"prompts": ["*"], "blocked": []},
+    "taskstop": {"prompts": ["*"], "blocked": []},
+    "agent": {"prompts": ["*"], "blocked": []},
+    "webfetch": {"prompts": ["*"], "blocked": []},
+    "websearch": {"prompts": ["*"], "blocked": []},
+    "skill": {"prompts": ["*"], "blocked": []}
+  }
+}
+```
+
+**Key features:**
+
+1. **Zero folder prompts**: File operations use both `*` and `**/*` patterns
+   - `*` - Matches files in current directory
+   - `**/*` - Matches files in all subdirectories recursively
+   - Result: No permission prompts when accessing new directories
+
+2. **All bash commands**: Includes destructive operations
+   - ✅ `git push --force`
+   - ✅ `git reset --hard`
+   - ✅ `rm -rf`
+   - ✅ `sudo *`
+   - ⚠️ Complete trust required
+
+3. **All tool operations**: Every Claude Code tool granted full access
+   - File operations: Read, Write, Edit, Glob, Grep, NotebookEdit
+   - Task management: TaskCreate, TaskUpdate, TaskGet, TaskList, TaskOutput, TaskStop
+   - Web access: WebFetch, WebSearch
+   - Subagents: Agent (all types)
+   - Skills: All skill invocations
+
+**When to use:**
+- CI/CD pipelines
+- Trusted automation environments
+- Internal tooling
+- When you want absolutely zero interruptions
+
+**Security warning:**
+- Grants unrestricted access to all operations
+- No safeguards against destructive commands
+- Only use in trusted, isolated environments
+- Not recommended for daily development work
+
+**Example:**
+```bash
+/configure-permissions --all
+
+# After configuration:
+# - Edit any file in any folder → No prompt
+# - Create new directories → No prompt
+# - Run any git command → No prompt
+# - Execute any bash command → No prompt
+# - Invoke any skill → No prompt
+```
 
 ### Profile-Aware Mode (Auto-Detection)
 
@@ -649,10 +848,13 @@ This is a **workflow skill** and must follow the standard pattern:
 
 ---
 
-**Version:** 2.0.0
+**Version:** 2.0.1
 **Pattern:** Tool-Reference (guides configuration process)
 **Compliance:** ADR-001 ✅ | WORKFLOW_PATTERNS.md ✅
-**Last Updated:** 2026-03-14
+**Last Updated:** 2026-03-20
 **Changelog:**
-- v2.0.0: Added permission template support (--all, --safe, --minimal, --read-only, --template)
+- v2.0.1 (2026-03-20): Fixed folder access prompts in --all mode (Issue #271)
+  - Added dual wildcard patterns (`*` and `**/*`) to all.json
+  - Ensures zero permission prompts for file operations in all directories
+- v2.0.0 (2026-03-14): Added permission template support (--all, --safe, --minimal, --read-only, --template)
 - v1.0.0: Initial release with profile-aware configuration

@@ -853,3 +853,10 @@ metrics = {
 ## 许可证
 
 MIT License - 详见 LICENSE.txt
+
+---
+
+**Version:** 1.0.0
+**Last Updated:** 2026-03-10
+**Changelog:**
+- v1.0.0 (2026-03-10): Initial release - GitHub issue creation with templates and validation

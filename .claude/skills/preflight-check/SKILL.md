@@ -1,3 +1,15 @@
+---
+name: preflight-check
+version: "1.0.0"
+description: |
+  Validate environment configuration before work-issue execution to prevent mid-workflow interruptions.
+  TRIGGER when: called by work-issue at Phase 0, or user manually runs preflight check.
+  DO NOT TRIGGER when: user wants general project status (use /overview).
+allowed-tools: Bash(git *), Bash(gh *), Bash(npm *), Bash(test *), Bash(mkdir *), Read, Write, Glob, Grep
+disable-model-invocation: false
+user-invocable: true
+---
+
 # Preflight Check - Pre-execution Environment Validator for work-issue
 
 Validate environment configuration before work-issue execution to prevent mid-workflow interruptions.
@@ -554,6 +566,9 @@ Time: 0.5s
 ---
 
 **Version:** 1.0.0
+**Last Updated:** 2026-03-18
+**Changelog:**
+- v1.0.0 (2026-03-18): Initial release - pre-execution environment validator (Issue #246)
+
 **Pattern:** Validation skill (pre-execution checks)
 **Compliance:** ADR-001 ✅ | WORKFLOW_PATTERNS.md ✅
-**Last Updated:** 2026-03-18

@@ -658,5 +658,8 @@ This is a **workflow skill** and must follow the standard pattern:
 ---
 
 **Version:** 2.1.0
+**Last Updated:** 2026-03-12
+**Changelog:**
+- v2.1.0 (2026-03-12): Meta-skill to sync entire framework (pillars + rules + workflow + skills)
 **Pattern:** Meta-Skill (orchestrates other skills)
 **Compliance:** ADR-001 Section 4 ✅

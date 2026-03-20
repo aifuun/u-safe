@@ -76,7 +76,7 @@ Skills follow a **3-layer architecture** for clear separation of concerns:
 
 | Layer | Purpose | Tool/Pattern | Examples |
 |-------|---------|--------------|----------|
-| **Layer 1: Meta-Skills** | Orchestrate workflows | `Skill` tool | `/work-issue`, `/dev-issue` |
+| **Layer 1: Meta-Skills** | Orchestrate workflows | `Skill` tool | `/solve-issues`, `/auto-solve-issue`, `/dev-issue` |
 | **Layer 2: Atomic Skills** | Single operations | Python `import` | `/start-issue`, `/finish-issue`, `/eval-plan` |
 | **Layer 3: Python Libraries** | Reusable code | Python modules | `worktree_manager.py`, `issue_detector.py` |
 
@@ -122,8 +122,9 @@ Shared code logic? → Python library (Layer 3, imported by Layer 2)
 | **eval-plan** | Validate plan before execution | `/eval-plan [#N]` | [SKILL.md](eval-plan/SKILL.md) |
 | **execute-plan** | Execute implementation plan step-by-step | `/execute-plan #N` | [SKILL.md](execute-plan/SKILL.md) |
 | **finish-issue** | Complete issue (commit + PR + merge) | `/finish-issue #N` | [SKILL.md](finish-issue/SKILL.md) |
-| **work-issue** | Complete lifecycle with checkpoints | `/work-issue #N [--auto]` | [SKILL.md](work-issue/SKILL.md) |
-| **auto-solve-issue** | Zero-pause automation with Task dependencies + Subagents | `/auto-solve-issue #N [--auto]` | [SKILL.md](auto-solve-issue/SKILL.md) |
+| **solve-issues** | Batch wrapper for single/multiple issues | `/solve-issues #N` or `/solve-issues [N, M]` | [SKILL.md](solve-issues/SKILL.md) |
+| **auto-solve-issue** | Core implementation with Task dependencies + Subagents | `/auto-solve-issue #N [--auto]` | [SKILL.md](auto-solve-issue/SKILL.md) |
+| **work-issue** | ⚠️ DELETED in v2.1.0 - use `/solve-issues` or `/auto-solve-issue` | N/A | See [Migration Guide](../../CLAUDE.md#-migration-guide-work-issue--solve-issues) |
 | **review** | Code quality review | `/review [file/branch]` | [SKILL.md](review/SKILL.md) |
 | **sync** | Sync branch with main | `/sync` | [SKILL.md](sync/SKILL.md) |
 | **dev-issue** | ⚠️ DEPRECATED - use `/execute-plan` | `/dev-issue #N` | [SKILL.md](dev-issue/SKILL.md) |
