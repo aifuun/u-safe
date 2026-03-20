@@ -1,0 +1,57 @@
+%% System Architecture Diagram for U-Safe
+%% Shows the three-layer architecture with IPC boundary
+
+graph TB
+    subgraph Frontend["前端层 (React + TypeScript)"]
+        UI[UI Layer<br/>React Components]
+        FrontendService[Service Layer<br/>Tauri IPC封装]
+        State[State Layer<br/>Zustand Stores]
+
+        UI -->|调用| FrontendService
+        FrontendService -->|更新| State
+        State -->|驱动| UI
+    end
+
+    subgraph IPC["IPC 边界 (Tauri)"]
+        Commands[Tauri Commands<br/>JSON-RPC]
+        Events[Tauri Events<br/>进度/状态更新]
+    end
+
+    subgraph Backend["后端层 (Rust)"]
+        CmdLayer[Commands Layer<br/>参数验证]
+        ServiceLayer[Service Layer<br/>业务编排]
+        CoreLayer[Core Layer<br/>领域逻辑]
+        DataLayer[Data Layer<br/>数据访问]
+
+        CmdLayer -->|调用| ServiceLayer
+        ServiceLayer -->|使用| CoreLayer
+        ServiceLayer -->|访问| DataLayer
+    end
+
+    subgraph Storage["存储层"]
+        SQLite[(SQLite<br/>元数据)]
+        FileSystem[文件系统<br/>加密文件]
+    end
+
+    %% Frontend to Backend
+    FrontendService -.->|invoke| Commands
+    Events -.->|listen| FrontendService
+
+    %% Backend to IPC
+    Commands -->|路由| CmdLayer
+    ServiceLayer -.->|emit| Events
+
+    %% Backend to Storage
+    DataLayer -->|读写| SQLite
+    DataLayer -->|读写| FileSystem
+
+    %% Styling
+    classDef frontend fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    classDef backend fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    classDef storage fill:#f1f8e9,stroke:#689f38,stroke-width:2px
+    classDef boundary fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+
+    class UI,FrontendService,State frontend
+    class CmdLayer,ServiceLayer,CoreLayer,DataLayer backend
+    class SQLite,FileSystem storage
+    class Commands,Events boundary

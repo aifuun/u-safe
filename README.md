@@ -19,11 +19,16 @@
 
 ## 文档
 
-- [产品需求文档 (PRD)](./docs/prd/PRD.md)
-- [核心逻辑规格](./docs/spec/PRD_Core_Logic.md)
-- [数据库设计](./docs/spec/Database_Schema.md)
-- [UI/UX 设计系统](./docs/spec/UI_UX_Design_System.md)
-- [MVP 定义](./docs/roadmap/MVP_Definition.md)
+📘 **[完整文档索引](./docs/README.md)** - 查看所有项目文档
+
+**快速链接**:
+- [产品需求文档 (PRD)](./docs/product/PRD.md)
+- [数据库设计](./docs/arch/SCHEMA.md)
+- [系统架构](./docs/arch/ARCHITECTURE.md)
+- [UI/UX 设计系统](./docs/design/UI_UX_DESIGN.md)
+- [产品路线图](./docs/product/roadmap.md)
+- [开发环境搭建](./docs/dev/SETUP.md)
+- [架构决策记录 (ADRs)](./docs/adr/)
 
 ## 开发状态
 
