@@ -9,24 +9,23 @@
 - 无法独立预览和测试
 
 ### 解决方案：图表源文件分离
-✅ **已实现** - 所有 7 个 Mermaid 图表提取为独立 `.mmd` 文件
+✅ **已实现** - 所有 9 个 Mermaid 图表提取为独立 `.mmd` 文件
 
 ## 📁 新文件结构
 
 ```
-docs/spec/
-├── PRD_Core_Logic.md           # Markdown 原始文档（含图表）
-├── PRD_Core_Logic.html         # HTML 展示版本（含图表）
-├── diagrams/                   # 📌 新增：图表源文件目录
-│   ├── README.md              # 使用指南
-│   ├── 1-1-password-setup.mmd
-│   ├── 1-2-file-encryption.mmd
-│   ├── 1-3-file-decryption.mmd
-│   ├── 1-4-password-verification.mmd
-│   ├── 2-1-tag-creation.mmd
-│   ├── 3-1-view-switching.mmd
-│   └── 4-1-file-addition.mmd
-└── MERMAID_VERIFICATION.md     # 验证报告
+docs/design/diagrams/
+├── README.md                       # 使用指南
+├── system-architecture.mmd         # 系统三层架构图
+├── data-flow.mmd                   # 数据流向图（加密/解密/标签）
+├── 1-1-password-setup.mmd         # 密码设置流程
+├── 1-2-file-encryption.mmd        # 文件加密流程
+├── 1-3-file-decryption.mmd        # 文件解密流程
+├── 1-4-password-verification.mmd  # 密码验证流程
+├── 2-1-tag-creation.mmd           # 标签创建流程
+├── 3-1-view-switching.mmd         # 视图切换流程
+├── 4-1-file-addition.mmd          # 文件添加流程
+└── VERIFICATION.md                 # 语法验证报告
 ```
 
 ## 🎯 使用方法

@@ -1,0 +1,88 @@
+%% Data Flow Diagram for U-Safe
+%% Shows encryption, decryption, and tag operations
+
+graph LR
+    subgraph User["用户交互"]
+        Click[点击加密按钮]
+        SelectTag[选择标签]
+    end
+
+    subgraph EncryptFlow["文件加密流程"]
+        UI1[FileCard.tsx]
+        Invoke1[invoke encrypt_file]
+        Service1[CryptoService]
+        KDF[Argon2id 密钥派生]
+        Chunk[64KB 分块处理]
+        AES[AES-256-GCM 加密]
+        SaveMeta[保存加密元数据]
+        Progress1[发送进度事件]
+        Update1[更新 UI 进度条]
+
+        Click --> UI1
+        UI1 --> Invoke1
+        Invoke1 --> Service1
+        Service1 --> KDF
+        KDF --> Chunk
+        Chunk --> AES
+        AES --> SaveMeta
+        AES -.->|每个chunk| Progress1
+        Progress1 -.-> Update1
+    end
+
+    subgraph DecryptFlow["文件解密流程"]
+        UI2[FileCard.tsx]
+        Invoke2[invoke decrypt_file]
+        Service2[CryptoService]
+        LoadMeta[加载加密元数据]
+        DeriveKey[派生解密密钥]
+        Decrypt[AES-GCM 解密]
+        WriteFile[写入明文文件]
+        Progress2[发送进度事件]
+
+        Invoke2 --> Service2
+        Service2 --> LoadMeta
+        LoadMeta --> DeriveKey
+        DeriveKey --> Decrypt
+        Decrypt --> WriteFile
+        Decrypt -.-> Progress2
+    end
+
+    subgraph TagFlow["标签操作流程"]
+        UI3[TagCreateForm.tsx]
+        Invoke3[invoke create_tag]
+        Service3[TagService]
+        Validate[验证标签名]
+        Insert[插入数据库]
+        UpdateTree[更新标签树缓存]
+        Refresh[刷新 UI]
+
+        SelectTag --> UI3
+        UI3 --> Invoke3
+        Invoke3 --> Service3
+        Service3 --> Validate
+        Validate --> Insert
+        Insert --> UpdateTree
+        UpdateTree --> Refresh
+    end
+
+    subgraph Storage["数据存储"]
+        DB[(SQLite)]
+        FS[加密文件<br/>文件系统]
+    end
+
+    %% Connections to storage
+    SaveMeta --> DB
+    WriteFile --> FS
+    LoadMeta --> DB
+    Insert --> DB
+
+    %% Styling
+    classDef ui fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    classDef service fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    classDef storage fill:#f1f8e9,stroke:#689f38,stroke-width:2px
+    classDef user fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+
+    class UI1,UI2,UI3,Update1,Refresh ui
+    class Service1,Service2,Service3,KDF,Chunk,AES,SaveMeta,LoadMeta,DeriveKey,Decrypt,WriteFile,Validate,Insert,UpdateTree service
+    class DB,FS storage
+    class Click,SelectTag user

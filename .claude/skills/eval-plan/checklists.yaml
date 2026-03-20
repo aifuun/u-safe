@@ -1,0 +1,227 @@
+# 统一评估框架：4视角评估清单
+# Version: 1.0.0
+# Last Updated: 2026-03-19
+
+# 核心设计原则：
+# 1. eval-plan和review使用相同的4个核心视角
+# 2. 每个视角有明确的评估清单
+# 3. 权重分配：目标30%、架构30%、质量25%、风险15%
+
+perspectives:
+  # 视角1：目标达成（30%）- 是否解决问题
+  goal_achievement:
+    weight: 0.30
+    name: "目标达成"
+    description: "验证是否真正解决了Issue中描述的问题"
+    checks:
+      - id: ga1
+        name: "Issue需求覆盖"
+        question: "是否覆盖Issue中的所有验收标准？"
+        importance: critical
+        examples:
+          - "Issue要求实现A、B、C三个功能，计划是否都包含？"
+          - "Issue的验收标准是否都能被满足？"
+
+      - id: ga2
+        name: "计划任务完成"
+        question: "Plan中的所有任务是否都能完成目标？"
+        importance: critical
+        examples:
+          - "计划的8个任务是否都指向Issue目标？"
+          - "是否有任务偏离了核心目标？"
+
+      - id: ga3
+        name: "用户价值交付"
+        question: "实现后是否能为用户带来明确价值？"
+        importance: high
+        examples:
+          - "新功能是否真正解决用户痛点？"
+          - "改进是否带来可衡量的效果？"
+
+      - id: ga4
+        name: "边界清晰"
+        question: "是否明确定义了做什么和不做什么？"
+        importance: medium
+        examples:
+          - "是否列出了超出范围的需求？"
+          - "是否避免了范围蔓延？"
+
+      - id: ga5
+        name: "额外功能正当性"
+        question: "如果有额外功能，是否有合理理由？"
+        importance: medium
+        examples:
+          - "额外的重构是否必要？"
+          - "新增的辅助功能是否支持核心目标？"
+
+  # 视角2：架构设计（30%）- 设计是否合理
+  architecture_design:
+    weight: 0.30
+    name: "架构设计"
+    description: "评估技术方案的合理性和可维护性"
+    checks:
+      - id: ad1
+        name: "职责分离"
+        question: "是否遵循单一职责原则？"
+        importance: critical
+        examples:
+          - "新模块是否只做一件事？"
+          - "是否避免了上帝类/函数？"
+
+      - id: ad2
+        name: "依赖方向"
+        question: "依赖关系是否正确（高层→低层）？"
+        importance: critical
+        examples:
+          - "是否遵循依赖倒置原则？"
+          - "UI层是否依赖业务逻辑，而非反向？"
+
+      - id: ad3
+        name: "接口设计"
+        question: "API/接口设计是否清晰易用？"
+        importance: high
+        examples:
+          - "函数签名是否直观？"
+          - "类型定义是否完整？"
+
+      - id: ad4
+        name: "模块解耦"
+        question: "新代码与现有系统是否适度解耦？"
+        importance: high
+        examples:
+          - "是否通过接口隔离？"
+          - "是否避免了紧耦合？"
+
+      - id: ad5
+        name: "扩展性"
+        question: "设计是否便于未来扩展？"
+        importance: medium
+        examples:
+          - "是否使用了策略模式等可扩展模式？"
+          - "是否预留了扩展点？"
+
+  # 视角3：质量保障（25%）- 实现是否优秀
+  quality_assurance:
+    weight: 0.25
+    name: "质量保障"
+    description: "确保代码质量和最佳实践"
+    checks:
+      - id: qa1
+        name: "错误处理"
+        question: "是否有完善的错误处理机制？"
+        importance: critical
+        examples:
+          - "异常是否都被捕获？"
+          - "错误信息是否有意义？"
+
+      - id: qa2
+        name: "测试覆盖"
+        question: "是否包含充分的测试？"
+        importance: high
+        examples:
+          - "关键路径是否有单元测试？"
+          - "边界情况是否被覆盖？"
+
+      - id: qa3
+        name: "代码可读性"
+        question: "代码是否清晰易懂？"
+        importance: high
+        examples:
+          - "命名是否有意义？"
+          - "复杂逻辑是否有注释？"
+
+      - id: qa4
+        name: "性能考虑"
+        question: "是否考虑了性能影响？"
+        importance: medium
+        examples:
+          - "是否避免了N+1查询？"
+          - "是否有不必要的重复计算？"
+
+      - id: qa5
+        name: "最佳实践"
+        question: "是否遵循项目编码规范？"
+        importance: medium
+        examples:
+          - "是否符合框架的18 Pillars？"
+          - "是否遵循语言特定的最佳实践？"
+
+  # 视角4：风险控制（15%）- 是否有隐患
+  risk_control:
+    weight: 0.15
+    name: "风险控制"
+    description: "识别潜在风险和安全问题"
+    checks:
+      - id: rc1
+        name: "安全隐患"
+        question: "是否存在安全漏洞？"
+        importance: critical
+        examples:
+          - "是否有SQL注入风险？"
+          - "敏感数据是否被加密？"
+
+      - id: rc2
+        name: "向后兼容"
+        question: "变更是否会破坏现有功能？"
+        importance: high
+        examples:
+          - "API变更是否向后兼容？"
+          - "数据库迁移是否安全？"
+
+      - id: rc3
+        name: "资源管理"
+        question: "是否正确管理资源（内存/连接等）？"
+        importance: medium
+        examples:
+          - "数据库连接是否关闭？"
+          - "是否有内存泄漏风险？"
+
+      - id: rc4
+        name: "降级方案"
+        question: "关键功能是否有降级或回滚方案？"
+        importance: medium
+        examples:
+          - "新功能失败时是否有fallback？"
+          - "部署是否支持快速回滚？"
+
+# 评分标准
+scoring:
+  # 单项评分（每个check）
+  check_scoring:
+    pass: 1.0        # 通过
+    partial: 0.5     # 部分通过
+    fail: 0.0        # 不通过
+
+  # 综合评分计算
+  # final_score = sum(perspective_weight * perspective_score)
+  # perspective_score = (passed_checks + 0.5*partial_checks) / total_checks
+
+  # 通过标准
+  thresholds:
+    approved: 0.90              # ≥90分：APPROVED
+    approved_with_concerns: 0.80  # 80-89分：APPROVED_WITH_CONCERNS
+    needs_improvement: 0.60     # 60-79分：NEEDS_IMPROVEMENT
+    rejected: 0.0               # <60分：REJECTED
+
+  # 关键项目否决规则（critical checks）
+  critical_checks:
+    # 如果任何critical check失败，最高只能得APPROVED_WITH_CONCERNS
+    enabled: true
+    max_status_on_critical_failure: "APPROVED_WITH_CONCERNS"
+
+# 输出控制
+output:
+  # 简洁模式（默认）
+  concise:
+    max_length: 1000            # 最多1000字
+    show_only_issues: true      # 只显示有问题的检查项
+    include_examples: false     # 不包含示例
+
+  # 详细模式（问题较多时）
+  detailed:
+    max_length: 2000
+    show_only_issues: false
+    include_examples: true
+
+  # 格式模板
+  template: "evaluation-report.md"
