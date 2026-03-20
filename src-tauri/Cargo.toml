@@ -32,6 +32,10 @@ chrono = { version = "0.4", features = ["serde"] }  # 时间处理
 # 文件管理相关依赖
 mime_guess = "2.0"       # 文件类型检测
 
+# 平台特定依赖
+[target.'cfg(windows)'.dependencies]
+winreg = "0.52"          # Windows 注册表访问
+
 [dev-dependencies]
 tempfile = "3.10"       # 临时文件/目录（测试用）
 tokio = { version = "1", features = ["macros", "rt"] }  # 异步运行时（测试用）

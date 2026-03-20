@@ -2,6 +2,7 @@
 pub mod db;
 mod usb_detection;
 mod system_info;
+mod theme;
 
 // Crypto module (加密模块)
 pub mod crypto;
@@ -14,7 +15,8 @@ pub mod models;
 
 // Commands module (IPC 命令)
 mod commands;
-use commands::{scan_file_tree, encrypt_file, decrypt_file, create_tag};
+use commands::{scan_file_tree, encrypt_file, decrypt_file, delete_file, rename_file, create_tag};
+use theme::get_theme;
 
 use db::{Database, get_default_db_path};
 
@@ -60,7 +62,10 @@ pub fn run() {
             scan_file_tree,
             encrypt_file,
             decrypt_file,
-            create_tag
+            delete_file,
+            rename_file,
+            create_tag,
+            get_theme
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
