@@ -1,0 +1,79 @@
+/**
+ * Spinner 样式
+ * 使用 Design Tokens
+ */
+
+.spinner {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* Spinner 圆圈 */
+.spinner__circle {
+  border-radius: var(--radius-full);
+  border: 3px solid var(--bg-surface);
+  border-top-color: var(--color-primary);
+  animation: spin var(--duration-slow) linear infinite;
+}
+
+/* 大小变体 */
+.spinner--sm .spinner__circle {
+  width: 16px;
+  height: 16px;
+  border-width: 2px;
+}
+
+.spinner--md .spinner__circle {
+  width: 24px;
+  height: 24px;
+  border-width: 3px;
+}
+
+.spinner--lg .spinner__circle {
+  width: 32px;
+  height: 32px;
+  border-width: 4px;
+}
+
+/* 文字标签 */
+.spinner__label {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.spinner--lg .spinner__label {
+  font-size: var(--text-base);
+}
+
+/* 旋转动画 */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 屏幕阅读器专用文本 */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* 无障碍: 减少动画 */
+@media (prefers-reduced-motion: reduce) {
+  .spinner__circle {
+    animation: none;
+    border-color: var(--color-primary);
+  }
+}
