@@ -22,8 +22,8 @@
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-4);
-  min-width: 300px;
-  max-width: 400px;
+  min-width: 20rem;
+  max-width: 25rem;
   background: var(--bg-card);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-lg);
@@ -66,8 +66,8 @@
 /* Toast 关闭按钮 */
 .toast__close {
   flex-shrink: 0;
-  width: 24px;
-  height: 24px;
+  width: var(--space-6);
+  height: var(--space-6);
   padding: 0;
   font-size: var(--text-xl);
   line-height: 1;
