@@ -28,7 +28,7 @@
 /* 拖拽激活状态 */
 .drag-drop-zone--active {
   border-color: var(--color-primary);
-  background: rgba(59, 130, 246, 0.05); /* --color-primary with opacity */
+  background: color-mix(in srgb, var(--color-primary) 5%, transparent);
   border-style: solid;
 }
 
@@ -76,7 +76,7 @@
 }
 
 .drag-drop-zone__overlay .drag-drop-zone__icon {
-  font-size: 48px;
+  font-size: var(--text-3xl);
   animation: bounce 0.6s ease-in-out;
 }
 
