@@ -1,0 +1,295 @@
+/**
+ * 响应式布局
+ * 断点: 移动端 (< 768px), 平板 (768px - 1024px), 桌面 (> 1024px)
+ */
+
+/* ========================================
+   基础布局容器
+   ======================================== */
+
+.app-container {
+  display: grid;
+  min-height: 100vh;
+  background: var(--bg-app);
+}
+
+/* ========================================
+   桌面布局 (> 1024px) - 三列布局
+   ======================================== */
+
+@media (min-width: 1024px) {
+  .app-container {
+    grid-template-columns: 250px 1fr 300px;
+    grid-template-areas:
+      "sidebar main details";
+  }
+
+  .app-sidebar {
+    grid-area: sidebar;
+    background: var(--bg-card);
+    border-right: 1px solid var(--color-border);
+    overflow-y: auto;
+  }
+
+  .app-main {
+    grid-area: main;
+    overflow-y: auto;
+  }
+
+  .app-details {
+    grid-area: details;
+    background: var(--bg-card);
+    border-left: 1px solid var(--color-border);
+    overflow-y: auto;
+  }
+
+  /* 文件卡片网格 - 3-4 列 */
+  .file-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: var(--space-4);
+    padding: var(--space-6);
+  }
+
+  /* 汉堡菜单隐藏 */
+  .hamburger-menu {
+    display: none;
+  }
+}
+
+/* ========================================
+   平板布局 (768px - 1024px) - 双列布局
+   ======================================== */
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .app-container {
+    grid-template-columns: 200px 1fr;
+    grid-template-areas:
+      "sidebar main";
+  }
+
+  .app-sidebar {
+    grid-area: sidebar;
+    background: var(--bg-card);
+    border-right: 1px solid var(--color-border);
+    overflow-y: auto;
+  }
+
+  .app-main {
+    grid-area: main;
+    overflow-y: auto;
+  }
+
+  /* 详情面板隐藏 (或作为 modal 显示) */
+  .app-details {
+    display: none;
+  }
+
+  /* 文件卡片网格 - 2 列 */
+  .file-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-4);
+    padding: var(--space-4);
+  }
+
+  /* 汉堡菜单隐藏 */
+  .hamburger-menu {
+    display: none;
+  }
+}
+
+/* ========================================
+   移动端布局 (< 768px) - 单列布局
+   ======================================== */
+
+@media (max-width: 767px) {
+  .app-container {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "main";
+  }
+
+  /* 侧边栏隐藏，通过汉堡菜单切换 */
+  .app-sidebar {
+    position: fixed;
+    top: 0;
+    left: -100%;
+    width: 80%;
+    max-width: 300px;
+    height: 100vh;
+    background: var(--bg-card);
+    box-shadow: var(--shadow-xl);
+    z-index: 100;
+    transition: left var(--duration-base) var(--ease-out);
+    overflow-y: auto;
+  }
+
+  .app-sidebar--open {
+    left: 0;
+  }
+
+  /* 遮罩层 */
+  .app-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 99;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--duration-base) var(--ease-out);
+  }
+
+  .app-overlay--visible {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  .app-main {
+    grid-area: main;
+    overflow-y: auto;
+  }
+
+  /* 详情面板隐藏 */
+  .app-details {
+    display: none;
+  }
+
+  /* 文件卡片列表 - 单列 */
+  .file-grid {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding: var(--space-4);
+  }
+
+  /* 汉堡菜单显示 */
+  .hamburger-menu {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: background var(--duration-fast) var(--ease-out);
+  }
+
+  .hamburger-menu:hover {
+    background: var(--bg-surface);
+  }
+
+  .hamburger-menu:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
+  /* 汉堡图标 */
+  .hamburger-icon {
+    position: relative;
+    width: 24px;
+    height: 2px;
+    background: var(--text-primary);
+    transition: background var(--duration-fast) var(--ease-out);
+  }
+
+  .hamburger-icon::before,
+  .hamburger-icon::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    width: 24px;
+    height: 2px;
+    background: var(--text-primary);
+    transition: transform var(--duration-fast) var(--ease-out);
+  }
+
+  .hamburger-icon::before {
+    top: -8px;
+  }
+
+  .hamburger-icon::after {
+    top: 8px;
+  }
+
+  /* 汉堡菜单打开状态 */
+  .hamburger-menu--open .hamburger-icon {
+    background: transparent;
+  }
+
+  .hamburger-menu--open .hamburger-icon::before {
+    transform: translateY(8px) rotate(45deg);
+  }
+
+  .hamburger-menu--open .hamburger-icon::after {
+    transform: translateY(-8px) rotate(-45deg);
+  }
+
+  /* 触摸友好 - 最小 44x44px */
+  .btn,
+  .button,
+  .file-card,
+  .tag-item {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* ========================================
+   通用响应式工具类
+   ======================================== */
+
+/* 隐藏类 */
+.hide-mobile {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .hide-mobile {
+    display: initial;
+  }
+}
+
+.hide-tablet {
+  display: initial;
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .hide-tablet {
+    display: none;
+  }
+}
+
+.hide-desktop {
+  display: initial;
+}
+
+@media (min-width: 1024px) {
+  .hide-desktop {
+    display: none;
+  }
+}
+
+/* 只在移动端显示 */
+.show-mobile {
+  display: initial;
+}
+
+@media (min-width: 768px) {
+  .show-mobile {
+    display: none;
+  }
+}
+
+/* 无障碍: 减少动画 */
+@media (prefers-reduced-motion: reduce) {
+  .app-sidebar,
+  .app-overlay {
+    transition: none;
+  }
+}

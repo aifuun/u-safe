@@ -1,0 +1,266 @@
+/**
+ * 动画和过渡效果
+ * 使用 Design Tokens
+ */
+
+/* ========================================
+   过渡动画
+   ======================================== */
+
+/* 按钮 Hover */
+.btn,
+.button {
+  transition: background-color var(--duration-fast) var(--ease-out),
+              color var(--duration-fast) var(--ease-out),
+              border-color var(--duration-fast) var(--ease-out),
+              transform var(--duration-fast) var(--ease-out);
+}
+
+.btn:hover:not(:disabled),
+.button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.btn:active:not(:disabled),
+.button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+/* 卡片 Hover */
+.card,
+.file-card {
+  transition: box-shadow var(--duration-fast) var(--ease-out),
+              transform var(--duration-fast) var(--ease-out);
+}
+
+.card:hover,
+.file-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+/* 模态框 */
+.modal-overlay {
+  animation: fadeIn var(--duration-base) var(--ease-out);
+}
+
+.modal-content {
+  animation: scaleIn var(--duration-base) var(--ease-out);
+}
+
+/* ========================================
+   微交互动画
+   ======================================== */
+
+/* 文件添加 - 从顶部滑入 */
+.file-item-enter {
+  animation: slideInDown var(--duration-base) var(--ease-out);
+}
+
+@keyframes slideInDown {
+  from {
+    transform: translateY(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* 文件删除 - 淡出 + 高度折叠 */
+.file-item-exit {
+  animation: fadeOutCollapse var(--duration-base) var(--ease-in);
+}
+
+@keyframes fadeOutCollapse {
+  0% {
+    opacity: 1;
+    max-height: 100px;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  100% {
+    opacity: 0;
+    max-height: 0;
+    transform: scale(0.95);
+  }
+}
+
+/* Toast 滑入 (已在 Toast.css 中定义) */
+/* 这里添加备用动画 */
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Toast 滑出 */
+@keyframes slideOutRight {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+/* ========================================
+   模态框动画
+   ======================================== */
+
+/* 淡入 */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* 淡出 */
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* 缩放进入 */
+@keyframes scaleIn {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* 缩放退出 */
+@keyframes scaleOut {
+  from {
+    transform: scale(1);
+    opacity: 1;
+  }
+  to {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+}
+
+/* ========================================
+   加载动画
+   ======================================== */
+
+/* 脉冲动画 (用于加载按钮) */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.pulse {
+  animation: pulse var(--duration-slow) ease-in-out infinite;
+}
+
+/* 旋转动画 (用于 Spinner) */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ========================================
+   工具类
+   ======================================== */
+
+/* 淡入淡出类 */
+.fade-in {
+  animation: fadeIn var(--duration-base) var(--ease-out);
+}
+
+.fade-out {
+  animation: fadeOut var(--duration-base) var(--ease-in);
+}
+
+/* 滑入类 */
+.slide-in-up {
+  animation: slideInUp var(--duration-base) var(--ease-out);
+}
+
+@keyframes slideInUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.slide-in-down {
+  animation: slideInDown var(--duration-base) var(--ease-out);
+}
+
+.slide-in-left {
+  animation: slideInLeft var(--duration-base) var(--ease-out);
+}
+
+@keyframes slideInLeft {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.slide-in-right {
+  animation: slideInRight var(--duration-base) var(--ease-out);
+}
+
+/* ========================================
+   无障碍: 减少动画
+   ======================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  /* 禁用 hover 变换 */
+  .btn:hover:not(:disabled),
+  .button:hover:not(:disabled),
+  .card:hover,
+  .file-card:hover {
+    transform: none;
+  }
+}

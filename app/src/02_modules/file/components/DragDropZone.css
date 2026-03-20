@@ -1,0 +1,126 @@
+/**
+ * 拖拽区域样式
+ * 使用 Design Tokens
+ */
+
+.drag-drop-zone {
+  position: relative;
+  padding: var(--space-8);
+  min-height: 200px;
+  background: var(--bg-card);
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: border-color var(--duration-fast) var(--ease-out),
+              background var(--duration-fast) var(--ease-out);
+}
+
+.drag-drop-zone:hover:not(.drag-drop-zone--active) {
+  border-color: var(--color-primary);
+  background: var(--bg-surface);
+}
+
+.drag-drop-zone:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* 拖拽激活状态 */
+.drag-drop-zone--active {
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 5%, transparent);
+  border-style: solid;
+}
+
+.drag-drop-zone__content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+/* 占位内容 */
+.drag-drop-zone__placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.drag-drop-zone__icon {
+  font-size: var(--text-3xl);
+  margin-bottom: var(--space-2);
+}
+
+.drag-drop-zone__text {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+}
+
+.drag-drop-zone__hint {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+/* 拖拽覆盖层 */
+.drag-drop-zone__overlay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-6);
+}
+
+.drag-drop-zone__overlay .drag-drop-zone__icon {
+  font-size: var(--text-3xl);
+  animation: bounce 0.6s ease-in-out;
+}
+
+.drag-drop-zone__overlay .drag-drop-zone__text {
+  color: var(--color-primary);
+}
+
+/* 弹跳动画 */
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+/* 响应式: 移动端 */
+@media (max-width: 767px) {
+  .drag-drop-zone {
+    padding: var(--space-6);
+    min-height: 150px;
+  }
+
+  .drag-drop-zone__icon {
+    font-size: var(--text-2xl);
+  }
+
+  .drag-drop-zone__text {
+    font-size: var(--text-base);
+  }
+
+  .drag-drop-zone__hint {
+    font-size: var(--text-xs);
+  }
+}
+
+/* 无障碍: 减少动画 */
+@media (prefers-reduced-motion: reduce) {
+  .drag-drop-zone {
+    transition: none;
+  }
+
+  .drag-drop-zone__overlay .drag-drop-zone__icon {
+    animation: none;
+  }
+}

@@ -1,0 +1,82 @@
+/**
+ * 进度条样式
+ * 使用 Design Tokens
+ */
+
+.progress-bar {
+  width: 100%;
+}
+
+/* 头部 - 状态和百分比 */
+.progress-bar__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-2);
+  gap: var(--space-2);
+}
+
+.progress-bar__status {
+  flex: 1;
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  font-weight: var(--font-weight-medium);
+}
+
+.progress-bar__percent {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums; /* 数字等宽 */
+}
+
+/* 进度条轨道 */
+.progress-bar__track {
+  position: relative;
+  width: 100%;
+  height: var(--space-2);
+  background: var(--bg-surface);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+/* 进度条填充 */
+.progress-bar__fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: var(--color-primary);
+  border-radius: var(--radius-full);
+  transition: width var(--duration-base) var(--ease-out);
+}
+
+/* 进度条变体 - 大号 */
+.progress-bar--large .progress-bar__track {
+  height: var(--space-3);
+}
+
+.progress-bar--large .progress-bar__status,
+.progress-bar--large .progress-bar__percent {
+  font-size: var(--text-base);
+}
+
+/* 进度条颜色变体 */
+.progress-bar--success .progress-bar__fill {
+  background: var(--color-success);
+}
+
+.progress-bar--warning .progress-bar__fill {
+  background: var(--color-warning);
+}
+
+.progress-bar--error .progress-bar__fill {
+  background: var(--color-error);
+}
+
+/* 无障碍: 减少动画 */
+@media (prefers-reduced-motion: reduce) {
+  .progress-bar__fill {
+    transition: none;
+  }
+}
