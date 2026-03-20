@@ -9,20 +9,48 @@
       "prompt": "*"
     },
     {
+      "tool": "Read",
+      "prompt": "**/*"
+    },
+    {
       "tool": "Write",
       "prompt": "*"
+    },
+    {
+      "tool": "Write",
+      "prompt": "**/*"
     },
     {
       "tool": "Edit",
       "prompt": "*"
     },
     {
+      "tool": "Edit",
+      "prompt": "**/*"
+    },
+    {
       "tool": "Glob",
       "prompt": "*"
     },
     {
+      "tool": "Glob",
+      "prompt": "**/*"
+    },
+    {
       "tool": "Grep",
       "prompt": "*"
+    },
+    {
+      "tool": "Grep",
+      "prompt": "**/*"
+    },
+    {
+      "tool": "NotebookEdit",
+      "prompt": "*"
+    },
+    {
+      "tool": "NotebookEdit",
+      "prompt": "**/*.ipynb"
     },
     {
       "tool": "TaskCreate",
@@ -33,11 +61,35 @@
       "prompt": "*"
     },
     {
+      "tool": "TaskGet",
+      "prompt": "*"
+    },
+    {
       "tool": "TaskList",
       "prompt": "*"
     },
     {
-      "tool": "TaskGet",
+      "tool": "TaskOutput",
+      "prompt": "*"
+    },
+    {
+      "tool": "TaskStop",
+      "prompt": "*"
+    },
+    {
+      "tool": "Agent",
+      "prompt": "*"
+    },
+    {
+      "tool": "WebFetch",
+      "prompt": "*"
+    },
+    {
+      "tool": "WebSearch",
+      "prompt": "*"
+    },
+    {
+      "tool": "Skill",
       "prompt": "*"
     }
   ]
