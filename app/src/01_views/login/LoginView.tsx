@@ -113,6 +113,13 @@ export function LoginView() {
         <div className="forgot-password-hint">
           <p>⚠️ 忘记密码？</p>
           <p>主密码无法恢复。如忘记，您需要重新设置（将丢失所有已加密文件的访问权限）。</p>
+          <button
+            type="button"
+            onClick={() => navigate('/reset-warning')}
+            className="forgot-password-link"
+          >
+            重置密码并清空数据
+          </button>
         </div>
       </div>
 
@@ -275,10 +282,36 @@ export function LoginView() {
           color: var(--color-warning);
         }
 
+        .forgot-password-link {
+          display: inline-block;
+          margin-top: var(--space-3);
+          padding: var(--space-2) var(--space-3);
+          background: none;
+          border: 1px solid var(--color-error);
+          border-radius: var(--radius-sm);
+          color: var(--color-error);
+          font-size: var(--text-xs);
+          font-weight: 600;
+          cursor: pointer;
+          transition: all var(--duration-fast) var(--ease-out);
+        }
+
+        .forgot-password-link:hover {
+          background: rgba(239, 68, 68, 0.1);
+          border-color: #dc2626;
+          color: #dc2626;
+        }
+
+        .forgot-password-link:focus-visible {
+          outline: 2px solid var(--color-error);
+          outline-offset: 2px;
+        }
+
         /* Reduced motion support */
         @media (prefers-reduced-motion: reduce) {
           .submit-button,
-          input {
+          input,
+          .forgot-password-link {
             transition: none;
           }
 
