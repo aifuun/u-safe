@@ -1,8 +1,9 @@
 use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::path::Path;
-use tauri::Emitter;
+use tauri::{Emitter, State};
 use crate::crypto::stream::{encrypt_stream, decrypt_stream};
+use crate::commands::auth::MasterKeyState;
 
 /// 加密进度信息
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -17,16 +18,20 @@ pub struct EncryptionProgress {
 
 /// 加密文件 IPC 命令
 ///
+/// 使用 Master Key Wrapping 模式：
+/// 不再从密码派生密钥，而是使用已解密的主密钥
+///
 /// # Arguments
 /// * `source_path` - 源文件路径（明文）
-/// * `password` - 用户密码（用于派生密钥）
+/// * `master_key_state` - 主密钥状态（必须已通过认证加载）
+/// * `app` - Tauri 应用句柄
 ///
 /// # Returns
 /// * `Result<String, String>` - 加密后的文件路径或错误信息
 #[tauri::command]
 pub async fn encrypt_file(
     source_path: String,
-    password: String,
+    master_key_state: State<'_, MasterKeyState>,
     app: tauri::AppHandle,
 ) -> Result<String, String> {
     log::info!("[file_encryption:encrypt:start] source={}", source_path);
@@ -49,10 +54,13 @@ pub async fn encrypt_file(
     // 生成加密文件路径（添加 .enc 扩展名）
     let encrypted_path = format!("{}.enc", source_path);
 
-    // 从密码派生密钥
-    use crate::crypto::kdf::derive_key;
-    let (key, _salt_b64) = derive_key(&password)
-        .map_err(|e| format!("密钥派生失败: {}", e))?;
+    // 获取主密钥（必须已通过认证加载）
+    let key = master_key_state
+        .get()
+        .ok_or_else(|| {
+            log::error!("[file_encryption:encrypt:failed] 主密钥未加载，请先登录");
+            "主密钥未加载，请先登录".to_string()
+        })?;
 
     // 打开输入输出文件
     let input = File::open(source)
@@ -81,11 +89,11 @@ pub async fn encrypt_file(
         }
     };
 
-    // 执行流式加密
+    // 执行流式加密（使用主密钥）
     encrypt_stream(
         input,
         output,
-        &key,
+        key.as_bytes(),
         total_size,
         Some(&progress_callback),
     )
@@ -98,16 +106,20 @@ pub async fn encrypt_file(
 
 /// 解密文件 IPC 命令
 ///
+/// 使用 Master Key Wrapping 模式：
+/// 不再从密码派生密钥，而是使用已解密的主密钥
+///
 /// # Arguments
 /// * `encrypted_path` - 加密文件路径
-/// * `password` - 用户密码（用于派生密钥）
+/// * `master_key_state` - 主密钥状态（必须已通过认证加载）
+/// * `app` - Tauri 应用句柄
 ///
 /// # Returns
 /// * `Result<String, String>` - 解密后的文件路径或错误信息
 #[tauri::command]
 pub async fn decrypt_file(
     encrypted_path: String,
-    password: String,
+    master_key_state: State<'_, MasterKeyState>,
     app: tauri::AppHandle,
 ) -> Result<String, String> {
     log::info!("[file_encryption:decrypt:start] encrypted={}", encrypted_path);
@@ -134,10 +146,13 @@ pub async fn decrypt_file(
         format!("{}.decrypted", encrypted_path)
     };
 
-    // 从密码派生密钥
-    use crate::crypto::kdf::derive_key;
-    let (key, _salt_b64) = derive_key(&password)
-        .map_err(|e| format!("密钥派生失败: {}", e))?;
+    // 获取主密钥（必须已通过认证加载）
+    let key = master_key_state
+        .get()
+        .ok_or_else(|| {
+            log::error!("[file_encryption:decrypt:failed] 主密钥未加载，请先登录");
+            "主密钥未加载，请先登录".to_string()
+        })?;
 
     // 打开输入输出文件
     let input = File::open(encrypted)
@@ -166,11 +181,11 @@ pub async fn decrypt_file(
         }
     };
 
-    // 执行流式解密
+    // 执行流式解密（使用主密钥）
     decrypt_stream(
         input,
         output,
-        &key,
+        key.as_bytes(),
         total_size,
         Some(&progress_callback),
     )

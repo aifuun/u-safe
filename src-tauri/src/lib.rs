@@ -18,7 +18,8 @@ mod commands;
 use commands::{
     scan_file_tree, encrypt_file, decrypt_file, delete_file, rename_file, create_tag,
     is_master_key_set, derive_master_key, verify_password,
-    get_reset_stats, reset_app
+    get_reset_stats, reset_app,
+    MasterKeyState
 };
 use theme::get_theme;
 
@@ -129,9 +130,13 @@ pub fn run() {
     let password_manager = PasswordManager::load()
         .expect("[app:start] 无法加载密码管理器");
 
+    // 初始化主密钥状态（用于存储解密后的主密钥）
+    let master_key_state = MasterKeyState::new();
+
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .manage(password_manager)
+        .manage(master_key_state)
         .invoke_handler(tauri::generate_handler![
             hello_world,
             test_db_connection,
