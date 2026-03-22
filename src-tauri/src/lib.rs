@@ -3,6 +3,7 @@ pub mod db;
 mod usb_detection;
 mod system_info;
 mod theme;
+mod logging;
 
 // Crypto module (加密模块)
 pub mod crypto;
@@ -113,15 +114,26 @@ fn check_system() -> Result<String, String> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    // Initialize logging
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info"))
-        .init();
+    // 初始化日志系统（文件持久化 + 日志轮转）
+    if let Err(e) = logging::init_logging() {
+        eprintln!("日志系统初始化失败: {}", e);
+    }
 
-    log::info!("[app:start] U-Safe application starting");
+    // 写入系统信息文件
+    if let Err(e) = logging::write_system_info() {
+        log::error!("[app:init] 系统信息写入失败: {}", e);
+    }
+
+    // 清理旧日志（7 天前）
+    if let Err(e) = logging::cleanup_old_logs() {
+        log::warn!("[app:init] 日志清理失败: {}", e);
+    }
+
+    log::info!("[app:start] U-Safe v{} 启动", env!("CARGO_PKG_VERSION"));
 
     // 迁移旧数据（如果存在）
     if let Err(e) = migrate_old_data() {
-        log::warn!("[app:start] 数据迁移失败: {}", e);
+        log::error!("[migrate:failed] {}", e);
         // 迁移失败不应阻止应用启动
     }
 
