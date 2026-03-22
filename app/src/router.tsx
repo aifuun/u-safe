@@ -3,6 +3,7 @@ import { SetupPasswordView } from './01_views/setup';
 import { LoginView } from './01_views/login';
 import { FileManagementView } from './01_views/files';
 import { ProtectedRoute } from './01_views/ProtectedRoute';
+import { ResetWarningView, ResetConfirmView } from './01_views/reset';
 
 /**
  * U-Safe 路由配置
@@ -11,6 +12,8 @@ import { ProtectedRoute } from './01_views/ProtectedRoute';
  * - / → 重定向到 /login（默认）
  * - /setup → 首次密码设置（已登录用户不可访问）
  * - /login → 密码验证/登录
+ * - /reset-warning → 密码重置警告页面
+ * - /reset-confirm → 密码重置确认页面
  * - /files → 文件管理主界面（需要认证）
  *
  * 路由守卫：
@@ -33,6 +36,14 @@ export const router = createBrowserRouter([
   {
     path: '/login',
     element: <LoginView />,
+  },
+  {
+    path: '/reset-warning',
+    element: <ResetWarningView />,
+  },
+  {
+    path: '/reset-confirm',
+    element: <ResetConfirmView />,
   },
   {
     path: '/files',

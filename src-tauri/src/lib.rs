@@ -17,7 +17,8 @@ pub mod models;
 mod commands;
 use commands::{
     scan_file_tree, encrypt_file, decrypt_file, delete_file, rename_file, create_tag,
-    is_master_key_set, derive_master_key, verify_password
+    is_master_key_set, derive_master_key, verify_password,
+    get_reset_stats, reset_app
 };
 use theme::get_theme;
 
@@ -77,7 +78,9 @@ pub fn run() {
             get_theme,
             is_master_key_set,
             derive_master_key,
-            verify_password
+            verify_password,
+            get_reset_stats,
+            reset_app
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
