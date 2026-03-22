@@ -3,7 +3,7 @@
 //! 使用密码派生的密钥加密主密钥，存储到 .u-safe/keys/master.key
 
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use aes_gcm::{
     aead::{Aead, KeyInit, OsRng},
     Aes256Gcm, Nonce,
@@ -12,28 +12,33 @@ use rand::RngCore;
 use super::key::SecretKey;
 use super::error::CryptoError;
 
-const MASTER_KEY_FILE: &str = ".u-safe/keys/master.key";
 const NONCE_SIZE: usize = 12; // AES-GCM 标准 nonce 大小
 
 /// 主密钥存储管理器
-pub struct KeyStore {
-    base_path: PathBuf,
-}
+pub struct KeyStore;
 
 impl KeyStore {
     /// 创建密钥存储管理器
-    ///
-    /// # Arguments
-    /// * `base_path` - 基础路径（通常是项目根目录或用户目录）
-    pub fn new<P: AsRef<Path>>(base_path: P) -> Self {
-        KeyStore {
-            base_path: base_path.as_ref().to_path_buf(),
-        }
+    pub fn new() -> Self {
+        KeyStore
     }
 
     /// 获取主密钥文件路径
+    ///
+    /// 使用统一的数据目录 (.u-safe/)
+    fn get_master_key_path() -> PathBuf {
+        let data_dir = crate::usb_detection::get_data_dir();
+        let keys_dir = data_dir.join("keys");
+
+        // 确保目录存在
+        std::fs::create_dir_all(&keys_dir).ok();
+
+        keys_dir.join("master.key")
+    }
+
+    /// 获取主密钥文件路径（实例方法，兼容现有接口）
     fn key_file_path(&self) -> PathBuf {
-        self.base_path.join(MASTER_KEY_FILE)
+        Self::get_master_key_path()
     }
 
     /// 生成并存储新的主密钥
@@ -158,12 +163,10 @@ impl KeyStore {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::env;
 
     fn test_keystore() -> KeyStore {
-        let temp_dir = env::temp_dir().join(format!("u-safe-test-{}", uuid::Uuid::new_v4()));
-        std::fs::create_dir_all(&temp_dir).ok();
-        KeyStore::new(temp_dir)
+        // 测试环境使用统一的数据目录
+        KeyStore::new()
     }
 
     #[test]

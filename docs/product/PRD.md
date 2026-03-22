@@ -48,10 +48,16 @@ U-Safe 是一款专为 U 盘用户设计的轻量化管理工具。它集成了*
 
 * **`/U-Safe.exe`**：Windows 启动入口。
 * **`/U-Safe.app`**：macOS 启动入口包。
-* **`/.usafe/`**(系统隐藏)：
-  * `config.json`：用户偏好设置。
-  * `index.db`：SQLite 标签与文件元数据索引。
-  * `data/`：存放加密后的二进制分块数据。
+* **`/.u-safe/`** (系统隐藏)：统一数据目录
+  * `u-safe.db`：SQLite 数据库（标签、文件元数据、加密索引）
+  * `keys/`：密钥存储目录
+    * `password.hash`：密码哈希（Argon2id PHC 格式）
+    * `master.key`：加密的主密钥（AES-256-GCM）
+  * `data/`：加密文件分块数据（未来）
+  * `logs/`：应用日志（未来）
+  * `config.json`：用户偏好设置（未来）
+
+> **注意**：所有应用数据统一存储在 `.u-safe/` 目录下，确保便携性和数据集中管理。详见 [ADR-006](../ADRs/006-unified-data-directory.md)。
 
 
 
