@@ -4,6 +4,7 @@
 
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
+use std::path::PathBuf;
 use super::kdf::{derive_key, verify_password as verify_pwd};
 use super::error::CryptoError;
 
@@ -49,6 +50,41 @@ impl PasswordManager {
         Self::new(3, 300) // 3 次错误，锁定 5 分钟
     }
 
+    /// 从文件加载密码管理器
+    ///
+    /// 自动从 `.u-safe/keys/password.hash` 恢复密码哈希
+    pub fn load() -> Result<Self, CryptoError> {
+        let hash_file = Self::get_hash_file_path()?;
+        let stored_hash = if hash_file.exists() {
+            Some(std::fs::read_to_string(&hash_file)?)
+        } else {
+            None
+        };
+
+        log::info!("[password:load] 密码管理器已初始化, 密码已设置: {}", stored_hash.is_some());
+
+        Ok(PasswordManager {
+            state: Mutex::new(PasswordState {
+                stored_hash,
+                failed_attempts: 0,
+                locked_until: None,
+            }),
+            max_attempts: 3,
+            lockout_duration: Duration::from_secs(300),
+        })
+    }
+
+    /// 获取密码哈希文件路径
+    fn get_hash_file_path() -> Result<PathBuf, CryptoError> {
+        let data_dir = dirs::data_dir()
+            .ok_or_else(|| CryptoError::Other("无法获取数据目录".to_string()))?;
+
+        let u_safe_dir = data_dir.join(".u-safe").join("keys");
+        std::fs::create_dir_all(&u_safe_dir)?;
+
+        Ok(u_safe_dir.join("password.hash"))
+    }
+
     /// 设置主密码
     ///
     /// # Arguments
@@ -61,13 +97,17 @@ impl PasswordManager {
         // 派生密钥并生成哈希
         let (_, hash) = derive_key(password)?;
 
-        // 存储哈希
+        // 持久化到文件
+        let hash_file = Self::get_hash_file_path()?;
+        std::fs::write(&hash_file, &hash)?;
+
+        // 存储哈希到内存
         let mut state = self.state.lock().unwrap();
         state.stored_hash = Some(hash);
         state.failed_attempts = 0;
         state.locked_until = None;
 
-        log::info!("[password:set] 主密码已设置");
+        log::info!("[password:set] 主密码已设置并持久化");
         Ok(())
     }
 
