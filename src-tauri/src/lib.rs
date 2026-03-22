@@ -26,6 +26,67 @@ use crypto::password::PasswordManager;
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 
+/// 迁移旧数据到新的统一数据目录
+///
+/// 检查系统目录下是否存在旧数据（密码哈希和主密钥），
+/// 如果存在则迁移到新的 .u-safe/ 目录
+fn migrate_old_data() -> Result<(), String> {
+    // 获取旧的系统数据目录路径
+    let old_data_dir = dirs::data_dir()
+        .ok_or_else(|| "无法获取系统数据目录".to_string())?
+        .join(".u-safe");
+
+    // 获取新的统一数据目录路径
+    let new_data_dir = usb_detection::get_data_dir();
+
+    // 如果旧目录不存在，无需迁移
+    if !old_data_dir.exists() {
+        log::info!("[migrate] 未检测到旧数据，无需迁移");
+        return Ok(());
+    }
+
+    // 如果新旧路径相同，无需迁移
+    if old_data_dir == new_data_dir {
+        log::info!("[migrate] 数据目录已是最新，无需迁移");
+        return Ok(());
+    }
+
+    log::info!("[migrate:start] 开始迁移数据: {:?} -> {:?}", old_data_dir, new_data_dir);
+
+    // 确保新目录的 keys 子目录存在
+    let new_keys_dir = new_data_dir.join("keys");
+    std::fs::create_dir_all(&new_keys_dir)
+        .map_err(|e| format!("创建新 keys 目录失败: {}", e))?;
+
+    let old_keys_dir = old_data_dir.join("keys");
+
+    // 迁移密码哈希文件
+    let old_password_hash = old_keys_dir.join("password.hash");
+    let new_password_hash = new_keys_dir.join("password.hash");
+
+    if old_password_hash.exists() && !new_password_hash.exists() {
+        std::fs::copy(&old_password_hash, &new_password_hash)
+            .map_err(|e| format!("迁移密码哈希文件失败: {}", e))?;
+        log::info!("[migrate] 密码哈希文件已迁移: {:?}", new_password_hash);
+    }
+
+    // 迁移主密钥文件
+    let old_master_key = old_keys_dir.join("master.key");
+    let new_master_key = new_keys_dir.join("master.key");
+
+    if old_master_key.exists() && !new_master_key.exists() {
+        std::fs::copy(&old_master_key, &new_master_key)
+            .map_err(|e| format!("迁移主密钥文件失败: {}", e))?;
+        log::info!("[migrate] 主密钥文件已迁移: {:?}", new_master_key);
+    }
+
+    log::info!("[migrate:complete] 数据迁移完成");
+    log::info!("[migrate:note] 旧数据已保留在: {:?}", old_data_dir);
+    log::info!("[migrate:note] 建议手动验证后删除旧数据");
+
+    Ok(())
+}
+
 #[tauri::command]
 fn hello_world() -> String {
     "Hello World from Rust!".to_string()
@@ -56,6 +117,12 @@ pub fn run() {
         .init();
 
     log::info!("[app:start] U-Safe application starting");
+
+    // 迁移旧数据（如果存在）
+    if let Err(e) = migrate_old_data() {
+        log::warn!("[app:start] 数据迁移失败: {}", e);
+        // 迁移失败不应阻止应用启动
+    }
 
     // 初始化密码管理器 (从文件加载密码哈希)
     let password_manager = PasswordManager::load()

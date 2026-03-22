@@ -76,13 +76,13 @@ impl PasswordManager {
 
     /// 获取密码哈希文件路径
     fn get_hash_file_path() -> Result<PathBuf, CryptoError> {
-        let data_dir = dirs::data_dir()
-            .ok_or_else(|| CryptoError::Other("无法获取数据目录".to_string()))?;
+        // 使用统一的数据目录（.u-safe/）
+        let data_dir = crate::usb_detection::get_data_dir();
+        let keys_dir = data_dir.join("keys");
 
-        let u_safe_dir = data_dir.join(".u-safe").join("keys");
-        std::fs::create_dir_all(&u_safe_dir)?;
+        std::fs::create_dir_all(&keys_dir)?;
 
-        Ok(u_safe_dir.join("password.hash"))
+        Ok(keys_dir.join("password.hash"))
     }
 
     /// 设置主密码
