@@ -15,10 +15,14 @@ pub mod models;
 
 // Commands module (IPC 命令)
 mod commands;
-use commands::{scan_file_tree, encrypt_file, decrypt_file, delete_file, rename_file, create_tag};
+use commands::{
+    scan_file_tree, encrypt_file, decrypt_file, delete_file, rename_file, create_tag,
+    is_master_key_set, derive_master_key, verify_password
+};
 use theme::get_theme;
 
 use db::{Database, get_default_db_path};
+use crypto::password::PasswordManager;
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 
@@ -53,8 +57,13 @@ pub fn run() {
 
     log::info!("[app:start] U-Safe application starting");
 
+    // 初始化密码管理器 (从文件加载密码哈希)
+    let password_manager = PasswordManager::load()
+        .expect("[app:start] 无法加载密码管理器");
+
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        .manage(password_manager)
         .invoke_handler(tauri::generate_handler![
             hello_world,
             test_db_connection,
@@ -65,7 +74,10 @@ pub fn run() {
             delete_file,
             rename_file,
             create_tag,
-            get_theme
+            get_theme,
+            is_master_key_set,
+            derive_master_key,
+            verify_password
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
