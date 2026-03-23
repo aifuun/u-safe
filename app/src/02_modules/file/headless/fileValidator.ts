@@ -1,31 +1,21 @@
 /**
- * 文件验证工具
- * 验证文件类型、大小等
+ * 文件验证工具 - Adapter for Browser File API
+ *
+ * 这是 Modules 层的适配器，将浏览器的 File 对象适配到 Domains 层的验证规则
+ * 业务规则在 @/domains/file/rules/validation
  */
 
-// 文件大小限制 (字节)
-export const FILE_SIZE_LIMITS = {
-  WARNING: 2 * 1024 * 1024 * 1024, // 2GB - 显示警告
-  MAX: 5 * 1024 * 1024 * 1024,     // 5GB - 阻止上传
-} as const;
+import {
+  FILE_SIZE_LIMITS,
+  ALLOWED_EXTENSIONS,
+  formatFileSize,
+  validateFile as validateFileDomain,
+} from '@/domains/file';
 
-// 支持的文件类型白名单
-export const ALLOWED_EXTENSIONS = [
-  // 图片
-  '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg',
-  // 文档
-  '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx',
-  '.txt', '.md', '.rtf', '.odt', '.ods', '.odp',
-  // 视频
-  '.mp4', '.avi', '.mov', '.mkv', '.flv', '.wmv', '.webm',
-  // 音频
-  '.mp3', '.wav', '.flac', '.aac', '.ogg', '.m4a',
-  // 压缩包
-  '.zip', '.rar', '.7z', '.tar', '.gz', '.bz2',
-  // 其他
-  '.json', '.xml', '.csv', '.log',
-] as const;
+// 重新导出常量供外部使用
+export { FILE_SIZE_LIMITS, ALLOWED_EXTENSIONS, formatFileSize };
 
+// Adapter 层的类型定义（包含浏览器 File 对象）
 export interface FileValidationError {
   file: File;
   reason: 'type' | 'size' | 'unknown';
@@ -45,64 +35,36 @@ export interface FileValidationResult {
 }
 
 /**
- * 检查文件扩展名是否在白名单中
- */
-function isFileTypeAllowed(filename: string): boolean {
-  const ext = filename.toLowerCase().substring(filename.lastIndexOf('.'));
-  return ALLOWED_EXTENSIONS.includes(ext as any);
-}
-
-/**
- * 格式化文件大小为人类可读格式
- */
-export function formatFileSize(bytes: number): string {
-  if (bytes === 0) return '0 B';
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`;
-}
-
-/**
- * 验证单个文件
+ * 验证单个文件 - Adapter
+ * 将浏览器 File 对象适配到 Domains 层验证
  */
 export function validateFile(file: File): {
   valid: boolean;
   warning?: FileValidationWarning;
   error?: FileValidationError;
 } {
-  // 检查文件大小 - 超过 5GB 阻止
-  if (file.size > FILE_SIZE_LIMITS.MAX) {
+  // 调用 Domains 层纯函数（传递文件名和大小）
+  const domainResult = validateFileDomain(file.name, file.size);
+
+  // 适配结果（添加 File 对象引用）
+  if (!domainResult.valid && domainResult.error) {
     return {
       valid: false,
       error: {
         file,
-        reason: 'size',
-        message: `文件过大（${formatFileSize(file.size)}），超过 5GB 限制`,
+        reason: domainResult.error.reason,
+        message: domainResult.error.message,
       },
     };
   }
 
-  // 检查文件类型
-  if (!isFileTypeAllowed(file.name)) {
-    return {
-      valid: false,
-      error: {
-        file,
-        reason: 'type',
-        message: `不支持的文件类型: ${file.name.substring(file.name.lastIndexOf('.'))}`,
-      },
-    };
-  }
-
-  // 检查文件大小 - 超过 2GB 警告
-  if (file.size > FILE_SIZE_LIMITS.WARNING) {
+  if (domainResult.valid && domainResult.warning) {
     return {
       valid: true,
       warning: {
         file,
-        reason: 'large',
-        message: `文件较大（${formatFileSize(file.size)}），加密可能耗时较长`,
+        reason: domainResult.warning.reason,
+        message: domainResult.warning.message,
       },
     };
   }
@@ -111,7 +73,7 @@ export function validateFile(file: File): {
 }
 
 /**
- * 批量验证文件
+ * 批量验证文件 - Adapter
  */
 export function validateFiles(files: File[]): FileValidationResult {
   const result: FileValidationResult = {
