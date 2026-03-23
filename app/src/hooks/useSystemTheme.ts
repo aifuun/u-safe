@@ -7,6 +7,7 @@
 
 import { useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { logger } from '@/00_kernel/services/logService';
 
 /**
  * 系统主题类型（与 Rust SystemTheme 对应）
@@ -51,10 +52,10 @@ export function useSystemTheme(): ThemeConfig {
   const fetchSystemTheme = async () => {
     try {
       const systemTheme = await invoke<SystemTheme>('get_theme');
-      console.info('[useSystemTheme:fetch]', { systemTheme });
+      logger.info('useSystemTheme:fetch', { systemTheme });
       return systemTheme;
     } catch (error) {
-      console.error('[useSystemTheme:fetch:failed]', { error });
+      logger.error('useSystemTheme:fetch:failed', { error });
       return 'light' as SystemTheme; // 默认亮色
     }
   };
@@ -90,7 +91,7 @@ export function useSystemTheme(): ThemeConfig {
 
     const handleChange = (e: MediaQueryListEvent) => {
       const newTheme: SystemTheme = e.matches ? 'dark' : 'light';
-      console.info('[useSystemTheme:change]', { newTheme });
+      logger.info('useSystemTheme:change', { newTheme });
       setThemeState(newTheme);
       document.documentElement.setAttribute('data-theme', newTheme);
     };
@@ -111,7 +112,7 @@ export function useSystemTheme(): ThemeConfig {
 
   // 手动设置主题
   const setTheme = (newTheme: SystemTheme) => {
-    console.info('[useSystemTheme:setTheme]', { newTheme });
+    logger.info('useSystemTheme:setTheme', { newTheme });
     setThemeState(newTheme);
     setFollowSystemState(false);
     localStorage.setItem('theme', newTheme);
@@ -121,7 +122,7 @@ export function useSystemTheme(): ThemeConfig {
 
   // 切换自动跟随系统
   const setFollowSystem = (follow: boolean) => {
-    console.info('[useSystemTheme:setFollowSystem]', { follow });
+    logger.info('useSystemTheme:setFollowSystem', { follow });
     setFollowSystemState(follow);
     localStorage.setItem('followSystem', follow.toString());
 

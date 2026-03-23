@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
 import { createStore } from 'zustand/vanilla';
 import { invoke } from '@tauri-apps/api/core';
+import { logger } from '@/00_kernel/services/logService';
 
 /**
  * 认证状态
@@ -77,7 +78,7 @@ export const authStore = createStore<AuthState>()((set, get) => {
         })
       );
     } catch (error) {
-      console.error('[authStore] Failed to persist state:', error);
+      logger.error('authStore:persist:failed', { error });
     }
   };
 
@@ -114,7 +115,7 @@ export const authStore = createStore<AuthState>()((set, get) => {
         const state = get();
         persistState(state);
       } catch (error) {
-        console.error('[authStore] Failed to check setup status:', error);
+        logger.error('authStore:checkSetup:failed', { error });
       }
     },
 
@@ -132,7 +133,7 @@ export const authStore = createStore<AuthState>()((set, get) => {
  */
 if (import.meta.env.DEV) {
   authStore.subscribe((state) => {
-    console.log('[authStore] State changed:', {
+    logger.debug('authStore:state:changed', {
       isAuthenticated: state.isAuthenticated,
       isSetupComplete: state.isSetupComplete,
     });
