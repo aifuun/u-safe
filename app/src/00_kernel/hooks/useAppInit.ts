@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { invoke } from '@tauri-apps/api/core';
+import { logger } from '@/00_kernel/services/logService';
 
 interface AppInitState {
   isLoading: boolean;
@@ -75,7 +76,7 @@ export function useAppInit(): AppInitState {
         });
         navigate('/files', { replace: true });
       } catch (error) {
-        console.error('[useAppInit] Failed to check app status:', error);
+        logger.error('useAppInit:check:failed', { error });
         // 出错时默认跳转登录页（安全做法）
         setState({
           isLoading: false,

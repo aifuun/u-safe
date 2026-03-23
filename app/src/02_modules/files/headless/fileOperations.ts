@@ -6,6 +6,7 @@
  */
 
 import { invoke } from '@tauri-apps/api/core';
+import { logger } from '@/00_kernel/services/logService';
 
 /**
  * 文件删除响应
@@ -41,17 +42,17 @@ export interface RenameFileResponse {
  * @throws {string} 错误信息
  */
 export async function deleteFile(fileId: number): Promise<DeleteFileResponse> {
-  console.info('[fileOperations:delete:start]', { fileId });
+  logger.info('fileOperations:delete:start', { fileId });
 
   try {
     const response = await invoke<DeleteFileResponse>('delete_file', {
       fileId,
     });
 
-    console.info('[fileOperations:delete:done]', { fileId, response });
+    logger.info('fileOperations:delete:done', { fileId, response });
     return response;
   } catch (error) {
-    console.error('[fileOperations:delete:failed]', { fileId, error });
+    logger.error('fileOperations:delete:failed', { fileId, error });
     throw error;
   }
 }
@@ -68,7 +69,7 @@ export async function renameFile(
   fileId: number,
   newName: string
 ): Promise<RenameFileResponse> {
-  console.info('[fileOperations:rename:start]', { fileId, newName });
+  logger.info('fileOperations:rename:start', { fileId, newName });
 
   try {
     const response = await invoke<RenameFileResponse>('rename_file', {
@@ -76,10 +77,10 @@ export async function renameFile(
       newName,
     });
 
-    console.info('[fileOperations:rename:done]', { fileId, newName, response });
+    logger.info('fileOperations:rename:done', { fileId, newName, response });
     return response;
   } catch (error) {
-    console.error('[fileOperations:rename:failed]', { fileId, newName, error });
+    logger.error('fileOperations:rename:failed', { fileId, newName, error });
     throw error;
   }
 }
