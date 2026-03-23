@@ -1,5 +1,8 @@
 use serde::{Deserialize, Serialize};
 
+// Re-export export_diagnostic_logs from the main logging module
+pub use crate::logging::export_diagnostic_logs;
+
 /// 前端日志级别
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "lowercase")]

@@ -1,0 +1,78 @@
+/* 诊断日志导出组件样式 */
+
+.diagnostic-export {
+  padding: var(--space-4);
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-1);
+}
+
+.diagnostic-export__title {
+  font-size: var(--text-lg);
+  font-weight: 700;
+  margin-bottom: var(--space-3);
+  color: var(--text-primary);
+}
+
+.diagnostic-export__content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.diagnostic-export__button {
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-out);
+  align-self: flex-start;
+}
+
+.diagnostic-export__button:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+}
+
+.diagnostic-export__button:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.diagnostic-export__button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.diagnostic-export__description {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.diagnostic-export__success {
+  padding: var(--space-3);
+  background: var(--bg-success);
+  color: var(--color-success);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+}
+
+.diagnostic-export__error {
+  padding: var(--space-3);
+  background: var(--bg-error);
+  color: var(--color-error);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .diagnostic-export__button {
+    width: 100%;
+  }
+}

@@ -19,8 +19,8 @@ mod commands;
 use commands::{
     scan_file_tree, encrypt_file, decrypt_file, delete_file, rename_file, create_tag,
     is_master_key_set, derive_master_key, verify_password,
-    get_reset_stats, reset_app, write_frontend_log,
-    MasterKeyState
+    get_reset_stats, reset_app, write_frontend_log, move_file,
+    export_diagnostic_logs, MasterKeyState
 };
 use theme::get_theme;
 
@@ -165,7 +165,9 @@ pub fn run() {
             verify_password,
             get_reset_stats,
             reset_app,
-            write_frontend_log
+            write_frontend_log,
+            export_diagnostic_logs,
+            move_file
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
