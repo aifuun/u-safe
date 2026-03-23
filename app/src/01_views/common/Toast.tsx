@@ -23,6 +23,7 @@ export function Toast({ type, message, onClose, duration = 3000 }: ToastProps) {
       const timer = setTimeout(onClose, duration);
       return () => clearTimeout(timer);
     }
+    return undefined;
   }, [duration, onClose]);
 
   const icons = {

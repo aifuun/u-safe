@@ -85,9 +85,11 @@ export function useFileDrop(options: UseFileDropOptions = {}): UseFileDropReturn
 
       // 检查文件数量限制
       if (droppedFiles.length > maxFiles) {
+        const firstFile = droppedFiles[0];
+        if (!firstFile) return; // Guard: should never happen but satisfies TypeScript
         onValidationError?.([
           {
-            file: droppedFiles[0], // 使用第一个文件作为占位
+            file: firstFile, // 使用第一个文件作为占位
             reason: 'unknown',
             message: `一次最多只能导入 ${maxFiles} 个文件，您拖拽了 ${droppedFiles.length} 个文件`,
           },

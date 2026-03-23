@@ -7,7 +7,7 @@
 
 import { useEffect, useState } from 'react';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
-import { logger } from '@/00_kernel/services/logService';
+import { logger } from '@/kernel/services/logService';
 
 /**
  * 加密进度数据（与 Rust EncryptionProgress 对应）
@@ -65,7 +65,7 @@ export function useEncryptionProgress(): EncryptionProgressState {
 
     // 监听加密进度事件
     listen<EncryptionProgress>('encryption-progress', (event) => {
-      logger.info('useEncryptionProgress:encryption', event.payload);
+      logger.info('useEncryptionProgress:encryption', event.payload as unknown as Record<string, unknown>);
       setIsEncrypting(true);
       setEncryptionProgress(event.payload);
 
@@ -82,7 +82,7 @@ export function useEncryptionProgress(): EncryptionProgressState {
 
     // 监听解密进度事件
     listen<EncryptionProgress>('decryption-progress', (event) => {
-      logger.info('useEncryptionProgress:decryption', event.payload);
+      logger.info('useEncryptionProgress:decryption', event.payload as unknown as Record<string, unknown>);
       setIsDecrypting(true);
       setDecryptionProgress(event.payload);
 

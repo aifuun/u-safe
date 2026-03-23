@@ -12,7 +12,7 @@ type LogLevel = 'info' | 'warn' | 'error' | 'debug';
  *
  * 使用示例：
  * ```typescript
- * import { logger } from '@/00_kernel/services/logService';
+ * import { logger } from '@/kernel/services/logService';
  *
  * logger.info('file:encrypt:start', { fileId: 123, size: '1.2MB' });
  * logger.error('file:encrypt:failed', { fileId: 123, error: 'MAC验证失败' });
@@ -103,7 +103,7 @@ class LogService {
  *
  * 使用方式：
  * ```typescript
- * import { logger } from '@/00_kernel/services/logService';
+ * import { logger } from '@/kernel/services/logService';
  *
  * logger.info('app:init', { version: '0.1.0' });
  * ```
