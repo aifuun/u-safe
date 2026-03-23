@@ -35,6 +35,8 @@ chrono = { version = "0.4", features = ["serde"] }  # 时间处理
 # 文件管理相关依赖
 mime_guess = "2.0"       # 文件类型检测
 dirs = "5.0"             # 系统目录路径获取
+zip = "0.6"              # ZIP 压缩包创建
+sysinfo = "0.30"         # 系统信息收集
 
 # 平台特定依赖
 [target.'cfg(windows)'.dependencies]
