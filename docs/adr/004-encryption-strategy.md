@@ -54,6 +54,54 @@ U-Safe 在 U 盘上加密财务数据，面临：意外断电/拔出、大量历
 
 ### 3. 密钥管理策略
 
+#### 3.1 Master Key Wrapping 架构
+
+**实施日期**: 2026-03-23 (Issue #41)
+
+U-Safe 使用双层密钥架构（Master Key Wrapping）实现密码独立于文件加密：
+
+```
+用户密码（可更改）
+  ↓ Argon2id (KDF)
+密码派生密钥 (Password-Derived Key, KEK)
+  ↓ AES-256-GCM 加密
+主密钥 (Master Key，固定，32字节随机)
+  ↓ AES-256-GCM
+加密文件（永不改变）
+```
+
+**优势**：
+- ✅ **修改密码 <1 秒**：只需重新加密主密钥（32 字节），无需重新加密所有文件
+- ✅ **降低文件损坏风险**：文件加密层不变，密码修改不涉及文件操作
+- ✅ **用户体验极佳**：密码修改瞬间完成，与文件数量无关
+- ✅ **安全性不降低**：双层加密（密码 → KEK → Master Key → 文件）
+
+**存储结构**：
+```
+~/.u-safe/keys/
+  ├── password.hash        (Argon2id PHC 格式，用于验证密码)
+  └── master.key           (加密后的主密钥，nonce + ciphertext + tag)
+```
+
+**流程**：
+
+1. **首次设置密码**：
+   - 用户输入密码 → Argon2id 派生 KEK → 持久化 `password.hash`
+   - 生成随机主密钥（32 字节）→ 用 KEK 加密 → 存储到 `master.key`
+   - 主密钥保存到内存供后续文件加密使用
+
+2. **登录验证**：
+   - 用户输入密码 → 验证 `password.hash` → 派生 KEK
+   - 用 KEK 解密 `master.key` → 获取主密钥
+   - 主密钥保存到内存供文件解密使用
+
+3. **修改密码**（Issue #43，未来实现）：
+   - 验证旧密码 → 解密主密钥
+   - 用新密码派生新 KEK → 重新加密主密钥 → 更新 `master.key`
+   - 文件层加密不变（继续使用同一个主密钥）
+
+#### 3.2 KDF 参数
+
 - **Argon2id**: 内存硬度抵抗 GPU/ASIC 暴力破解，混合 Argon2i/d 防侧信道，OWASP 2023 推荐
 - **参数**: 64MB 内存 + 3 次迭代（~0.5s 解密延迟）+ 单线程
 - **密码要求**: 最短 8 字符（符合 NIST SP 800-63B、OWASP 标准），必须包含大小写字母、数字、特殊字符
@@ -68,9 +116,17 @@ U-Safe 在 U 盘上加密财务数据，面临：意外断电/拔出、大量历
 
 ## Consequences
 
-**Positive**: Rust 生态成熟 (aes-gcm/ring 经审计)、分块支持增量备份、跨平台一致
+**Positive**:
+- Rust 生态成熟 (aes-gcm/ring 经审计)
+- 分块支持增量备份、跨平台一致
+- **Master Key Wrapping 支持快速修改密码**（<1 秒，Issue #41）
+- 双层加密架构降低文件损坏风险
 
-**Negative**: Nonce 唯一性管理 (随机数+块索引)、文件膨胀 0.04% (28 bytes/64KB)、2010 年前 CPU 无 AES-NI 性能降 10x
+**Negative**:
+- Nonce 唯一性管理 (随机数+块索引)
+- 文件膨胀 0.04% (28 bytes/64KB)
+- 2010 年前 CPU 无 AES-NI 性能降 10x
+- **Master Key 损坏则所有文件无法解密**（缓解：未来 Issue #44 恢复密钥导出）
 
 ## Alternatives Considered
 
