@@ -6,6 +6,7 @@
 
 import { useState } from 'react';
 import { deleteFile, renameFile } from './fileOperations';
+import { logger } from '@/00_kernel/services/logService';
 
 export interface UseFileOperationsReturn {
   /** 是否正在执行操作 */
@@ -57,18 +58,18 @@ export function useFileOperations(): UseFileOperationsReturn {
       const response = await deleteFile(fileId);
 
       if (response.success) {
-        console.info('[useFileOperations:delete:success]', { fileId });
+        logger.info('useFileOperations:delete:success', { fileId });
         return true;
       } else {
         const errorMsg = response.message || '删除失败';
         setError(errorMsg);
-        console.error('[useFileOperations:delete:failed]', { fileId, error: errorMsg });
+        logger.error('useFileOperations:delete:failed', { fileId, error: errorMsg });
         return false;
       }
     } catch (err) {
       const errorMsg = typeof err === 'string' ? err : '删除文件失败';
       setError(errorMsg);
-      console.error('[useFileOperations:delete:error]', { fileId, error: err });
+      logger.error('useFileOperations:delete:error', { fileId, error: err });
       return false;
     } finally {
       setIsLoading(false);
@@ -86,18 +87,18 @@ export function useFileOperations(): UseFileOperationsReturn {
       const response = await renameFile(fileId, newName);
 
       if (response.success) {
-        console.info('[useFileOperations:rename:success]', { fileId, newName });
+        logger.info('useFileOperations:rename:success', { fileId, newName });
         return true;
       } else {
         const errorMsg = response.message || '重命名失败';
         setError(errorMsg);
-        console.error('[useFileOperations:rename:failed]', { fileId, newName, error: errorMsg });
+        logger.error('useFileOperations:rename:failed', { fileId, newName, error: errorMsg });
         return false;
       }
     } catch (err) {
       const errorMsg = typeof err === 'string' ? err : '重命名文件失败';
       setError(errorMsg);
-      console.error('[useFileOperations:rename:error]', { fileId, newName, error: err });
+      logger.error('useFileOperations:rename:error', { fileId, newName, error: err });
       return false;
     } finally {
       setIsLoading(false);
