@@ -1,9 +1,21 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import path from 'path';
 
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
+
+  resolve: {
+    alias: {
+      '@/kernel': path.resolve(__dirname, './app/src/00_kernel'),
+      '@/views': path.resolve(__dirname, './app/src/01_views'),
+      '@/modules': path.resolve(__dirname, './app/src/02_modules'),
+      '@/components': path.resolve(__dirname, './app/src/components'),
+      '@/hooks': path.resolve(__dirname, './app/src/hooks'),
+      '@/utils': path.resolve(__dirname, './app/src/utils'),
+    },
+  },
 
   // Tauri expects a fixed port will fail if that port is already in use
   server: {

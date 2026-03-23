@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { invoke } from '@tauri-apps/api/core';
-import { logger } from '@/00_kernel/services/logService';
+import { logger } from '@/kernel/services/logService';
 
 interface AppInitState {
   isLoading: boolean;

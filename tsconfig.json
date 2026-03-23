@@ -6,6 +6,17 @@
     "module": "ESNext",
     "skipLibCheck": true,
 
+    /* Path Aliases */
+    "baseUrl": ".",
+    "paths": {
+      "@/kernel/*": ["app/src/00_kernel/*"],
+      "@/views/*": ["app/src/01_views/*"],
+      "@/modules/*": ["app/src/02_modules/*"],
+      "@/components/*": ["app/src/components/*"],
+      "@/hooks/*": ["app/src/hooks/*"],
+      "@/utils/*": ["app/src/utils/*"]
+    },
+
     /* Bundler mode */
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
@@ -26,8 +37,10 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noImplicitReturns": true,
-    "noFallthroughCasesInSwitch": true
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true
   },
-  "include": ["src"],
+  "include": ["src", "app/src"],
+  "exclude": ["**/__tests__/**", "**/*.test.ts", "**/*.test.tsx"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
