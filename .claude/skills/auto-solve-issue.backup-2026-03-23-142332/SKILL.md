@@ -61,7 +61,6 @@ solve-issue v1.0 had execution pauses requiring manual "continue" 3-4 times. The
 - `--auto` - Auto mode (default) - continues if score ≥ 90
 - `--interactive` - Stop at checkpoints for manual review
 - `--resume` - Resume from last checkpoint
-- `--no-subagent` - Use direct skill calls instead of subagents (default, recommended)
 
 ## AI Execution Instructions
 
@@ -236,75 +235,9 @@ def find_next_available_task(task_ids: list[str]) -> dict | None:
 - Tasks still blocked → return None (wait for blocker to complete)
 - Task in_progress → skip it (shouldn't happen in normal flow)
 
-### Step 3: Execute Phase (Direct Call or Subagent)
-
-**DEFAULT: Use direct skill calls (--no-subagent)**
+### Step 3: Execute with Subagent
 
 ```python
-def execute_with_skill_call(task: dict, mode: str) -> dict:
-    """
-    使用 Skill tool 直接调用（推荐方式，默认）
-
-    优势：
-    - 保持工作目录一致
-    - 继承 worktree 上下文
-    - 输出文件写入正确位置
-    - 避免 subagent 上下文隔离问题
-
-    Args:
-        task: 任务详细信息（包含 metadata 中的 skill 名称）
-        mode: 执行模式 ("auto" 或 "interactive")
-
-    Returns:
-        执行结果 {
-            "success": bool,
-            "score": int | None,  # For checkpoint phases
-            "error": str | None
-        }
-    """
-    skill_name = task["metadata"]["skill"]
-    issue_number = task["metadata"]["issue_number"]
-    is_checkpoint = task["metadata"].get("checkpoint", False)
-
-    # 构建 skill 参数
-    if skill_name == "eval-plan":
-        skill_args = f"{issue_number} --mode={mode}"
-    elif skill_name == "review":
-        skill_args = ""  # review 自动检测当前分支
-    elif skill_name in ["start-issue", "execute-plan", "finish-issue"]:
-        skill_args = str(issue_number)
-    else:
-        skill_args = str(issue_number)
-
-    # 直接调用 skill（不使用 subagent）
-    try:
-        Skill(
-            skill=skill_name,
-            args=skill_args
-        )
-
-        # 读取分数（如果是 checkpoint）
-        score = None
-        if is_checkpoint:
-            if skill_name == "eval-plan":
-                score = read_eval_plan_score()
-            elif skill_name == "review":
-                score = read_review_score()
-
-        return {
-            "success": True,
-            "score": score,
-            "error": None
-        }
-
-    except Exception as e:
-        return {
-            "success": False,
-            "score": None,
-            "error": str(e)
-        }
-
-
 def execute_with_subagent(task: dict, mode: str) -> dict:
     """
     使用 Subagent 执行指定的 skill
@@ -390,36 +323,14 @@ def read_review_score() -> int | None:
         return None
 ```
 
-**Execution Method Selection:**
-
-```python
-# Parse --no-subagent flag (default: True)
-use_subagent = "--no-subagent" not in args  # Default: False (use direct calls)
-
-# Select execution method
-if use_subagent:
-    result = execute_with_subagent(next_task, mode)
-else:
-    result = execute_with_skill_call(next_task, mode)  # DEFAULT
-```
-
 **Key Design Points:**
 
-1. **Direct Skill Calls (Default)**: Execute in current context
-   - ✅ Maintains working directory consistency
-   - ✅ Inherits worktree context
-   - ✅ Output files written to correct location
-   - ✅ No subagent isolation issues
-   - **Use by default** - only use subagent if explicitly needed
-
-2. **Subagent Isolation (Legacy)**: Each phase runs in independent context
+1. **Subagent Isolation**: Each phase runs in independent context
    - No context pollution between phases
    - Clean execution environment
    - Separate error handling
-   - **Known issue**: Output file path problems with worktrees
-   - **Use only when**: You need complete context isolation
 
-3. **Skill Arguments**: Customize args per skill
+2. **Skill Arguments**: Customize args per skill
    - eval-plan: Needs --mode=auto/interactive
    - review: Auto-detects current branch
    - Others: Just need issue number
@@ -442,9 +353,6 @@ else:
 ### Step 4: Main Execution Loop
 
 ```python
-# Parse --no-subagent flag (default: use direct calls)
-use_subagent = "--no-subagent" not in args  # Default: False
-
 # Check if resuming from previous run
 if resume_flag:
     resume_data = load_resume_point()
@@ -455,7 +363,6 @@ if resume_flag:
         task_ids = context["task_ids"]
         mode = context["mode"]
         issue_number = context["issue_number"]
-        # Preserve use_subagent from args (user can override on resume)
     else:
         print("⚠️ No resume point found, starting fresh")
         # Continue with fresh start (task_ids already created)
@@ -485,11 +392,8 @@ while True:
     # 4. Mark task as in_progress
     TaskUpdate(next_task["id"], status="in_progress")
 
-    # 5. Execute phase (direct call or subagent)
-    if use_subagent:
-        result = execute_with_subagent(next_task, mode)
-    else:
-        result = execute_with_skill_call(next_task, mode)  # DEFAULT
+    # 5. Execute with subagent
+    result = execute_with_subagent(next_task, mode)
 
     # 6. Check execution result
     if not result["success"]:

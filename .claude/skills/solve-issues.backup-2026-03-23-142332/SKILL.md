@@ -82,7 +82,6 @@ last-updated: "2026-03-20"
 - `--stop-on-error` - 遇到错误时停止批处理（默认）
 - `--continue-on-error` - 遇到错误继续处理剩余issues
 - `--resume` - 从上次检查点恢复
-- `--no-subagent` - 传递给 auto-solve-issue，使用直接调用（推荐，默认）
 
 ## AI 执行指令
 
@@ -166,7 +165,7 @@ def parse_input(args: str) -> dict:
 ### 第2步：单个Issue直接委托
 
 ```python
-def solve_single_issue(issue_number: int, mode: str, resume: bool, no_subagent: bool = True):
+def solve_single_issue(issue_number: int, mode: str, resume: bool):
     """
     处理单个issue - 直接委托给 /auto-solve-issue
 
@@ -174,12 +173,10 @@ def solve_single_issue(issue_number: int, mode: str, resume: bool, no_subagent: 
         issue_number: issue编号
         mode: "auto" 或 "interactive"
         resume: 是否恢复模式
-        no_subagent: 是否禁用 subagent（默认 True，推荐）
     """
     # 构建命令参数
     mode_arg = f"--{mode}"
     resume_arg = "--resume" if resume else ""
-    subagent_arg = "--no-subagent" if no_subagent else ""  # 默认传递
 
     # 直接委托（使用 Skill tool）
     print(f"📋 处理 issue #{issue_number}...")
@@ -187,7 +184,7 @@ def solve_single_issue(issue_number: int, mode: str, resume: bool, no_subagent: 
     # 调用 /auto-solve-issue
     Skill(
         skill="auto-solve-issue",
-        args=f"{issue_number} {mode_arg} {resume_arg} {subagent_arg}".strip()
+        args=f"{issue_number} {mode_arg} {resume_arg}".strip()
     )
 
     print(f"✅ Issue #{issue_number} 完成")
@@ -195,8 +192,7 @@ def solve_single_issue(issue_number: int, mode: str, resume: bool, no_subagent: 
 
 **关键要点：**
 - ✅ 零包装开销：直接调用 `/auto-solve-issue`
-- ✅ 参数透传：`--auto`/`--interactive`、`--resume` 和 `--no-subagent` 传递给子技能
-- ✅ 默认禁用 subagent：`no_subagent=True` 避免输出文件问题
+- ✅ 参数透传：`--auto`/`--interactive` 和 `--resume` 传递给子技能
 - ✅ 简洁实现：仅4-5行核心代码
 
 ### 第3步：批处理循环
@@ -205,8 +201,7 @@ def solve_single_issue(issue_number: int, mode: str, resume: bool, no_subagent: 
 def solve_multiple_issues(
     issues: list[int],
     mode: str,
-    error_handling: str,
-    no_subagent: bool = True
+    error_handling: str
 ) -> dict:
     """
     处理多个issues - 循环调用 /auto-solve-issue
@@ -215,7 +210,6 @@ def solve_multiple_issues(
         issues: issue编号列表
         mode: "auto" 或 "interactive"
         error_handling: "stop" 或 "continue"
-        no_subagent: 是否禁用 subagent（默认 True，推荐）
 
     Returns:
         批处理结果 {
@@ -244,11 +238,10 @@ def solve_multiple_issues(
         try:
             # 调用 /auto-solve-issue
             mode_arg = f"--{mode}"
-            subagent_arg = "--no-subagent" if no_subagent else ""
 
             Skill(
                 skill="auto-solve-issue",
-                args=f"{issue_number} {mode_arg} {subagent_arg}".strip()
+                args=f"{issue_number} {mode_arg}"
             )
 
             # 记录成功

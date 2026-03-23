@@ -1,0 +1,289 @@
+{
+  "skill": "finish-issue",
+  "version": "2.0.0",
+  "test_cases": [
+    {
+      "id": "test-01-standard-completion",
+      "description": "Standard issue completion workflow",
+      "input": {
+        "command": "/finish-issue",
+        "context": {
+          "current_branch": "feature/23-task-list-completion-flow",
+          "uncommitted_changes": 0,
+          "tests_passing": true,
+          "lint_passing": true,
+          "review_status": "approved",
+          "review_score": 92,
+          "issue_number": 23,
+          "issue_state": "OPEN"
+        }
+      },
+      "expected_behavior": {
+        "triggers_skill": true,
+        "steps_executed": [
+          "pre_finish_validation",
+          "commit_and_push",
+          "create_pr",
+          "merge_pr",
+          "close_issue",
+          "cleanup"
+        ],
+        "validation_checks": [
+          "linting_passes",
+          "tests_passing",
+          "review_status_valid",
+          "acceptance_criteria_confirmed"
+        ],
+        "pr_created": true,
+        "issue_closed": true,
+        "branch_deleted": true,
+        "review_status_file_deleted": true
+      },
+      "assertions": [
+        "Skill triggers correctly for '/finish-issue' on feature branch",
+        "All 6 workflow steps execute in order",
+        "Pre-finish validation includes review status check",
+        "PR is created with conventional commit message",
+        "Issue is closed with reference to PR",
+        "Local and remote branches are deleted",
+        ".claude/.review-status.json is removed"
+      ]
+    },
+    {
+      "id": "test-02-keep-branch-option",
+      "description": "Finish issue but keep branch (--keep-branch)",
+      "input": {
+        "command": "/finish-issue --keep-branch",
+        "context": {
+          "current_branch": "feature/42-experimental-feature",
+          "uncommitted_changes": 0,
+          "tests_passing": true,
+          "lint_passing": true,
+          "issue_number": 42,
+          "issue_state": "OPEN"
+        }
+      },
+      "expected_behavior": {
+        "triggers_skill": true,
+        "steps_executed": [
+          "pre_finish_validation",
+          "commit_and_push",
+          "create_pr",
+          "merge_pr",
+          "close_issue"
+        ],
+        "pr_created": true,
+        "issue_closed": true,
+        "branch_deleted": false,
+        "cleanup_skipped": true
+      },
+      "assertions": [
+        "Skill recognizes --keep-branch flag",
+        "Workflow completes without branch deletion",
+        "Branches (local and remote) are preserved",
+        "User remains on feature branch or main (configurable)"
+      ]
+    },
+    {
+      "id": "test-03-force-skip-validation",
+      "description": "Force finish without validation (--force)",
+      "input": {
+        "command": "/finish-issue --force",
+        "context": {
+          "current_branch": "feature/99-hotfix",
+          "uncommitted_changes": 0,
+          "tests_passing": false,
+          "lint_passing": true,
+          "review_status": null,
+          "issue_number": 99,
+          "issue_state": "OPEN"
+        }
+      },
+      "expected_behavior": {
+        "triggers_skill": true,
+        "validation_skipped": true,
+        "steps_executed": [
+          "commit_and_push",
+          "create_pr",
+          "merge_pr",
+          "close_issue",
+          "cleanup"
+        ],
+        "pr_created": true,
+        "issue_closed": true,
+        "branch_deleted": true
+      },
+      "assertions": [
+        "Skill recognizes --force flag",
+        "Pre-finish validation is completely skipped",
+        "Workflow proceeds even with failing tests",
+        "Warning message shown about skipped validation"
+      ]
+    },
+    {
+      "id": "test-04-review-status-expired",
+      "description": "Review status expired (> 90 minutes)",
+      "input": {
+        "command": "/finish-issue",
+        "context": {
+          "current_branch": "feature/50-new-feature",
+          "uncommitted_changes": 0,
+          "tests_passing": true,
+          "lint_passing": true,
+          "review_status": "approved",
+          "review_timestamp": "2026-03-05T10:00:00Z",
+          "current_time": "2026-03-05T12:00:00Z",
+          "review_expired": true,
+          "issue_number": 50,
+          "issue_state": "OPEN"
+        }
+      },
+      "expected_behavior": {
+        "triggers_skill": true,
+        "shows_warning": "review_expired",
+        "prompts_user": true,
+        "prompt_message": "Previous review expired. Run /review again or proceed? (Y/n)",
+        "can_proceed_with_confirmation": true
+      },
+      "assertions": [
+        "Skill detects expired review status",
+        "Warning message displayed with review timestamp",
+        "User prompted for confirmation",
+        "Can proceed if user confirms (Y)",
+        "Recommends running /review again"
+      ]
+    },
+    {
+      "id": "test-05-no-pr-option",
+      "description": "Close issue without creating PR (--no-pr)",
+      "input": {
+        "command": "/finish-issue --no-pr",
+        "context": {
+          "current_branch": "feature/88-docs-update",
+          "uncommitted_changes": 0,
+          "tests_passing": true,
+          "issue_number": 88,
+          "issue_state": "OPEN"
+        }
+      },
+      "expected_behavior": {
+        "triggers_skill": true,
+        "steps_executed": [
+          "pre_finish_validation",
+          "commit_and_push",
+          "close_issue",
+          "cleanup"
+        ],
+        "pr_created": false,
+        "pr_step_skipped": true,
+        "merge_step_skipped": true,
+        "issue_closed": true,
+        "branch_deleted": true
+      },
+      "assertions": [
+        "Skill recognizes --no-pr flag",
+        "PR creation and merge steps are skipped",
+        "Issue is still closed on GitHub",
+        "Branches are cleaned up",
+        "Useful for documentation-only changes"
+      ]
+    },
+    {
+      "id": "test-06-blocking-review-issues",
+      "description": "Review found blocking issues (cannot proceed)",
+      "input": {
+        "command": "/finish-issue",
+        "context": {
+          "current_branch": "feature/77-risky-change",
+          "uncommitted_changes": 0,
+          "tests_passing": true,
+          "lint_passing": true,
+          "review_status": "issues_found",
+          "review_score": 45,
+          "issue_number": 77,
+          "issue_state": "OPEN"
+        }
+      },
+      "expected_behavior": {
+        "triggers_skill": true,
+        "workflow_halts": true,
+        "error_message": "Blocking issues detected - cannot proceed",
+        "suggests_action": "Fix issues and re-run /review",
+        "suggests_force": "Or use --force to skip (not recommended)",
+        "exit_code": 1
+      },
+      "assertions": [
+        "Skill detects blocking review status",
+        "Workflow stops at validation phase",
+        "Clear error message shown",
+        "Suggests fixing issues and re-running review",
+        "Mentions --force as unsafe alternative"
+      ]
+    },
+    {
+      "id": "test-07-infer-issue-from-branch",
+      "description": "Infer issue number from branch name",
+      "input": {
+        "command": "/finish-issue",
+        "context": {
+          "current_branch": "feature/123-awesome-feature",
+          "uncommitted_changes": 0,
+          "tests_passing": true,
+          "lint_passing": true,
+          "issue_number": null
+        }
+      },
+      "expected_behavior": {
+        "triggers_skill": true,
+        "infers_issue_number": 123,
+        "fetches_issue": "gh issue view 123",
+        "proceeds_with_inferred_issue": true
+      },
+      "assertions": [
+        "Skill extracts issue number from branch name",
+        "Issue number 123 is correctly inferred from 'feature/123-awesome-feature'",
+        "Workflow proceeds using inferred issue number"
+      ]
+    },
+    {
+      "id": "test-08-specific-issue-number",
+      "description": "Explicitly specify issue number",
+      "input": {
+        "command": "/finish-issue #55",
+        "context": {
+          "current_branch": "main",
+          "issue_number": 55,
+          "issue_branch": "feature/55-user-auth"
+        }
+      },
+      "expected_behavior": {
+        "triggers_skill": true,
+        "checkouts_issue_branch": true,
+        "uses_explicit_issue_number": 55,
+        "proceeds_with_specified_issue": true
+      },
+      "assertions": [
+        "Skill accepts explicit issue number (#55)",
+        "Checks out appropriate branch if not already on it",
+        "Works from main branch by specifying issue"
+      ]
+    }
+  ],
+  "test_summary": {
+    "total_tests": 8,
+    "coverage": [
+      "Standard workflow",
+      "Optional flags (--keep-branch, --no-pr, --force)",
+      "Review status integration",
+      "Error handling (expired review, blocking issues)",
+      "Issue number inference",
+      "Edge cases"
+    ],
+    "critical_paths": [
+      "Pre-finish validation with review integration",
+      "Quality gates (linting, tests, review)",
+      "Safe branch cleanup",
+      "PR creation and merge automation"
+    ]
+  }
+}
