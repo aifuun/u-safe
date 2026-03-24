@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 import { createStore } from 'zustand/vanilla';
 import { invoke } from '@tauri-apps/api/core';
-import { logger } from '@/kernel/services/logService';
+import { logger } from '@/modules/core';
 
 /**
  * 认证状态
@@ -30,7 +30,7 @@ export interface AuthState {
  * 使用示例：
  * ```tsx
  * import { useStore } from 'zustand';
- * import { authStore } from '@/kernel/stores';
+ * import { authStore } from '@/modules/auth';
  *
  * function MyComponent() {
  *   const isAuthenticated = useStore(authStore, (s) => s.isAuthenticated);

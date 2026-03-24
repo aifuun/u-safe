@@ -6,7 +6,7 @@
 
 import { useState } from 'react';
 import { deleteFile, renameFile } from './fileOperations';
-import { logger } from '@/kernel/services/logService';
+import { logger } from '@/modules/core';
 
 export interface UseFileOperationsReturn {
   /** 是否正在执行操作 */
