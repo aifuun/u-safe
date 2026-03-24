@@ -8,6 +8,7 @@ export default defineConfig({
 
   resolve: {
     alias: {
+      '@/domains': path.resolve(__dirname, './app/src/domains'),
       '@/kernel': path.resolve(__dirname, './app/src/00_kernel'),
       '@/views': path.resolve(__dirname, './app/src/01_views'),
       '@/modules': path.resolve(__dirname, './app/src/02_modules'),

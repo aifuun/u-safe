@@ -9,6 +9,7 @@
     /* Path Aliases */
     "baseUrl": ".",
     "paths": {
+      "@/domains/*": ["app/src/domains/*"],
       "@/kernel/*": ["app/src/00_kernel/*"],
       "@/views/*": ["app/src/01_views/*"],
       "@/modules/*": ["app/src/02_modules/*"],
