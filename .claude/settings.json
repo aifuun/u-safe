@@ -1,96 +1,131 @@
 {
-  "allowedPrompts": [
-    {
-      "tool": "Bash",
-      "prompt": "*"
-    },
-    {
-      "tool": "Read",
-      "prompt": "*"
-    },
-    {
-      "tool": "Read",
-      "prompt": "**/*"
-    },
-    {
-      "tool": "Write",
-      "prompt": "*"
-    },
-    {
-      "tool": "Write",
-      "prompt": "**/*"
-    },
-    {
-      "tool": "Edit",
-      "prompt": "*"
-    },
-    {
-      "tool": "Edit",
-      "prompt": "**/*"
-    },
-    {
-      "tool": "Glob",
-      "prompt": "*"
-    },
-    {
-      "tool": "Glob",
-      "prompt": "**/*"
-    },
-    {
-      "tool": "Grep",
-      "prompt": "*"
-    },
-    {
-      "tool": "Grep",
-      "prompt": "**/*"
-    },
-    {
-      "tool": "NotebookEdit",
-      "prompt": "*"
-    },
-    {
-      "tool": "NotebookEdit",
-      "prompt": "**/*.ipynb"
-    },
-    {
-      "tool": "TaskCreate",
-      "prompt": "*"
-    },
-    {
-      "tool": "TaskUpdate",
-      "prompt": "*"
-    },
-    {
-      "tool": "TaskGet",
-      "prompt": "*"
-    },
-    {
-      "tool": "TaskList",
-      "prompt": "*"
-    },
-    {
-      "tool": "TaskOutput",
-      "prompt": "*"
-    },
-    {
-      "tool": "TaskStop",
-      "prompt": "*"
-    },
-    {
-      "tool": "Agent",
-      "prompt": "*"
-    },
-    {
-      "tool": "WebFetch",
-      "prompt": "*"
-    },
-    {
-      "tool": "WebSearch",
-      "prompt": "*"
-    },
-    {
-      "tool": "Skill",
-      "prompt": "*"
-    }
+  "project": "ai-dev",
+  "version": "1.0",
+  "permissions": {
+    "defaultMode": "bypassPermissions",
+    "autoApprovePatterns": [
+      "Edit(src/**/*)",
+      "Edit(framework/**/*)",
+      "Edit(examples/**/*)",
+      "Edit(docs/**/*)",
+      "Edit(scripts/**/*)",
+      "Edit(**/*.md)",
+      "Edit(**/*.json)",
+      "Edit(**/*.ts)",
+      "Edit(**/*.js)",
+      "Read(**/*)",
+      "Write(**/*)",
+      "Write(**/.*)",
+      "Glob(**/*)",
+      "Grep(**/*)",
+      "TaskCreate(*)",
+      "TaskUpdate(*)",
+      "TaskGet(*)",
+      "TaskList()",
+      "Task(*)",
+      "TaskOutput(*)",
+      "TaskStop(*)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push)",
+      "Bash(git push -u origin *)",
+      "Bash(git merge *)",
+      "Bash(git fetch *)",
+      "Bash(git worktree *)",
+      "Bash(gh issue *)",
+      "Bash(gh pr *)",
+      "Bash(gh repo *)",
+      "Bash(gh api *)",
+      "Bash(gh auth status)",
+      "Bash(gh run *)",
+      "Bash(gh release *)",
+      "Bash(gh label *)",
+      "Bash(gh milestone *)",
+      "Bash(npm *)",
+      "Bash(yarn *)",
+      "Bash(python3 *)",
+      "Bash(python *)",
+      "Bash(pip *)",
+      "Bash(pytest *)",
+      "Bash(black *)",
+      "Bash(mypy *)",
+      "Bash(ruff *)",
+      "Bash(jq *)",
+      "Bash(curl *)",
+      "Bash(git status)",
+      "Bash(git log *)",
+      "Bash(git branch *)",
+      "Bash(git checkout *)",
+      "Bash(wc -l *)",
+      "Bash(ls *)",
+      "Bash(pwd)",
+      "Bash(echo *)",
+      "Bash(find *)",
+      "Bash(cat *)",
+      "Bash(head *)",
+      "Bash(tail *)",
+      "Bash(grep *)",
+      "Bash(mkdir *)",
+      "Bash(cp *)",
+      "Bash(mv *)",
+      "Bash(chmod *)",
+      "Bash(cd *)",
+      "Bash(du *)",
+      "Bash(sort *)",
+      "Bash(uniq *)",
+      "Bash(cut *)",
+      "Bash(sed *)",
+      "Bash(awk *)",
+      "Bash(tr *)",
+      "Bash(xargs *)",
+      "Bash(which *)",
+      "Bash(command -v *)",
+      "Bash(type *)",
+      "Bash(whoami)",
+      "Bash(date)",
+      "Bash(uname *)",
+      "Bash(df *)",
+      "Bash(ps *)",
+      "Bash(kill *)",
+      "Bash(sleep *)",
+      "Bash(true)",
+      "Bash(false)",
+      "Bash(test *)"
+    ],
+    "requireApprovalFor": [
+      "git push --force",
+      "git push -f",
+      "git rebase",
+      "git reset --hard",
+      "git clean -f",
+      "git branch -D",
+      "rm -rf",
+      "rm -fr",
+      "Read(.env*)",
+      "Read(credentials*)",
+      "Read(secrets*)",
+      "Read(**/*.key)",
+      "Read(**/*.pem)",
+      "Write(.env*)",
+      "Write(credentials*)",
+      "Write(secrets*)",
+      "Bash(sudo *)",
+      "Bash(curl * | sh)",
+      "Bash(wget * | sh)",
+      "Bash(curl * | bash)",
+      "Bash(gh auth login)",
+      "Bash(gh auth logout)"
+    ]
+  },
+  "autoApproveMode": {
+    "enabled": true,
+    "description": "Auto-approve most operations. Only critical operations require manual approval."
+  },
+  "criticalOperations": [
+    "destructive git operations (reset --hard, clean -f, branch -D)",
+    "environment variables and secrets",
+    "system-level commands with sudo",
+    "external script execution",
+    "force push to remote"
   ]
 }
