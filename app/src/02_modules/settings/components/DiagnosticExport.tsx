@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 // @ts-expect-error - Tauri dialog API may not have type definitions in all versions
 import { save } from '@tauri-apps/api/dialog';
-import { logger } from '@/kernel/services/logService';
+import { logger } from '@/modules/core';
 import './DiagnosticExport.css';
 
 /**

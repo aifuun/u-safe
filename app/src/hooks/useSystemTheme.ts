@@ -7,7 +7,7 @@
 
 import { useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { logger } from '@/kernel/services/logService';
+import { logger } from '@/modules/core';
 
 /**
  * 系统主题类型（与 Rust SystemTheme 对应）

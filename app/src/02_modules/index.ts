@@ -1,5 +1,11 @@
 // 02_modules/index.ts - Modules Layer Public API
 
+// Core module (infrastructure services)
+export * from './core';
+
+// Auth module (authentication & authorization)
+export * from './auth';
+
 // File module
 export * from './file';
 

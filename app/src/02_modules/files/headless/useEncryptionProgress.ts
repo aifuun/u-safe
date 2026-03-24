@@ -7,7 +7,7 @@
 
 import { useEffect, useState } from 'react';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
-import { logger } from '@/kernel/services/logService';
+import { logger } from '@/modules/core';
 
 /**
  * 加密进度数据（与 Rust EncryptionProgress 对应）

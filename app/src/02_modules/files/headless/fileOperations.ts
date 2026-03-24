@@ -6,7 +6,7 @@
  */
 
 import { invoke } from '@tauri-apps/api/core';
-import { logger } from '@/kernel/services/logService';
+import { logger } from '@/modules/core';
 
 /**
  * 文件删除响应
