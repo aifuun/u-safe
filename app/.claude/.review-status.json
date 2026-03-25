@@ -1,0 +1,37 @@
+{
+  "timestamp": "2026-03-25T11:25:00+09:00",
+  "issue_number": 56,
+  "status": "approved",
+  "score": 98,
+  "breakdown": {
+    "goal_coverage": 100,
+    "quality_gates": 95,
+    "architecture": 100,
+    "security": 95,
+    "performance": 95
+  },
+  "issues_count": {
+    "blocking": 0,
+    "recommendations": 0
+  },
+  "issues": [],
+  "valid_until": "2026-03-25T12:55:00+09:00",
+  "decision": {
+    "strategy": "targeted",
+    "perspectives": {
+      "goal_achievement": true,
+      "architecture_design": true,
+      "quality_assurance": false,
+      "risk_control": true
+    },
+    "estimated_tokens": 3000
+  },
+  "analysis": {
+    "files_changed": 9,
+    "total_additions": 19,
+    "total_deletions": 16,
+    "total_changes": 35,
+    "scale": "small",
+    "complexity": "low"
+  }
+}

@@ -8,9 +8,7 @@
 export type { FileNode, FileType, FileTreeState, FileOperation } from './types';
 export type { DeleteFileResponse, RenameFileResponse } from './headless/fileOperations';
 
-// Components
-export { FileTreeView } from './views/FileTreeView';
-export { ContextMenu } from './views/ContextMenu';
+// Views moved to 01_views/files/
 
 // Hooks & Stores
 export { useFileTreeStore } from './headless/useFileTreeStore';

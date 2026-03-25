@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FileTreeView } from '@/modules/files';
+import { FileTreeView } from './FileTreeView';
 
 /**
  * 文件管理主界面

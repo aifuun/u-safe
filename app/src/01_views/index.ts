@@ -7,7 +7,11 @@ export { ProtectedRoute } from './ProtectedRoute';
 export { Layout } from './layout/Layout';
 
 // Specific views
-export { FileManagementView } from './files/FileManagementView';
+export { FileManagementView, FileTreeView, ContextMenu, DragDropZone } from './files';
+export type { DragDropZoneProps } from './files';
 export { LoginView } from './login/LoginView';
 export { SetupPasswordView } from './setup/SetupPasswordView';
 export { ResetWarningView, ResetConfirmView } from './reset';
+
+// Settings views
+export { DiagnosticExport } from './settings';
