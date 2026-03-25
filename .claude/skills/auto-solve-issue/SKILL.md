@@ -1,16 +1,16 @@
 ---
 name: auto-solve-issue
-version: "2.0.0"
+version: "2.1.0"
 description: |
-  Complete issue lifecycle with Task dependencies and Subagents - true zero-pause automation.
+  Complete issue lifecycle with Task dependencies and direct skill calls - true zero-pause automation.
   TRIGGER when: user wants fully automated issue resolution ("auto-solve issue #N", "solve issue completely").
   DO NOT TRIGGER when: user wants manual control (use /work-issue --interactive), or individual phases (use specific skills).
-last-updated: "2026-03-18"
+last-updated: "2026-03-23"
 ---
 
 # Auto-Solve Issue v2.0 - Zero-Pause Automation
 
-> Complete issue lifecycle using Task dependencies + Subagents architecture for truly continuous execution
+> Complete issue lifecycle using Task dependencies + direct skill calls for truly continuous execution
 
 ## Overview
 
@@ -18,13 +18,13 @@ This skill provides **fully automated issue resolution** without manual interven
 
 **What it does:**
 1. **Creates Task dependency chain** - 5 tasks with blockedBy relationships
-2. **Executes phases with Subagents** - Each phase runs in isolated context
+2. **Executes phases with direct skill calls** - Maintains worktree context (default)
 3. **Validates at checkpoints** - Auto-continues if score ≥ 90
 4. **Resumes from failures** - Checkpoint and resume mechanism
 5. **Zero manual intervention** - Continuous loop until completion
 
 **Why it's needed:**
-solve-issue v1.0 had execution pauses requiring manual "continue" 3-4 times. The Python coordinator + AI executor architecture was incompatible with AI interaction patterns. This v2.0 uses Claude Code's Task system and Subagents for true zero-pause automation.
+solve-issue v1.0 had execution pauses requiring manual "continue" 3-4 times. The Python coordinator + AI executor architecture was incompatible with AI interaction patterns. This v2.0 uses Claude Code's Task system with direct skill calls for true zero-pause automation while maintaining worktree context.
 
 **When to use:**
 - Need complete automation without checkpoints
@@ -35,11 +35,11 @@ solve-issue v1.0 had execution pauses requiring manual "continue" 3-4 times. The
 ```
 /auto-solve-issue #23 [--auto|--interactive]
   → Creates 5 tasks with dependencies
-  → Phase 1: start-issue (Subagent)
+  → Phase 1: start-issue (direct skill call)
   → Phase 1.5: eval-plan + checkpoint
-  → Phase 2: execute-plan (Subagent)
+  → Phase 2: execute-plan (direct skill call)
   → Phase 2.5: review + checkpoint
-  → Phase 3: finish-issue (Subagent)
+  → Phase 3: finish-issue (direct skill call)
   → All complete
 ```
 
@@ -65,9 +65,34 @@ solve-issue v1.0 had execution pauses requiring manual "continue" 3-4 times. The
 
 ## AI Execution Instructions
 
-**CRITICAL: Task dependencies + Subagent execution pattern**
+**CRITICAL: Task dependencies + direct skill call pattern**
 
 When executing `/auto-solve-issue`, AI MUST follow this pattern:
+
+### Step 0: Read Workflow Guide (CRITICAL - do this first)
+
+**Read issue lifecycle standards** before executing automation:
+
+```python
+# Read workflow guide for 5-phase standards
+lifecycle_guide = read_file("docs/ai-guides/ISSUE_LIFECYCLE_GUIDE.md")
+
+# Extract workflow standards
+workflow_standards = extract_workflow_standards(lifecycle_guide)
+# - Phase 1: start-issue (worktree creation, plan generation)
+# - Phase 1.5: eval-plan (score ≥90 for auto-continue, auto-fix if score ≥90)
+# - Phase 2: execute-plan (task-by-task implementation)
+# - Phase 2.5: review (score ≥90 for auto-continue)
+# - Phase 3: finish-issue (commit, PR, merge, cleanup)
+# - Checkpoint thresholds: ≥90 auto-continue, <90 stop in interactive mode
+# - Auto-fix types: missing_todo, incomplete_test, format_issue, etc.
+```
+
+**Use these standards when**:
+- **Phase execution**: Follow 5-phase workflow structure
+- **Checkpoint decisions**: Apply score thresholds (≥90 for auto-continue)
+- **Auto-fix**: Apply fixes when score ≥90 (eval-plan only)
+- **Error handling**: Stop on blocking issues, continue on warnings
 
 ### Step 1: Create 5-Task Dependency Chain
 

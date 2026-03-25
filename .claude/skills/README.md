@@ -2,7 +2,7 @@
 
 **Version**: 4.0.0 (Streamlined Edition)
 **Last Updated**: 2026-03-18
-**Active Skills**: 21
+**Active Skills**: 22
 **Policy**: Python-only ([ADR-003](../../docs/ADRs/003-python-only-for-skill-scripts.md))
 
 > **Purpose**: Navigation hub for Claude Code skills - quick reference and links to detailed documentation.
@@ -64,6 +64,7 @@
 /update-pillars --from ~/dev/ai-dev
 /update-rules --from ~/dev/ai-dev
 /update-workflow --from ~/dev/ai-dev
+/update-guides --from ~/dev/ai-dev
 ```
 
 ---
@@ -138,6 +139,7 @@ Shared code logic? → Python library (Layer 3, imported by Layer 2)
 | **update-pillars** | Sync Pillars only | `/update-pillars --from <path>` | [SKILL.md](update-pillars/SKILL.md) |
 | **update-rules** | Sync rules only | `/update-rules --from <path>` | [SKILL.md](update-rules/SKILL.md) |
 | **update-workflow** | Sync workflow docs | `/update-workflow --from <path>` | [SKILL.md](update-workflow/SKILL.md) |
+| **update-guides** | Sync AI development guides | `/update-guides --from <path>` | [SKILL.md](update-guides/SKILL.md) |
 
 ### 🛠️ Specialized Tools
 

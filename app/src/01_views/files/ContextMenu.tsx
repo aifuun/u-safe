@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useCallback } from 'react';
-import type { FileNode, FileOperation } from '../types';
+import type { FileNode, FileOperation } from '@/modules/files/types';
 import './ContextMenu.css';
 
 interface ContextMenuProps {

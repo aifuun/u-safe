@@ -1,6 +1,6 @@
 ---
 name: init-docs
-version: "1.0.0"
+version: "1.1.0"
 description: |
   Auto-generate standard documentation structure for projects with profile-aware customization.
   TRIGGER when: user wants to initialize documentation ("initialize docs", "create documentation structure", "set up docs").
@@ -67,6 +67,33 @@ Starting a new project requires creating consistent documentation structure. Man
 **CRITICAL: Profile detection and template processing**
 
 When executing `/init-docs`, AI MUST follow this pattern:
+
+### Step 0: Read Documentation Guide (CRITICAL - do this first)
+
+**Read documentation standards** before creating structure:
+
+```python
+# Read docs guide for structure standards
+docs_guide = read_file("docs/ai-guides/DOCS_GUIDE.md")
+
+# Extract structure standards
+structure_standards = extract_docs_standards(docs_guide)
+# - Standard directory structure (product/, arch/, dev/, qa/, ops/)
+# - Required files (README.md, PRD.md, ARCHITECTURE.md, API.md, SCHEMA.md, SETUP.md, TEST_PLAN.md)
+# - Profile-specific requirements:
+#   - tauri: 7 files (no ops/DEPLOYMENT.md)
+#   - nextjs-aws: 8 files (includes ops/DEPLOYMENT.md)
+#   - tauri-aws: 8 files (includes ops/DEPLOYMENT.md)
+# - File naming conventions (核心文档全大写，辅助文档 kebab-case)
+# - Length limits (README ≤200 lines, PRD ≤500 lines, etc.)
+```
+
+**Use these standards when**:
+- **Directory creation**: Follow standard structure (product/, arch/, dev/, qa/, ops/)
+- **File generation**: Use required file list from guide
+- **Profile detection**: Apply profile-specific requirements
+- **Template filling**: Use guide's variable substitution patterns
+- **Naming**: Follow file naming conventions
 
 ### Step 1: Detect Project Profile
 

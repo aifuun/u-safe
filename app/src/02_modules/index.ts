@@ -10,8 +10,7 @@ export * from './auth';
 export * from './file';
 
 // Files module
-export { FileTreeView } from './files';
 export type { FileNode, FileOperation, FileType, FileTreeState } from './files/types';
+export * from './files';
 
-// Settings module
-export { DiagnosticExport } from './settings/components/DiagnosticExport';
+// Settings module moved to 01_views/settings/

@@ -4,7 +4,7 @@ description: |
   Automated maintenance for project-specific content (CLAUDE.md skills list, plans/ cleanup, health reports).
   TRIGGER when: user wants to maintain project documentation ("maintain project", "clean up plans", "update CLAUDE.md skills", "project health check").
   DO NOT TRIGGER when: user wants framework sync (use /update-framework), or just wants to read documentation.
-version: "1.0.0"
+version: "1.1.0"
 allowed-tools: Bash(ls *), Bash(find *), Bash(gh *), Bash(git *), Read, Write, Glob, Grep, Edit
 disable-model-invocation: false
 user-invocable: true
@@ -107,14 +107,18 @@ CLAUDE.md Skills Sync
 - 链接失效（404 或文件不存在）
 - API 文档与实现不一致
 - 配置说明过期
+- 文档结构不符合 profile 要求（根据 DOCS_GUIDE.md）
 
 **工作流：**
 ```
-1. 读取 DOCUMENTATION_MANUAL.md（文档标准）
+1. 读取 DOCS_GUIDE.md（文档标准）
 2. 扫描 docs/ 下所有 Markdown 文件
-3. 提取代码块并验证（对比实际源码）
-4. 检测内部链接有效性
-5. 生成过时内容报告
+3. 验证必需文件存在（README.md, PRD.md, ARCHITECTURE.md, etc.）
+4. 检查 profile 符合性（tauri vs nextjs-aws vs tauri-aws）
+5. 检测文件命名规范（核心文档全大写，辅助文档 kebab-case）
+6. 提取代码块并验证（对比实际源码）
+7. 检测内部链接有效性
+8. 生成过时内容报告
 ```
 
 **Note:** Phase 2 implementation, not included in MVP.
@@ -175,14 +179,21 @@ After:  5 files in active/ (optimal)
 - 索引文件过时（README.md 未包含新 ADR）
 - 编号跳跃（缺失 ADR 编号）
 - 状态不一致（文件名 vs 内容）
+- ADR 结构不符合 ADR_GUIDE.md 标准
+- YAML frontmatter 缺失或不完整
+- TL;DR 超过 30 行限制
+- 总长度超过 150 行（硬限制）
 
 **工作流：**
 ```
-1. 扫描 docs/ADRs/ 获取所有 ADR
-2. 检测编号连续性
-3. 解析每个 ADR 的状态字段
-4. 更新 docs/ADRs/README.md 索引
-5. 生成状态报告
+1. 读取 ADR_GUIDE.md（ADR 标准）
+2. 扫描 docs/ADRs/ 获取所有 ADR
+3. 检测编号连续性和分配规则（framework 000-099, project 100-999）
+4. 验证每个 ADR 的结构符合 guide（YAML frontmatter + 必需章节）
+5. 检查长度限制（理想 50-80 行，推荐 ≤100 行，硬限制 ≤150 行）
+6. 解析每个 ADR 的状态字段
+7. 更新 docs/ADRs/README.md 索引
+8. 生成状态报告
 ```
 
 **Note:** Phase 2 implementation, not included in MVP.
@@ -253,6 +264,38 @@ Recommendations:
 
 When executing `/maintain-project`, AI MUST follow this workflow:
 
+### Step 0: Read AI Guides (CRITICAL - do this first)
+
+**Read project documentation standards** before executing maintenance:
+
+```python
+# Read guides for compliance checking
+claude_md_guide = read_file("docs/ai-guides/CLAUDE_MD_GUIDE.md")
+adr_guide = read_file("docs/ai-guides/ADR_GUIDE.md")
+docs_guide = read_file("docs/ai-guides/DOCS_GUIDE.md")
+
+# Extract standards for validation
+claude_md_standards = extract_standards(claude_md_guide)
+# - Required sections (What Is This, Skills System, How to Use)
+# - Length limits (ideal ≤150 lines, hard limit ≤300 lines)
+# - Skills sync requirements
+
+adr_standards = extract_standards(adr_guide)
+# - YAML frontmatter requirements
+# - Required sections (TL;DR, Context, Decision, Consequences)
+# - Numbering rules (framework 000-099, project 100-999)
+
+docs_standards = extract_standards(docs_guide)
+# - Standard directory structure (product/, arch/, dev/, qa/, ops/)
+# - Required files (README.md, PRD.md, ARCHITECTURE.md, API.md, etc.)
+# - Profile-specific requirements
+```
+
+**Use these standards when**:
+- **CLAUDE.md sync**: Validate against `claude_md_standards`
+- **ADRs check**: Validate against `adr_standards`
+- **docs/ check**: Validate against `docs_standards` (Phase 2)
+
 ### Step 1: Create 5 Subtasks (MVP)
 
 ```python
@@ -322,6 +365,10 @@ TaskUpdate(tasks["summary"], "completed")
 **CLAUDE.md sync implementation:**
 ```python
 def sync_claude_md_skills():
+    # 0. Read CLAUDE_MD_GUIDE for standards
+    guide = read_file("docs/ai-guides/CLAUDE_MD_GUIDE.md")
+    standards = extract_claude_md_standards(guide)
+
     # 1. 扫描已安装技能
     installed_skills = []
     for skill_dir in glob(".claude/skills/*/"):
@@ -345,7 +392,13 @@ def sync_claude_md_skills():
     added = installed_names - current_names
     removed = current_names - installed_names
 
-    # 4. 更新 CLAUDE.md
+    # 4. 验证 CLAUDE.md 符合 guide 标准
+    validate_against_guide(standards, "CLAUDE.md")
+    # - Check required sections (What Is This, Skills System, How to Use)
+    # - Check length limits (warn if >150 lines, error if >300 lines)
+    # - Check skills sync accuracy
+
+    # 5. 更新 CLAUDE.md
     if added or removed:
         update_skills_section("CLAUDE.md", installed_skills)
         print(f"✅ Updated CLAUDE.md: +{len(added)}, -{len(removed)}")

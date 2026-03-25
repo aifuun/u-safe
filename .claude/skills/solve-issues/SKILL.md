@@ -1,6 +1,6 @@
 ---
 name: solve-issues
-version: "1.0.0"
+version: "1.1.0"
 description: |
   批处理包装器 - 处理单个或多个issues的自动化解决。
   TRIGGER when: 用户要求自动解决issues（单个或批量）
@@ -89,6 +89,27 @@ last-updated: "2026-03-20"
 **关键：轻量级包装器模式**
 
 当执行 `/solve-issues` 时，AI 必须遵循以下模式：
+
+### 第0步：读取工作流指南 (CRITICAL - do this first)
+
+**读取 issue lifecycle 标准** before executing batch processing:
+
+```python
+# Read workflow guide for 5-phase standards
+lifecycle_guide = read_file("docs/ai-guides/ISSUE_LIFECYCLE_GUIDE.md")
+
+# Extract workflow standards
+workflow_standards = extract_workflow_standards(lifecycle_guide)
+# - 5 阶段工作流: start-issue → eval-plan → execute-plan → review → finish-issue
+# - 评分阈值: eval-plan (≥90), review (≥90)
+# - Auto-fix 机制: score ≥90 时自动修复微小问题
+# - Checkpoint 决策规则: auto 模式 vs interactive 模式
+```
+
+**Use these standards when**:
+- **Checkpoint decisions**: Apply eval-plan and review thresholds (≥90 for auto-continue)
+- **Error handling**: Follow auto-fix mechanisms for minor issues
+- **Progress reporting**: Reference 5-phase workflow structure
 
 ### 第1步：解析输入
 

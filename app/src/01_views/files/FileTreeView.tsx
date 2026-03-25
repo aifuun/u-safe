@@ -1,9 +1,8 @@
 import React, { useEffect, useCallback, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { useFileTreeStore } from '../headless/useFileTreeStore';
-import { getFolderIcon, getFileTypeIcon } from '../adapters/iconMap';
+import { useFileTreeStore, getFolderIcon, getFileTypeIcon } from '@/modules/files';
+import type { FileNode, FileOperation } from '@/modules/files/types';
 import { ContextMenu } from './ContextMenu';
-import type { FileNode, FileOperation } from '../types';
 import './FileTreeView.css';
 
 /**

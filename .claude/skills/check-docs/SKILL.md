@@ -1,6 +1,6 @@
 ---
 name: check-docs
-version: "1.0.0"
+version: "1.1.0"
 last-updated: "2026-03-15"
 ---
 
@@ -63,6 +63,40 @@ Documentation structure inconsistencies lead to confusion, missed updates, and p
 **CRITICAL: Validation workflow and scoring**
 
 When executing `/check-docs`, AI MUST follow this pattern:
+
+### Step 0: Read Documentation Guide (CRITICAL - do this first)
+
+**Read documentation standards** before validating:
+
+```python
+# Read docs guide for validation standards
+docs_guide = read_file("docs/ai-guides/DOCS_GUIDE.md")
+
+# Extract validation standards
+validation_standards = extract_validation_standards(docs_guide)
+# - Required directories: product/, arch/, dev/, qa/, ops/ (profile-dependent)
+# - Required files: README.md, PRD.md, ARCHITECTURE.md, API.md, SCHEMA.md, SETUP.md, TEST_PLAN.md, DEPLOYMENT.md
+# - Profile-specific requirements:
+#   - tauri: 7 files (no ops/DEPLOYMENT.md)
+#   - nextjs-aws: 8 files (includes ops/DEPLOYMENT.md)
+#   - tauri-aws: 8 files (includes ops/DEPLOYMENT.md)
+# - File naming conventions:
+#   - Core docs: UPPERCASE.md (README, PRD, ARCHITECTURE, etc.)
+#   - Auxiliary docs: kebab-case.md (user-stories, decision-log, etc.)
+# - Content completeness checks:
+#   - No [AI 填充] placeholders
+#   - No {{variable}} unreplaced
+#   - No empty sections
+# - Length limits: README ≤200 lines, PRD ≤500 lines, etc.
+```
+
+**Use these standards when**:
+- **Directory checks**: Validate against required directory structure
+- **File checks**: Validate required files exist and are named correctly
+- **Profile compliance**: Check profile-specific requirements (ops/ only for cloud profiles)
+- **Naming validation**: Enforce core docs UPPERCASE, auxiliary docs kebab-case
+- **Content validation**: Check for placeholders and empty sections
+- **Length validation**: Warn if documents exceed recommended limits
 
 ### Step 1: Detect Profile
 

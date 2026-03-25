@@ -2,9 +2,7 @@
  * File Module Exports
  */
 
-// Components
-export { DragDropZone } from './components/DragDropZone';
-export type { DragDropZoneProps } from './components/DragDropZone';
+// Components moved to 01_views/files/
 
 // Headless Hooks
 export { useFileDrop } from './headless/useFileDrop';

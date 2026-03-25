@@ -4,7 +4,8 @@
  */
 
 import { ReactNode } from 'react';
-import { useFileDrop, UseFileDropOptions } from '../headless/useFileDrop';
+import { useFileDrop } from '@/modules/file';
+import type { UseFileDropOptions } from '@/modules/file';
 import './DragDropZone.css';
 
 export interface DragDropZoneProps extends UseFileDropOptions {
