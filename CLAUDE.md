@@ -12,11 +12,12 @@ Tauri 2.0 + Rust (后端) + React 18 + TailwindCSS (前端) + SQLite
 
 | 文档 | 路径 | 用途 |
 |------|------|------|
-| MVP 定义 | `docs/roadmap/MVP_Definition.md` | 功能范围、优先级、里程碑 |
-| 产品需求 | `docs/prd/PRD.md` | 完整产品定义 |
-| 核心逻辑 | `docs/spec/PRD_Core_Logic.md` | 加密/解密/标签业务流程 |
-| 数据库设计 | `docs/spec/Database_Schema.md` | 5 个核心表结构 |
-| UI/UX 设计 | `docs/spec/UI_UX_Design_System.md` | 设计 token + 组件规范 |
+| 产品需求 | `docs/product/PRD.md` | 完整产品定义 |
+| 产品路线图 | `docs/product/roadmap.md` | 功能范围、优先级、里程碑 |
+| 架构设计 | `docs/arch/ARCHITECTURE.md` | 系统架构、分层设计 |
+| 数据库设计 | `docs/arch/Database_Schema.md` | 5 个核心表结构 |
+| 设计系统 | `docs/design/DESIGN_SYSTEM.md` | 设计 token + 组件规范 |
+| UI/UX 规范 | `docs/design/UI_UX_DESIGN.md` | 界面设计规范 |
 
 ## MVP 关键约束
 
@@ -42,11 +43,12 @@ Tauri 2.0 + Rust (后端) + React 18 + TailwindCSS (前端) + SQLite
 
 ## ADRs
 
-位置: `docs/ADRs/` (唯一位置，不要在别处创建)
+位置: `docs/adr/` (唯一位置，不要在别处创建)
 
 | # | 标题 | 位置 |
 |---|------|------|
-| 001 | Design Token System (CSS Variables) | `docs/ADRs/` |
-| 002 | Record Architecture Decisions | `docs/ADRs/` |
-| 003 | Technical Stack | `docs/ADRs/` |
-| 004 | Encryption Strategy | `docs/ADRs/` |
+| 001 | Design Token System (CSS Variables) | `docs/adr/` |
+| 002 | Record Architecture Decisions | `docs/adr/` |
+| 003 | Technical Stack | `docs/adr/` |
+| 004 | Encryption Strategy | `docs/adr/` |
+| 006 | Unified Data Directory | `docs/adr/` |
