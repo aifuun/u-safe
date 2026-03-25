@@ -5,7 +5,7 @@ description: |
   TRIGGER when: user wants code reviewed ("review my code", "check this PR", "review these changes", "quality check").
   Dynamically detects project configuration (Pillars, architecture rules, ADRs) and adapts checks accordingly.
   DO NOT TRIGGER when: user wants to create/write code (not reviewing), or just wants explanations without quality assessment.
-version: "2.2.0"
+version: "2.3.0"
 argument-hint: "[options]"
 ---
 
@@ -20,11 +20,12 @@ This skill provides comprehensive code review by:
 **What it does:**
 1. Runs quality gates (types, tests, linting)
 2. Validates architecture patterns (dynamically detected)
-3. Checks Pillar compliance (based on project profile)
-4. Verifies ADR compliance (scans docs/adr/)
-5. Identifies security vulnerabilities
-6. Detects performance issues
-7. Writes review status for /finish-issue integration
+3. **Checks skill version updates** (NEW in v2.3.0 - prevents version conflicts)
+4. Checks Pillar compliance (based on project profile)
+5. Verifies ADR compliance (scans docs/adr/)
+6. Identifies security vulnerabilities
+7. Detects performance issues
+8. Writes review status for /finish-issue integration
 
 **Why it's needed:**
 Manual code review is time-consuming and inconsistent. This skill automates quality checks while adapting to each project's specific configuration (minimal vs full-stack, different architecture patterns, custom ADRs).
@@ -45,13 +46,14 @@ Task Progress:
 - [ ] Step 0: Smart decision (adaptive strategy)
 - [ ] Step 1: Create todo list
 - [ ] Step 2: Check goal coverage (conditional)
-- [ ] Step 3: Run quality gates
-- [ ] Step 4: Check architecture patterns (conditional)
-- [ ] Step 5: Verify Pillar compliance (conditional)
-- [ ] Step 6: Check ADR compliance (conditional)
-- [ ] Step 7: Security scan (conditional)
-- [ ] Step 8: Performance check (conditional)
-- [ ] Step 9: Write review status file
+- [ ] Step 3: Check skill version updates (conditional)
+- [ ] Step 4: Run quality gates
+- [ ] Step 5: Check architecture patterns (conditional)
+- [ ] Step 6: Verify Pillar compliance (conditional)
+- [ ] Step 7: Check ADR compliance (conditional)
+- [ ] Step 8: Security scan (conditional)
+- [ ] Step 9: Performance check (conditional)
+- [ ] Step 10: Write review status file
 ```
 
 Execute these steps in sequence:
@@ -63,13 +65,14 @@ Execute these steps in sequence:
 ```
 Task #1: Smart decision (analyze changes, select strategy)
 Task #2: Check goal coverage (conditional based on decision)
-Task #3: Run quality gates (types, tests, linting)
-Task #4: Check architecture patterns (conditional based on decision)
-Task #5: Verify Pillar compliance (conditional based on decision)
-Task #6: Check ADR compliance (conditional based on decision)
-Task #7: Security scan (conditional based on decision)
-Task #8: Performance check (conditional based on decision)
-Task #9: Write review status file (blocked by all previous tasks)
+Task #3: Check skill version updates (conditional - if SKILL.md modified)
+Task #4: Run quality gates (types, tests, linting)
+Task #5: Check architecture patterns (conditional based on decision)
+Task #6: Verify Pillar compliance (conditional based on decision)
+Task #7: Check ADR compliance (conditional based on decision)
+Task #8: Security scan (conditional based on decision)
+Task #9: Performance check (conditional based on decision)
+Task #10: Write review status file (blocked by all previous tasks)
 ```
 
 After creating tasks, proceed with review execution.
@@ -254,10 +257,182 @@ Missing: AC3 (批量操作), AC7 (撤销功能)
 
 **Then proceed with checks based on decision.perspectives**:
 - If `decision.perspectives.goal_achievement == false`, skip Step 2
-- If `decision.perspectives.architecture_design == false`, skip Step 4
-- If `decision.perspectives.quality_assurance == false`, skip Step 5
-- Always run Step 3 (quality gates) as baseline
-- Always run Step 7 (risk control) as baseline
+- If `decision.perspectives.architecture_design == false`, skip Step 5
+- If `decision.perspectives.quality_assurance == false`, skip Step 6
+- Always run Step 3 (skill version updates) if SKILL.md files modified
+- Always run Step 4 (quality gates) as baseline
+- Always run Step 8 (risk control) as baseline
+
+### Step 3: Check Skill Version Updates (NEW - Prevent Version Conflicts)
+
+**CRITICAL CHECK**: When SKILL.md files are modified, verify version numbers are updated.
+
+**Why this matters:**
+- Developers often forget to update version numbers when modifying skills
+- Outdated versions cause CONFLICT状态 during `/update-skills` sync (Issue #285)
+- Early detection prevents sync issues and wasted debugging time
+
+**When to run:**
+- Triggered when git diff shows changes to any `.claude/skills/*/SKILL.md` file
+- Skip if no SKILL.md files were modified (performance optimization)
+
+**Process:**
+
+1. **Detect modified SKILL.md files**:
+   ```bash
+   # Get list of modified SKILL.md files
+   git diff --name-only HEAD | grep '.claude/skills/.*/SKILL.md' > /tmp/modified-skills.txt
+
+   # If empty, skip version check
+   if [ ! -s /tmp/modified-skills.txt ]; then
+     echo "ℹ️ No SKILL.md files modified, skipping version check"
+     exit 0
+   fi
+   ```
+
+2. **For each modified SKILL.md, compare versions**:
+   ```bash
+   while read skill_file; do
+     # Extract current version from YAML frontmatter
+     CURRENT_VERSION=$(grep '^version:' "$skill_file" | sed 's/version: *"\(.*\)"/\1/')
+
+     # Extract previous version from HEAD
+     OLD_VERSION=$(git show HEAD:"$skill_file" | grep '^version:' | sed 's/version: *"\(.*\)"/\1/')
+
+     # Compare versions
+     if [ "$CURRENT_VERSION" = "$OLD_VERSION" ]; then
+       # Content changed but version unchanged - record issue
+       echo "⚠️ Version not updated: $skill_file"
+       echo "   Current: $CURRENT_VERSION"
+       echo "   Content: CHANGED"
+       echo "   Action: NEEDS_VERSION_BUMP"
+
+       # Detect change type and suggest version bump
+       DIFF=$(git diff HEAD -- "$skill_file")
+       if echo "$DIFF" | grep -qE "BREAKING|removed|deleted"; then
+         SUGGESTED="major bump ($(semver_increment "$CURRENT_VERSION" major))"
+       elif echo "$DIFF" | grep -qE "added|new feature|enhance"; then
+         SUGGESTED="minor bump ($(semver_increment "$CURRENT_VERSION" minor))"
+       else
+         SUGGESTED="patch bump ($(semver_increment "$CURRENT_VERSION" patch))"
+       fi
+
+       echo "   Suggested: $SUGGESTED"
+       echo ""
+     fi
+   done < /tmp/modified-skills.txt
+   ```
+
+3. **Version increment helper**:
+   ```bash
+   function semver_increment() {
+     local version=$1
+     local part=$2
+
+     # Parse semantic version (major.minor.patch)
+     IFS='.' read -r major minor patch <<< "$version"
+
+     case $part in
+       major)
+         echo "$((major + 1)).0.0"
+         ;;
+       minor)
+         echo "$major.$((minor + 1)).0"
+         ;;
+       patch)
+         echo "$major.$minor.$((patch + 1))"
+         ;;
+     esac
+   }
+   ```
+
+4. **Determine change type** (keywords to detect):
+   - **Major bump** (breaking changes):
+     - Keywords: "BREAKING", "removed", "deleted parameter", "incompatible"
+     - Examples: Removed arguments, changed behavior, API breakage
+
+   - **Minor bump** (new features):
+     - Keywords: "added", "new feature", "new parameter", "enhance"
+     - Examples: New functionality, new options, backward-compatible changes
+
+   - **Patch bump** (bug fixes/docs):
+     - Default for all other changes
+     - Examples: Bug fixes, documentation updates, typo corrections
+
+5. **Output results** (Interactive mode):
+   ```markdown
+   ## 3. Skill版本检查 ✅/⚠️
+
+   **修改的Skills**: 2个
+
+   ✅ `.claude/skills/eval-plan/SKILL.md`
+      版本: 1.1.0 → 1.2.0 (minor bump)
+      变更: 添加auto-fix功能
+
+   ⚠️ `.claude/skills/review/SKILL.md`
+      版本: 2.2.0 (未更新) ← 内容已变化
+      建议: minor bump → 2.3.0
+      原因: 添加了版本检查功能
+
+      修复方法:
+      1. Edit .claude/skills/review/SKILL.md
+      2. Change: version: "2.2.0"
+      3. To: version: "2.3.0"
+      4. Re-run /review
+   ```
+
+6. **Auto mode output** (2 lines max):
+   ```
+   Skill version check: 1 issue found
+   ⚠️ review/SKILL.md unchanged (2.2.0) - suggest 2.3.0
+   ```
+
+7. **Integration with .review-status.json**:
+   ```json
+   {
+     "skill_version_check": {
+       "modified_skills": 2,
+       "version_issues": 1,
+       "issues": [
+         {
+           "file": ".claude/skills/review/SKILL.md",
+           "current_version": "2.2.0",
+           "suggested_version": "2.3.0",
+           "change_type": "minor",
+           "reason": "Added version check feature"
+         }
+       ],
+       "status": "NEEDS_IMPROVEMENT"
+     }
+   }
+   ```
+
+8. **Pass/Fail logic**:
+   ```
+   if (version_issues.length > 0) {
+     return {
+       status: 'NEEDS_IMPROVEMENT',
+       blocking: true,
+       reason: 'Skill version numbers not updated',
+       fix: 'Update version numbers in YAML frontmatter'
+     };
+   }
+   ```
+
+**Performance optimization**:
+- Only runs when `.claude/skills/*/SKILL.md` files are modified
+- Uses `git diff --name-only` for fast file detection
+- Skips check entirely if no skills modified
+
+**Example scenario** (Issue #285):
+```
+修改了 .claude/skills/update-skills/SKILL.md
+- 内容: 添加了 --clean 默认行为
+- 版本: 2.4.0 (未更新)
+- 检测: ⚠️ Breaking change detected
+- 建议: major bump → 3.0.0
+- 原因: 默认行为改变是破坏性变更
+```
 
 ## Review Dimensions
 
@@ -658,11 +833,12 @@ If no worktree path found:
 
 ---
 
-**Version:** 2.2.0
+**Version:** 2.3.0
 **Pattern:** Tool-Reference (guides review process)
 **Compliance:** ADR-001 ✅ | WORKFLOW_PATTERNS.md ✅
-**Last Updated:** 2026-03-18
+**Last Updated:** 2026-03-24
 **Changelog:**
+- v2.3.0: Added skill version check to prevent version conflicts (Issue #294)
 - v2.2.0: Added mode-aware output (2 lines auto, ≤20 lines interactive) (Issue #263)
 - v2.1.0: Dynamic configuration detection
 - v2.0.0: Added Pillar and ADR compliance checks

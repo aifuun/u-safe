@@ -7,7 +7,7 @@ description: |
   TRIGGER when: User wants to create an ADR ("create adr", "record decision", "document architecture decision"), list ADRs, show a specific ADR, or validate ADR format.
 
   DO NOT TRIGGER when: User is just asking about existing ADRs conceptually, viewing ADR documentation, or discussing decisions without creating/modifying ADRs.
-version: "1.0.0"
+version: "1.1.0"
 argument-hint: "create <title> | list | show <number> | validate <number>"
 allowed-tools: Read, Glob, Grep, Write, Edit
 disable-model-invocation: false
@@ -75,6 +75,14 @@ Next steps:
 ```
 
 **Workflow**:
+0. **Read ADR standards** (CRITICAL - do this first):
+   - Read `docs/ai-guides/ADR_GUIDE.md` for:
+     - Standard ADR structure (YAML frontmatter + required sections)
+     - YAML field requirements (status, date, author)
+     - Required sections (TL;DR, Context, Decision, Consequences)
+     - Length limits (ideal: 50-80 lines, max: 150 lines)
+     - Numbering rules (framework 000-099, project 100-999)
+   - Use these standards when creating ADR
 1. Find next ADR number (scan `docs/ADRs/[0-9]*.md`)
 2. Convert title to kebab-case: "Use Zustand Vanilla Stores" → "use-zustand-vanilla-stores"
 3. Read `docs/ADRs/TEMPLATE.md`
@@ -95,7 +103,13 @@ Next steps:
    - Update "Last Updated" timestamp
    - Identify related Pillars (if mentioned in ADR)
    - Mark "Code Updated" as ✅ when Status = Accepted
-8. Present file path and next steps to user
+8. **Quality check** (validate against ADR_GUIDE.md standards):
+   - ✅ YAML frontmatter present (status, date, author)
+   - ✅ Required sections present (TL;DR, Context, Decision, Consequences)
+   - ✅ Length within limits (≤150 lines, ideally 50-80)
+   - ✅ Numbering correct (framework 000-099, project 100-999)
+   - ✅ TL;DR ≤30 lines
+9. Present file path and next steps to user
 
 ---
 

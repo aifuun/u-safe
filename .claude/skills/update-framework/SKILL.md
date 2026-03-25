@@ -580,7 +580,7 @@ Would you like to retry failed components? (y/n)
 /update-pillars --from ~/dev/ai-dev --pillars A,B,K
 /update-rules --from ~/dev/ai-dev --categories core,architecture
 /update-workflow --from ~/dev/ai-dev --files CLAUDE.md
-/update-skills --from ~/dev/ai-dev --skills adr,review
+/update-skills --from ~/dev/ai-dev --incremental --skills adr,review  # v3.0.0: --skills requires --incremental
 
 # Coarse-grained control (this meta-skill)
 /update-framework --from ~/dev/ai-dev

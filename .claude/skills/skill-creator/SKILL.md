@@ -6,8 +6,8 @@ description: |
   TRIGGER when: User wants to create a skill from scratch, update or optimize an existing skill, run evals to test a skill, benchmark skill performance with variance analysis, or optimize a skill's description for better triggering accuracy.
 
   DO NOT TRIGGER when: User is just asking about skills conceptually, wants to use an existing skill, or is discussing skill documentation without creating/modifying anything.
-version: "2.0.0"
-last-updated: "2026-03-15"
+version: "2.1.0"
+last-updated: "2026-03-24"
 ---
 
 # Skill Creator
@@ -526,12 +526,94 @@ Please add steps to your TodoList, if you have such a thing, to make sure you do
 
 Good luck!
 
+## Before Commit Checklist
+
+修改 skill 后，提交前检查：
+
+- [ ] **更新版本号**（YAML frontmatter 的 `version` 字段）
+  - 破坏性变更 → major bump (x.0.0)
+    - 示例：删除参数、改变默认行为、API 不兼容
+  - 功能增强 → minor bump (x.y.0)
+    - 示例：添加新功能、新参数、新选项
+  - Bug 修复/文档更新 → patch bump (x.y.z)
+    - 示例：修复 bug、更新文档、优化性能
+
+- [ ] **更新 `last-updated` 时间戳**
+  - 格式：YYYY-MM-DD（例如：2026-03-24）
+
+- [ ] **添加 changelog 条目**
+  - 在文件末尾的 Changelog 部分
+  - 格式：`- vX.Y.Z (YYYY-MM-DD): 简短描述 (Issue #N)`
+
+- [ ] **测试 skill 触发正常**
+  - 运行 skill 确保功能正常
+  - 检查 YAML frontmatter 语法正确
+  - 验证 description 字段清晰准确
+
+**Why this matters:**
+- ✅ 防止版本冲突：`/update-skills` 依赖版本号进行同步决策
+- ✅ 避免 CONFLICT 状态：过期版本号会导致同步失败（Issue #285）
+- ✅ 自动检测：`/review` skill 会检查版本号更新（Issue #294）
+
+**Example commit:**
+```
+feat: add auto-fix mode to eval-plan (Issue #177)
+
+- Add auto-fix for minor issues when score ≥90
+- Support --mode=auto flag
+- Update version: 1.1.0 → 1.2.0 (minor bump)
+- Update last-updated: 2026-03-13
+- Add changelog entry
+
+Version bump: minor (new feature - auto-fix)
+```
+
 ---
 
-**Version:** 2.0.0
+## 参考资源
+
+### 框架文档
+
+- **[SKILL_GUIDE.md](../../docs/ai-guides/SKILL_GUIDE.md)** - 技能创建完整指南
+  - 核心概念、设计模式、最佳实践
+  - 端到端创建流程（5 个阶段）
+  - Atomic/Composite/Meta 三种模式
+- **[ADR-001](../../docs/ADRs/001-official-skill-patterns.md)** - 官方模式标准
+  - YAML frontmatter 规范
+  - 3 种复杂度等级（Simple/Standard/Complex）
+  - Workflow skills 模式
+- **[ADR-002](../../docs/ADRs/002-skill-creation-workflow.md)** - 创建工作流
+  - 3 级测试流程
+  - `/skill-creator` 使用指南
+- **[ADR-003](../../docs/ADRs/003-python-only-for-skill-scripts.md)** - Python-only 策略
+  - 脚本必须使用 Python 3.9+
+  - 类型标注要求
+- **[ADR-008](../../docs/ADRs/008-skills-version-control.md)** - 语义化版本控制
+  - 版本号格式规范
+  - 同步机制
+
+### Anthropic 官方资源
+
+- **[The Complete Guide to Building Skills for Claude](https://resources.anthropic.com/hubfs/The-Complete-Guide-to-Building-Skill-for-Claude.pdf)** (PDF)
+  - 官方技能创建指南
+- **[Claude Code Skills Documentation](https://code.claude.com/docs/en/skills)**
+  - Claude Code 技能文档
+- **[GitHub - anthropics/skills](https://github.com/anthropics/skills)**
+  - 官方技能示例仓库
+- **[Agent Skills Overview](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview)**
+  - Agent 技能概览
+- **[MCP Introduction](https://anthropic.skilljar.com/introduction-to-model-context-protocol)**
+  - Model Context Protocol 介绍
+- **[Claude Code in Action](https://anthropic.skilljar.com/claude-code-in-action)**
+  - Claude Code 实战教程
+
+---
+
+**Version:** 2.1.0
 **Pattern:** Skill creation and improvement orchestrator
 **Compliance:** ADR-001 ✅
-**Last Updated:** 2026-03-15
+**Last Updated:** 2026-03-24
 **Changelog:**
+- v2.1.0 (2026-03-24): Added comprehensive reference resources section (Issue #292)
 - v2.0.0: Added version and last-updated fields to YAML template (Issue #207)
 - v1.0.0: Initial release with skill creation workflow

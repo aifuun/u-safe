@@ -1,10 +1,10 @@
 ---
 name: update-skills
 description: |
-  Sync skills between projects - bidirectional copy with version detection and clean mode.
-  TRIGGER when: user wants to sync skills ("update skills from X", "sync skills", "pull skills from framework", "push skills to project"), or wants complete directory replacement ("clean sync", "reset skills").
+  Sync skills between projects - complete directory replacement by default, with optional incremental mode.
+  TRIGGER when: user wants to sync skills ("update skills from X", "sync skills", "pull skills from framework", "push skills to project").
   DO NOT TRIGGER when: user wants to update pillars/rules/workflow (use respective update-* skills), or just wants to read skill docs.
-version: "2.4.0"
+version: "3.0.0"
 allowed-tools: Bash(cp *), Bash(mkdir *), Bash(ls *), Bash(find *), Bash(test *), Bash(cat *), Bash(wc *), Bash(stat *), Bash(git *), Read, Write, Glob, Grep, Edit
 disable-model-invocation: false
 user-invocable: true
@@ -16,25 +16,78 @@ Sync skill files between projects bidirectionally with smart version detection a
 
 ## Overview
 
-This skill synchronizes skills (.claude/skills/) between projects:
+This skill synchronizes skills (.claude/skills/) between projects with **complete directory replacement** as the default behavior:
 
-**What it does:**
+**What it does (default mode):**
+1. **Deletes** target `.claude/skills/` directory completely
+2. **Copies** all skills from source
+3. Reports what was synced
+4. **No version comparison** - simple, fast, conflict-free
+
+**Alternative: Incremental mode (--incremental):**
 1. Scans source and target projects for skills
 2. Compares skills to detect new/updated/conflicted versions
 3. Shows detailed diff preview with line counts
 4. Syncs skills with confirmation
 5. Supports selective skill filtering
 6. Creates backups before overwriting
-7. Reports what was synced
 
-**Why it's needed:**
-Skills evolve across projects. Framework updates need to propagate, and project innovations should flow back. This skill automates bidirectional skill sync with version conflict detection and backup protection.
+**Why complete replacement is default:**
+- 99% of use cases need complete sync (framework → project)
+- Incremental mode causes CONFLICT issues (Issue #285)
+- Git version control provides safety (no need for automatic backups)
+- Simpler, faster, more predictable
 
-**When to use:**
-- Monthly framework upgrades
-- Promoting project skills to framework
-- Cross-project skill sharing
-- Initial project setup
+**When to use incremental mode:**
+- Bidirectional development (project ↔ framework)
+- Need version comparison and conflict detection
+- Selective skill updates with --skills flag
+
+## Arguments
+
+```bash
+/update-skills [options]
+```
+
+**Direction (required, mutually exclusive):**
+- `--from <path>` - Pull skills from source project to current project
+- `--to <path>` - Push skills from current project to target project
+
+**Sync Mode:**
+- (Default) - Complete directory replacement (fast, conflict-free)
+- `--incremental` - Version comparison and selective sync (slower, more control)
+
+**Options (work with both modes):**
+- `--dry-run` - Preview changes without applying
+
+**Options (only with --incremental):**
+- `--skills <list>` - Sync only specific skills (comma-separated)
+- `--filter-config <path>` - Apply smart filter based on tech stack config
+
+**Deprecated:**
+- `--clean` - ⚠️ Deprecated in v3.0.0 (complete replacement is now default)
+
+**Common usage:**
+
+```bash
+# Most common: complete replacement (default)
+/update-skills --from ~/dev/ai-dev
+
+# Preview before syncing
+/update-skills --from ~/dev/ai-dev --dry-run
+
+# Incremental with version detection
+/update-skills --from ~/dev/ai-dev --incremental
+
+# Selective skills (requires --incremental)
+/update-skills --from ~/dev/ai-dev --incremental --skills adr,status,review
+
+# Smart filter (requires --incremental, used by /update-framework)
+/update-skills --from ~/dev/ai-dev --incremental --filter-config .claude/framework-config.json
+
+# Deprecated (shows warning, works as default)
+/update-skills --from ~/dev/ai-dev --clean
+```
 
 ## Workflow
 
@@ -55,62 +108,94 @@ After creating tasks, proceed with sync execution.
 
 ## Sync Modes
 
-### 1. Pull Skills (--from)
+### 1. Default Mode: Complete Replacement (--from / --to)
 
-Pull skills from source project to current project:
+**Default behavior** - Complete clean slate with directory replacement:
 
 ```bash
+# Pull from framework (complete replacement)
 /update-skills --from ~/dev/ai-dev
+
+# Push to project (complete replacement)
+/update-skills --to ~/projects/my-app
+
+# Preview before replacement
 /update-skills --from ~/dev/ai-dev --dry-run
-/update-skills --from ~/dev/ai-dev --skills adr,status,review
+```
+
+**What happens:**
+1. **Deletes** target `.claude/skills/` directory completely
+2. **Copies** all skills from source
+3. Reports results
+
+**Why this is default:**
+- ✅ Simple and fast (no version comparison)
+- ✅ Conflict-free (no CONFLICT status to resolve)
+- ✅ Complete sync guaranteed
+- ✅ Git provides safety (git diff, git restore)
+
+**Example output:**
+```
+🗑️  Deleting .claude/skills (34 skills)
+📋 Copying from ~/dev/ai-dev/.claude/skills (22 skills)
+
+✅ Complete sync: 22 skills synced
+```
+
+### 2. Incremental Mode (--incremental)
+
+**Optional mode** - Version comparison and selective sync:
+
+```bash
+# Incremental sync with version detection
+/update-skills --from ~/dev/ai-dev --incremental
+
+# Incremental with selective skills
+/update-skills --from ~/dev/ai-dev --incremental --skills adr,status,review
 ```
 
 **What happens:**
 1. Scan source: `<source>/.claude/skills/`
 2. Scan current: `.claude/skills/`
-3. Compare modification times and sizes
+3. Compare semantic versions from YAML frontmatter
 4. Detect: NEW, NEWER, OLDER, CONFLICT, SAME
 5. Show analysis table
-6. Confirm and copy updated skills
+6. Confirm and copy only updated skills
+7. Create backups before overwriting
 
-### 2. Push Skills (--to)
-
-Push skills from current project to target project:
-
-```bash
-/update-skills --to ~/projects/my-app
-/update-skills --to ~/projects/my-app --dry-run
-/update-skills --to ~/projects/my-app --skills create-issues,start-issue,finish-issue
-```
-
-**What happens:**
-1. Scan current project skills
-2. Scan target project skills
-3. Compare versions
-4. Show what will be pushed
-5. Confirm and copy to target
+**When to use:**
+- Bidirectional development (both sides modified)
+- Need version conflict detection
+- Want selective skill updates (--skills flag)
+- Customizing framework skills in project
 
 ### 3. Dry Run Mode (--dry-run)
 
 Preview changes without applying:
 
 ```bash
+# Preview complete replacement (default)
 /update-skills --from ~/dev/ai-dev --dry-run
+
+# Preview incremental sync
+/update-skills --from ~/dev/ai-dev --incremental --dry-run
 ```
 
 **Output:**
-- Shows analysis table with versions
+- Default mode: Shows source and target skill counts
+- Incremental mode: Shows analysis table with versions
 - Reports what would be synced
 - No confirmation required
 - No actual changes made
 
 ### 4. Selective Sync (--skills)
 
-Sync only specific skills:
+**Only works with --incremental mode:**
 
 ```bash
-/update-skills --from ~/dev/ai-dev --skills adr,status
-/update-skills --to ~/projects/my-app --skills custom-deploy,custom-test
+# Incremental sync with selective skills
+/update-skills --from ~/dev/ai-dev --incremental --skills adr,status
+/update-skills --to ~/projects/my-app --incremental --skills custom-deploy,custom-test
 ```
 
 **Skill selection:**
@@ -118,13 +203,19 @@ Sync only specific skills:
 - Only syncs specified skills
 - Ignores others
 
-### 5. Smart Filter (--filter-config) - NEW
+**Mutual exclusion:**
+- ❌ `--skills` without `--incremental` → Error
+- ✅ `--skills` with `--incremental` → Valid
+
+### 5. Smart Filter (--filter-config)
+
+**Only works with --incremental mode:**
 
 Apply intelligent filtering based on tech stack configuration:
 
 ```bash
-# Used by /update-framework meta-skill
-/update-skills --from ~/dev/ai-dev --filter-config <target>/.claude/framework-config.json
+# Used by /update-framework meta-skill (with --incremental)
+/update-skills --from ~/dev/ai-dev --incremental --filter-config <target>/.claude/framework-config.json
 ```
 
 **What it does:**
@@ -171,76 +262,91 @@ Result: 14 skills synced (2 excluded)
 - Skills are usually synced completely (no filtering)
 - Filtering mainly used for specialized deployment skills
 - Typically called by `/update-framework` meta-skill
+- Requires `--incremental` mode
 
-### 6. Clean Mode (--clean) - NEW in v2.3.0
+**Mutual exclusion:**
+- ❌ `--filter-config` without `--incremental` → Error
+- ✅ `--filter-config` with `--incremental` → Valid
 
-**IMPORTANT**: Destructive operation with complete directory replacement.
+### 6. Deprecated: --clean Flag
 
-Complete clean slate - delete entire target `.claude/skills` directory and replace with source:
+**DEPRECATED in v3.0.0** - Complete replacement is now the default behavior.
 
 ```bash
-# Execute full replacement
+# ⚠️ DEPRECATED - This flag is no longer needed
 /update-skills --from ~/dev/ai-dev --clean
-/update-skills --to ~/projects/my-app --clean
+
+# ✅ Use this instead (same behavior)
+/update-skills --from ~/dev/ai-dev
 ```
 
-**What it does:**
-1. **Deletes** target directory completely
-2. **Copies** all skills from source
-3. **Reports** results
+**What happens when you use --clean:**
+- Displays deprecation warning
+- Continues with normal complete replacement (default)
+- Does not block execution
 
-**Use Cases:**
-- Version conflicts too complex to resolve manually
-- Target skills corrupted or inconsistent
-- Force align target to source state
-- Clean up residual skills after major version upgrade
-
-**Example Output:**
-
+**Deprecation message:**
 ```
-🗑️  Deleting .claude/skills (34 skills)
-📋 Copying from ~/dev/ai-dev/.claude/skills (22 skills)
+⚠️  Warning: --clean flag is deprecated
+   Complete replacement is now the default behavior.
+   You can omit this flag.
 
-✅ Clean sync complete: 22 skills synced
+Continuing with complete sync...
 ```
 
-**Mutual Exclusion Rules:**
+**Migration guide:**
+- Remove `--clean` from all commands
+- Default behavior is now complete replacement
+- Use `--incremental` if you need version comparison
 
-| Parameter Combination | Behavior | Valid? |
-|----------------------|----------|--------|
-| `--from --clean` | Clean current, copy from source | ✅ Valid |
-| `--to --clean` | Clean target, copy from current | ✅ Valid |
-| `--clean --skills` | **ERROR** | ❌ Mutually exclusive |
-| `--clean --filter-config` | **ERROR** | ❌ Mutually exclusive |
+## Parameter Combinations
 
-**Error handling:**
+**Mutual exclusion rules:**
+
+| Parameter | Compatible With | Incompatible With |
+|-----------|----------------|-------------------|
+| `--from` / `--to` | All | None |
+| `--incremental` | `--skills`, `--filter-config`, `--dry-run` | None (optional parameter) |
+| `--skills` | `--incremental`, `--dry-run` | Default mode (requires `--incremental`) |
+| `--filter-config` | `--incremental`, `--dry-run` | Default mode (requires `--incremental`) |
+| `--dry-run` | All | None |
+| `--clean` (deprecated) | `--from`, `--to`, `--dry-run` | `--skills`, `--filter-config` (but deprecated anyway) |
+
+**Valid combinations:**
+
 ```bash
-$ /update-skills --from ~/dev/ai-dev --clean --skills adr,status
+# ✅ Default complete replacement
+/update-skills --from ~/dev/ai-dev
+/update-skills --to ~/projects/my-app
+/update-skills --from ~/dev/ai-dev --dry-run
 
-❌ Error: --clean and --skills are mutually exclusive
-   --clean performs full directory replacement
+# ✅ Incremental with version detection
+/update-skills --from ~/dev/ai-dev --incremental
+/update-skills --from ~/dev/ai-dev --incremental --dry-run
+
+# ✅ Incremental with selective skills
+/update-skills --from ~/dev/ai-dev --incremental --skills adr,status
+
+# ✅ Incremental with smart filter
+/update-skills --from ~/dev/ai-dev --incremental --filter-config .claude/framework-config.json
 ```
 
-**When NOT to use:**
-- ❌ Normal version updates → Use standard sync (--from/--to)
-- ❌ Selective skill updates → Use --skills flag
-- ❌ Regular maintenance → Use smart filter (--filter-config)
+**Invalid combinations:**
 
-**When to use:**
-- ✅ Severe version conflicts (manual resolution too complex)
-- ✅ Corrupted target skills directory
-- ✅ Force reset to framework state
-- ✅ Major version migration cleanup
-
-**Recovery:**
-If you need to restore after clean sync, use git:
 ```bash
-# Restore deleted files
-git restore .claude/skills/
+# ❌ --skills without --incremental
+$ /update-skills --from ~/dev/ai-dev --skills adr,status
 
-# Or check changes
-git status
-git diff
+Error: --skills requires --incremental mode
+   Default mode syncs all skills completely
+   Use: /update-skills --from ~/dev/ai-dev --incremental --skills adr,status
+
+# ❌ --filter-config without --incremental
+$ /update-skills --from ~/dev/ai-dev --filter-config .claude/framework-config.json
+
+Error: --filter-config requires --incremental mode
+   Default mode syncs all skills completely
+   Use: /update-skills --from ~/dev/ai-dev --incremental --filter-config <path>
 ```
 
 ## Version Detection (v2.0.0+)
@@ -501,7 +607,21 @@ Choice (1/2/3/4):
 
 ## Backup Strategy
 
-**Automatic backup before overwrite (incremental mode only):**
+**Default mode (complete replacement):**
+- NO automatic backups created
+- Relies on git version control for safety
+- Use `git diff .claude/skills/` to review changes
+- Use `git restore .claude/skills/` to recover if needed
+
+**Why no backups in default mode:**
+- Git provides better version control than automatic backups
+- Simpler and faster (no backup directory creation)
+- Complete replacement means no partial states to backup
+
+**Incremental mode (--incremental):**
+- Automatic backup before overwriting each skill
+- Timestamped backup directories
+- Easy rollback
 
 ```bash
 Before updating any skill:
@@ -519,11 +639,6 @@ Rollback available: .claude/skills/adr.backup-2026-03-06/
 **Backup cleanup:**
 - Automatic after 7 days
 - Or manual: `rm -rf .claude/skills/*.backup-*`
-
-**Note on --clean mode:**
-- `--clean` mode does NOT create backups
-- Relies on git version control for recovery
-- Use `git restore .claude/skills/` to recover if needed
 
 ## What Gets Synced
 
@@ -557,27 +672,41 @@ Rollback available: .claude/skills/adr.backup-2026-03-06/
 
 ## Usage Examples
 
-### Example 1: Framework Upgrade
+### Example 1: Framework Upgrade (Default)
 
 **User says:**
 > "update skills from the framework"
 
 **What happens:**
-1. Pull from ~/dev/ai-dev
+1. `/update-skills --from ~/dev/ai-dev` (complete replacement)
+2. Delete target `.claude/skills/` (34 skills)
+3. Copy from source (22 skills)
+4. Report: "Complete sync: 22 skills synced"
+
+**Time:** ~15 seconds (faster than incremental)
+
+### Example 2: Incremental Update with Version Detection
+
+**User says:**
+> "update skills but check versions first"
+
+**What happens:**
+1. `/update-skills --from ~/dev/ai-dev --incremental`
 2. Scan both projects
-3. Show: 4 skills to update
-4. Confirm and sync
-5. Report: "Updated 4 skills"
+3. Compare versions
+4. Show: 4 skills to update (NEW or NEWER)
+5. Confirm and sync
+6. Report: "Updated 4 skills"
 
 **Time:** ~30 seconds
 
-### Example 2: Selective Update
+### Example 3: Selective Update
 
 **User says:**
 > "pull only the adr and status skills"
 
 **What happens:**
-1. `/update-skills --from ~/dev/ai-dev --skills adr,status`
+1. `/update-skills --from ~/dev/ai-dev --incremental --skills adr,status`
 2. Compare only those 2 skills
 3. Show: 1 updated (adr), 1 same (status)
 4. Sync adr only
@@ -585,13 +714,13 @@ Rollback available: .claude/skills/adr.backup-2026-03-06/
 
 **Time:** ~20 seconds
 
-### Example 3: Promote to Framework
+### Example 4: Promote to Framework
 
 **User says:**
 > "push my custom skills to the framework"
 
 **What happens:**
-1. `/update-skills --to ~/dev/ai-dev --skills custom-deploy,custom-test`
+1. `/update-skills --to ~/dev/ai-dev --incremental --skills custom-deploy,custom-test`
 2. Compare custom skills
 3. Show: 2 NEW skills
 4. Confirm and push
@@ -667,20 +796,26 @@ Please check:
 
 **With other update-* skills:**
 ```bash
-# Complete framework update
+# Complete framework update (default: complete replacement)
 /update-pillars --from ~/dev/ai-dev   # 1. Pillars
 /update-rules --from ~/dev/ai-dev     # 2. Rules
 /update-workflow --from ~/dev/ai-dev  # 3. Workflow
-/update-skills --from ~/dev/ai-dev    # 4. Skills
+/update-skills --from ~/dev/ai-dev    # 4. Skills (complete replacement)
 
 # Or use meta-skill
 /update-framework --from ~/dev/ai-dev # All-in-one
 ```
 
-**Common workflow:**
+**Common workflows:**
 ```
-Framework upgrade → Pull Skills → Test locally → Commit
-Skill development → Polish → Push to framework → Share
+# 1. Framework upgrade (most common)
+Framework upgrade → Pull Skills (complete) → Test → Commit
+
+# 2. Bidirectional development
+Skill development → Polish → Push to framework (incremental) → Share
+
+# 3. Monthly sync
+Monthly maintenance → Pull skills (complete) → Verify → Commit
 ```
 
 ## Task Management
@@ -724,6 +859,92 @@ This is a **workflow skill** and must follow the standard pattern:
 
 **See**: [WORKFLOW_PATTERNS.md](../WORKFLOW_PATTERNS.md) for complete implementation guide
 
+## Migration from v2.x
+
+**BREAKING CHANGE in v3.0.0**: Default behavior changed from incremental to complete replacement.
+
+### What Changed
+
+| Aspect | v2.x (Old) | v3.0.0 (New) |
+|--------|------------|--------------|
+| **Default mode** | Incremental sync (version detection) | Complete replacement (delete + copy) |
+| **Default flag** | (none - incremental) | (none - complete) |
+| **Incremental mode** | Default | `--incremental` flag required |
+| **Clean mode** | `--clean` flag | Default behavior (--clean deprecated) |
+| **Selective sync (--skills)** | Works with default | Requires `--incremental` |
+| **Smart filter (--filter-config)** | Works with default | Requires `--incremental` |
+
+### Migration Guide
+
+**1. Most common use case (framework sync):**
+
+```bash
+# v2.x - Need --clean for complete replacement
+/update-skills --from ~/dev/ai-dev --clean
+
+# v3.0.0 - Default is complete replacement
+/update-skills --from ~/dev/ai-dev
+```
+
+**Action**: Remove `--clean` flag from all commands.
+
+**2. Version detection and selective sync:**
+
+```bash
+# v2.x - Default is incremental
+/update-skills --from ~/dev/ai-dev --skills adr,status
+
+# v3.0.0 - Must add --incremental
+/update-skills --from ~/dev/ai-dev --incremental --skills adr,status
+```
+
+**Action**: Add `--incremental` flag when using `--skills` or `--filter-config`.
+
+**3. Dry run preview:**
+
+```bash
+# v2.x
+/update-skills --from ~/dev/ai-dev --dry-run
+
+# v3.0.0 - Same command, different default output
+/update-skills --from ~/dev/ai-dev --dry-run  # Shows complete replacement preview
+/update-skills --from ~/dev/ai-dev --incremental --dry-run  # Shows incremental preview
+```
+
+**Action**: No change needed, but output format will differ.
+
+### Why This Change?
+
+**Data from Issue #285:**
+- 99% of use cases need complete sync (framework → project)
+- Incremental mode caused CONFLICT issues frequently
+- Users had to remember to use `--clean` flag
+- Git version control provides better safety than automatic backups
+
+**Benefits:**
+- ✅ Simpler default (no version comparison)
+- ✅ Faster execution (no scanning)
+- ✅ Conflict-free (complete replacement)
+- ✅ More intuitive (sync = replace)
+
+### Compatibility
+
+**Backward compatibility:**
+- `--clean` flag still works (shows deprecation warning, then proceeds as default)
+- All other flags work as before (but `--skills` and `--filter-config` require `--incremental`)
+- No data loss (git provides recovery via `git restore .claude/skills/`)
+
+### Rollback
+
+If you need v2.x behavior permanently:
+
+```bash
+# Always use --incremental flag
+alias update-skills='/update-skills --incremental'
+
+# Or update your documentation to include --incremental
+```
+
 ## Related Skills
 
 - **/update-framework** - Sync entire framework (calls this skill)
@@ -733,9 +954,10 @@ This is a **workflow skill** and must follow the standard pattern:
 
 ---
 
-**Version:** 2.4.0
-**Last Updated:** 2026-03-14
+**Version:** 3.0.0
+**Last Updated:** 2026-03-23
 **Changelog:**
+- v3.0.0 (2026-03-23): BREAKING: Make --clean the default behavior, add --incremental for old mode (Issue #290)
 - v2.4.0 (2026-03-14): Simplify --clean mode documentation (Issue #256)
 - v2.3.0 (2026-03-13): Add --clean parameter for complete directory replacement (Issue #210)
 - v2.0.0 (2026-03-10): Upgrade to semantic version comparison (Issue #214)
