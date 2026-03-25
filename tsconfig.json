@@ -10,9 +10,9 @@
     "baseUrl": ".",
     "paths": {
       "@/domains/*": ["app/src/domains/*"],
-      "@/kernel/*": ["app/src/00_kernel/*"],
-      "@/views/*": ["app/src/01_views/*"],
-      "@/modules/*": ["app/src/02_modules/*"],
+      "@/kernel/*": ["app/src/kernel/*"],
+      "@/views/*": ["app/src/views/*"],
+      "@/modules/*": ["app/src/modules/*"],
       "@/components/*": ["app/src/components/*"],
       "@/hooks/*": ["app/src/hooks/*"],
       "@/utils/*": ["app/src/utils/*"]
