@@ -1,0 +1,44 @@
+name: Architecture Check
+
+on:
+  pull_request:
+    branches:
+      - main
+      - master
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  architecture-check:
+    name: Check Architecture Violations
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run architecture check
+        run: npm run check:arch
+
+      - name: Report results
+        if: failure()
+        run: |
+          echo "❌ Architecture violations detected!"
+          echo "Please fix the violations and commit the changes."
+          echo ""
+          echo "Common fixes:"
+          echo "- Circular dependencies: Refactor to break the cycle"
+          echo "- Layer boundary violations: Follow Clean Architecture rules"
+          echo "- Deep imports: Use barrel exports (index.ts) instead"
+          exit 1
