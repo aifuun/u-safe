@@ -2,7 +2,7 @@
  * File Module Exports
  */
 
-// Components moved to 01_views/files/
+// Components moved to views/files/
 
 // Headless Hooks
 export { useFileDrop } from './headless/useFileDrop';

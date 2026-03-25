@@ -1,9 +1,9 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
-import { SetupPasswordView } from './01_views/setup';
-import { LoginView } from './01_views/login';
-import { FileManagementView } from './01_views/files';
-import { ProtectedRoute } from './01_views/ProtectedRoute';
-import { ResetWarningView, ResetConfirmView } from './01_views/reset';
+import { SetupPasswordView } from './views/setup';
+import { LoginView } from './views/login';
+import { FileManagementView } from './views/files';
+import { ProtectedRoute } from './views/ProtectedRoute';
+import { ResetWarningView, ResetConfirmView } from './views/reset';
 
 /**
  * U-Safe 路由配置

@@ -9,9 +9,9 @@ export default defineConfig({
   resolve: {
     alias: {
       '@/domains': path.resolve(__dirname, './app/src/domains'),
-      '@/kernel': path.resolve(__dirname, './app/src/00_kernel'),
-      '@/views': path.resolve(__dirname, './app/src/01_views'),
-      '@/modules': path.resolve(__dirname, './app/src/02_modules'),
+      '@/kernel': path.resolve(__dirname, './app/src/kernel'),
+      '@/views': path.resolve(__dirname, './app/src/views'),
+      '@/modules': path.resolve(__dirname, './app/src/modules'),
       '@/components': path.resolve(__dirname, './app/src/components'),
       '@/hooks': path.resolve(__dirname, './app/src/hooks'),
       '@/utils': path.resolve(__dirname, './app/src/utils'),

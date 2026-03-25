@@ -1,4 +1,4 @@
-// 02_modules/index.ts - Modules Layer Public API
+// modules/index.ts - Modules Layer Public API
 
 // Core module (infrastructure services)
 export * from './core';
@@ -13,4 +13,4 @@ export * from './file';
 export type { FileNode, FileOperation, FileType, FileTreeState } from './files/types';
 export * from './files';
 
-// Settings module moved to 01_views/settings/
+// Settings module moved to views/settings/

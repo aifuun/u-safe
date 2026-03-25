@@ -1,4 +1,4 @@
-// 01_views/index.ts - Views Layer Public API
+// views/index.ts - Views Layer Public API
 
 // Common views
 export { ProtectedRoute } from './ProtectedRoute';
