@@ -20,6 +20,7 @@
 8. [性能考虑](#8-性能考虑)
 9. [安全策略](#9-安全策略)
 10. [架构图](#10-架构图)
+11. [架构检查](#11-架构检查)
 
 ---
 
@@ -545,6 +546,147 @@ U:/  (U 盘根目录)
 7. **4-1-file-addition.mmd** - 文件添加流程
 
 详见: [`docs/design/diagrams/README.md`](../design/diagrams/README.md)
+
+---
+
+## 11. 架构检查
+
+### 11.1 自动化架构检查脚本
+
+U-Safe 使用自动化脚本检测架构违规，确保代码符合 Clean Architecture 原则。
+
+**脚本位置**: `scripts/check-architecture.ts`
+
+### 11.2 检查项目
+
+#### 1. 循环依赖检测
+
+检测模块间的循环依赖关系，防止耦合：
+
+```
+示例：A → B → C → A (❌ 循环依赖)
+```
+
+**算法**: 使用 DFS (深度优先搜索) 检测依赖图中的环
+
+#### 2. 层级边界违规检测
+
+确保各层只能导入允许的层：
+
+| 层级 | 允许导入 | 说明 |
+|------|----------|------|
+| `kernel` | (无) | 核心层不依赖任何其他层 |
+| `domains` | `kernel` | 领域层只依赖核心层 |
+| `modules` | `kernel`, `domains` | 模块层可依赖核心层和领域层 |
+| `views` | `kernel`, `domains`, `modules` | 视图层可依赖所有下层 |
+
+**示例违规**:
+```typescript
+// ❌ 错误: kernel 导入 domains
+// app/src/kernel/auth.ts
+import { User } from '../domains/user';
+
+// ✅ 正确: domains 导入 kernel
+// app/src/domains/user.ts
+import { UserId } from '../kernel/types';
+```
+
+#### 3. 深度导入检测
+
+检测绕过 barrel exports (index.ts) 的深度导入：
+
+```typescript
+// ❌ 错误: 深度导入
+import { LoginView } from './views/login/LoginView';
+
+// ✅ 正确: 使用 barrel export
+import { LoginView } from './views';
+```
+
+**原因**: Barrel exports 提供清晰的公共 API，隐藏内部实现细节。
+
+### 11.3 本地运行检查
+
+```bash
+# 运行架构检查
+npm run check:arch
+```
+
+**输出示例**:
+```
+🔍 Architecture Check Script
+========================================
+
+📂 Scanning TypeScript files...
+   Found 66 files
+
+📋 Parsing imports...
+   Found 20 imports
+
+🔍 Running checks...
+   [1/3] Checking circular dependencies...
+         ✅ Found 0 circular dependencies
+   [2/3] Checking layer boundaries...
+         ✅ Found 0 layer boundary violations
+   [3/3] Checking deep imports...
+         ❌ Found 5 deep import violations
+
+========================================
+❌ Found 5 violation(s):
+
+❌ DEEP-IMPORT
+   File: app/src/router.tsx:2
+   Deep import detected: bypassing barrel export. Use './views' instead of './views/setup'
+```
+
+### 11.4 CI 集成
+
+架构检查已集成到 GitHub Actions CI 流程：
+
+**工作流文件**: `.github/workflows/architecture-check.yml`
+
+**触发条件**:
+- Pull Request 到 `main` 或 `master` 分支
+- Push 到 `main` 或 `master` 分支
+
+**失败处理**: 如果检测到违规，CI 将失败，阻止合并。
+
+### 11.5 常见违规修复方法
+
+#### 修复循环依赖
+
+1. **提取公共接口**: 将共享类型提取到 `kernel` 层
+2. **依赖注入**: 使用依赖注入打破循环
+3. **重新设计**: 重新思考模块职责划分
+
+#### 修复层级违规
+
+1. **向下移动代码**: 将被依赖的代码移到更低层级
+2. **提取抽象**: 在 `kernel` 层定义接口，高层实现
+3. **重构依赖关系**: 调整模块职责，符合分层原则
+
+#### 修复深度导入
+
+1. **检查 index.ts**: 确保目标模块导出了需要的内容
+2. **更新导入路径**: 使用 barrel export 路径
+3. **添加导出**: 如果 index.ts 缺少导出，添加它
+
+**示例修复**:
+```typescript
+// 修复前
+import { LoginView } from './views/login/LoginView';
+import { FileManagementView } from './views/files/FileManagementView';
+
+// 修复后
+import { LoginView, FileManagementView } from './views';
+```
+
+### 11.6 最佳实践
+
+1. **定期检查**: 在提交前运行 `npm run check:arch`
+2. **持续集成**: CI 自动检查，防止违规代码合并
+3. **代码审查**: PR 审查时关注架构合规性
+4. **重构优先**: 发现违规立即修复，不要累积技术债
 
 ---
 
