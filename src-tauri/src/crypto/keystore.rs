@@ -158,6 +158,76 @@ impl KeyStore {
         }
         Ok(())
     }
+
+    /// 重新包装主密钥（用于修改密码）
+    ///
+    /// 使用旧密码密钥解密主密钥，然后用新密码密钥重新加密。
+    /// 使用原子性操作确保安全性：先写入临时文件，成功后再重命名。
+    ///
+    /// # Arguments
+    /// * `old_password_key` - 旧密码派生的密钥
+    /// * `new_password_key` - 新密码派生的密钥
+    ///
+    /// # Returns
+    /// * `Ok(())` - 重新包装成功
+    /// * `Err` - 解密、加密或写入失败
+    pub fn rewrap(
+        &self,
+        old_password_key: &[u8; 32],
+        new_password_key: &[u8; 32],
+    ) -> Result<(), CryptoError> {
+        log::info!("[keystore:rewrap] 开始重新包装主密钥");
+
+        // 1. 用旧密码密钥解密主密钥
+        let master_key = self.load(old_password_key)?;
+        log::info!("[keystore:rewrap] 主密钥已用旧密码解密");
+
+        // 2. 用新密码密钥加密主密钥
+        let cipher = Aes256Gcm::new_from_slice(new_password_key)
+            .map_err(|e| CryptoError::KeystoreError(format!("创建 cipher 失败: {}", e)))?;
+
+        // 生成随机 nonce
+        let mut nonce_bytes = [0u8; NONCE_SIZE];
+        OsRng.fill_bytes(&mut nonce_bytes);
+        let nonce = Nonce::from_slice(&nonce_bytes);
+
+        // 加密主密钥
+        let ciphertext = cipher
+            .encrypt(nonce, master_key.as_slice())
+            .map_err(|e| CryptoError::EncryptionError(format!("加密主密钥失败: {}", e)))?;
+
+        // 组合 nonce + ciphertext
+        let mut data = Vec::with_capacity(NONCE_SIZE + ciphertext.len());
+        data.extend_from_slice(&nonce_bytes);
+        data.extend_from_slice(&ciphertext);
+
+        log::info!("[keystore:rewrap] 主密钥已用新密码加密");
+
+        // 3. 原子性操作：先写临时文件，再重命名
+        let key_file = self.key_file_path();
+        let temp_file = key_file.with_extension("key.tmp");
+
+        // 确保目录存在
+        if let Some(parent) = key_file.parent() {
+            fs::create_dir_all(parent)?;
+        }
+
+        // 写入临时文件
+        fs::write(&temp_file, &data)
+            .map_err(|e| CryptoError::KeystoreError(format!("写入临时文件失败: {}", e)))?;
+        log::info!("[keystore:rewrap] 临时文件已写入: {:?}", temp_file);
+
+        // 原子性重命名
+        fs::rename(&temp_file, &key_file)
+            .map_err(|e| {
+                // 如果重命名失败，清理临时文件
+                fs::remove_file(&temp_file).ok();
+                CryptoError::KeystoreError(format!("重命名文件失败: {}", e))
+            })?;
+
+        log::info!("[keystore:rewrap] 主密钥重新包装完成: {:?}", key_file);
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -219,5 +289,49 @@ mod tests {
         // 删除后不存在
         keystore.delete().unwrap();
         assert!(!keystore.exists());
+    }
+
+    #[test]
+    fn test_rewrap_master_key() {
+        let keystore = test_keystore();
+        let old_password_key = [42u8; 32];
+        let new_password_key = [99u8; 32];
+
+        // 1. 使用旧密码生成并存储主密钥
+        let original_master_key = keystore.generate_and_store(&old_password_key).unwrap();
+
+        // 2. 重新包装主密钥（修改密码）
+        keystore.rewrap(&old_password_key, &new_password_key).unwrap();
+
+        // 3. 使用旧密码应该无法解密
+        let result = keystore.load(&old_password_key);
+        assert!(result.is_err());
+
+        // 4. 使用新密码应该能够解密
+        let loaded_master_key = keystore.load(&new_password_key).unwrap();
+
+        // 5. 解密出的主密钥应该与原始主密钥相同
+        assert_eq!(original_master_key.as_bytes(), loaded_master_key.as_bytes());
+
+        // 清理
+        keystore.delete().ok();
+    }
+
+    #[test]
+    fn test_rewrap_with_wrong_old_password() {
+        let keystore = test_keystore();
+        let correct_old_key = [42u8; 32];
+        let wrong_old_key = [88u8; 32];
+        let new_key = [99u8; 32];
+
+        // 使用正确密码生成主密钥
+        keystore.generate_and_store(&correct_old_key).unwrap();
+
+        // 使用错误的旧密码尝试 rewrap 应该失败
+        let result = keystore.rewrap(&wrong_old_key, &new_key);
+        assert!(result.is_err());
+
+        // 清理
+        keystore.delete().ok();
     }
 }

@@ -34,6 +34,11 @@
   - [003-technical-stack.md](adr/003-technical-stack.md)
   - [004-encryption-strategy.md](adr/004-encryption-strategy.md)
 
+### 用户文档
+- [user/](user/) - 用户指南
+  - [password-change-guide.md](user/password-change-guide.md) - 修改密码指南
+  - [password-reset-guide.md](user/password-reset-guide.md) - 密码重置指南
+
 ## 🔍 快速参考
 
 | 我想... | 查看文档 |
@@ -46,6 +51,8 @@
 | 查看设计系统 | [DESIGN_SYSTEM.md](design/DESIGN_SYSTEM.md) |
 | 了解测试策略 | [TEST_PLAN.md](qa/TEST_PLAN.md) |
 | 查看技术决策 | [adr/](adr/) |
+| 修改密码 | [password-change-guide.md](user/password-change-guide.md) |
+| 重置密码 | [password-reset-guide.md](user/password-reset-guide.md) |
 
 ## 📏 文档标准
 

@@ -338,3 +338,158 @@ fn test_edge_case_corrupted_master_key_file() {
 
     println!("✅ 边界测试（主密钥文件损坏）通过");
 }
+
+#[test]
+fn test_password_change_flow() {
+    // 集成测试：完整的密码修改流程
+    // 1. 设置初始密码
+    // 2. 生成主密钥
+    // 3. 修改密码
+    // 4. 验证旧密码不可用
+    // 5. 验证新密码可用
+    // 6. 验证主密钥可用新密码解密
+
+    let data_dir = std::path::PathBuf::from(".u-safe");
+    if data_dir.exists() {
+        fs::remove_dir_all(&data_dir).ok();
+    }
+
+    let old_password = "OldPassword123!";
+    let new_password = "NewPassword456!";
+
+    let password_manager = PasswordManager::default();
+    let keystore = KeyStore::new();
+
+    // 步骤 1: 设置初始密码
+    password_manager.set_password(old_password).expect("设置初始密码失败");
+
+    // 步骤 2: 生成主密钥
+    let old_password_key = password_manager.verify_password(old_password).expect("验证初始密码失败");
+    let original_master_key = keystore.generate_and_store(&old_password_key).expect("生成主密钥失败");
+
+    // 步骤 3: 模拟修改密码命令的逻辑
+    // 3.1 验证旧密码
+    password_manager.reset_attempts();
+    let old_key = password_manager.verify_password(old_password).expect("验证旧密码失败");
+
+    // 3.2 派生新密钥和哈希
+    let (new_password_key, new_password_hash) = u_safe_lib::crypto::kdf::derive_key(new_password)
+        .expect("派生新密钥失败");
+
+    // 3.3 重新包装主密钥
+    keystore.rewrap(&old_key, &new_password_key).expect("重新包装主密钥失败");
+
+    // 3.4 更新密码哈希
+    password_manager.update_password_hash(&new_password_hash).expect("更新密码哈希失败");
+
+    // 步骤 4: 验证旧密码不可用
+    password_manager.reset_attempts();
+    let old_password_result = password_manager.verify_password(old_password);
+    assert!(old_password_result.is_err(), "旧密码应该验证失败");
+
+    // 步骤 5: 验证新密码可用
+    password_manager.reset_attempts();
+    let new_key = password_manager.verify_password(new_password).expect("新密码验证失败");
+
+    // 步骤 6: 验证主密钥可用新密码解密
+    let keystore_reload = KeyStore::new();
+    let master_key_loaded = keystore_reload.load(&new_key).expect("用新密码加载主密钥失败");
+
+    // 验证主密钥内容相同（通过比较字节）
+    assert_eq!(
+        original_master_key.as_bytes(),
+        master_key_loaded.as_bytes(),
+        "主密钥内容应该保持不变"
+    );
+
+    // 清理
+    fs::remove_dir_all(&data_dir).ok();
+
+    println!("✅ 密码修改流程集成测试通过");
+}
+
+#[test]
+fn test_password_change_wrong_old_password() {
+    // 边界测试：使用错误的旧密码修改密码应该失败
+
+    let data_dir = std::path::PathBuf::from(".u-safe");
+    if data_dir.exists() {
+        fs::remove_dir_all(&data_dir).ok();
+    }
+
+    let correct_password = "CorrectPassword123!";
+    let wrong_password = "WrongPassword123!";
+    let new_password = "NewPassword456!";
+
+    let password_manager = PasswordManager::default();
+    let keystore = KeyStore::new();
+
+    // 设置初始密码并生成主密钥
+    password_manager.set_password(correct_password).unwrap();
+    let password_key = password_manager.verify_password(correct_password).unwrap();
+    keystore.generate_and_store(&password_key).unwrap();
+
+    // 尝试用错误的旧密码修改密码
+    password_manager.reset_attempts();
+    let wrong_result = password_manager.verify_password(wrong_password);
+    assert!(wrong_result.is_err(), "错误的旧密码验证应该失败");
+
+    // 确认正确密码仍然可用
+    password_manager.reset_attempts();
+    let correct_key = password_manager.verify_password(correct_password).expect("正确密码应该仍然可用");
+    let master_key = keystore.load(&correct_key).expect("主密钥应该仍然可用");
+    assert_eq!(master_key.as_bytes().len(), 32, "主密钥长度应该是 32 字节");
+
+    // 清理
+    fs::remove_dir_all(&data_dir).ok();
+
+    println!("✅ 边界测试（错误旧密码修改密码）通过");
+}
+
+#[test]
+fn test_password_change_same_password() {
+    // 边界测试：新密码与旧密码相同（虽然前端会拦截，但后端也应该能处理）
+
+    let data_dir = std::path::PathBuf::from(".u-safe");
+    if data_dir.exists() {
+        fs::remove_dir_all(&data_dir).ok();
+    }
+
+    let password = "SamePassword123!";
+
+    let password_manager = PasswordManager::default();
+    let keystore = KeyStore::new();
+
+    // 设置初始密码并生成主密钥
+    password_manager.set_password(password).unwrap();
+    let old_password_key = password_manager.verify_password(password).unwrap();
+    let original_master_key = keystore.generate_and_store(&old_password_key).unwrap();
+
+    // 使用相同密码"修改"
+    password_manager.reset_attempts();
+    let old_key = password_manager.verify_password(password).unwrap();
+    let (new_password_key, new_password_hash) = u_safe_lib::crypto::kdf::derive_key(password).unwrap();
+
+    // 注意：虽然密码文本相同，但 KDF 会用新的 salt，所以密钥实际上不同
+    // 这是预期行为 - 即使密码相同，底层密钥也会改变（更安全）
+    keystore.rewrap(&old_key, &new_password_key).unwrap();
+    password_manager.update_password_hash(&new_password_hash).unwrap();
+
+    // 验证新密码可用
+    password_manager.reset_attempts();
+    let new_key = password_manager.verify_password(password).unwrap();
+    let keystore_reload = KeyStore::new();
+    let master_key_loaded = keystore_reload.load(&new_key).unwrap();
+
+    // 主密钥内容应该相同
+    assert_eq!(
+        original_master_key.as_bytes(),
+        master_key_loaded.as_bytes(),
+        "主密钥内容应该保持不变"
+    );
+
+    // 清理
+    fs::remove_dir_all(&data_dir).ok();
+
+    println!("✅ 边界测试（相同密码修改）通过");
+}

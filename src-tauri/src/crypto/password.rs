@@ -111,6 +111,54 @@ impl PasswordManager {
         Ok(())
     }
 
+    /// 更新密码哈希（用于修改密码）
+    ///
+    /// 使用原子性操作更新存储的密码哈希：
+    /// 1. 先写入临时文件
+    /// 2. 验证写入成功
+    /// 3. 原子性重命名覆盖原文件
+    ///
+    /// # Arguments
+    /// * `new_hash` - 新密码的 PHC 格式哈希
+    ///
+    /// # Returns
+    /// * `Ok(())` - 更新成功
+    /// * `Err` - 更新失败
+    pub fn update_password_hash(&self, new_hash: &str) -> Result<(), CryptoError> {
+        log::info!("[password:update] 开始更新密码哈希");
+
+        // 获取目标文件路径
+        let hash_file = Self::get_hash_file_path()?;
+        let temp_file = hash_file.with_extension("hash.tmp");
+
+        // 确保目录存在
+        if let Some(parent) = hash_file.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+
+        // 1. 写入临时文件
+        std::fs::write(&temp_file, new_hash)
+            .map_err(|e| CryptoError::InvalidPassword(format!("写入临时文件失败: {}", e)))?;
+        log::info!("[password:update] 临时文件已写入: {:?}", temp_file);
+
+        // 2. 原子性重命名
+        std::fs::rename(&temp_file, &hash_file)
+            .map_err(|e| {
+                // 如果重命名失败，清理临时文件
+                std::fs::remove_file(&temp_file).ok();
+                CryptoError::InvalidPassword(format!("重命名文件失败: {}", e))
+            })?;
+
+        // 3. 更新内存中的状态
+        let mut state = self.state.lock().unwrap();
+        state.stored_hash = Some(new_hash.to_string());
+        state.failed_attempts = 0;  // 重置错误次数
+        state.locked_until = None;  // 解除锁定
+
+        log::info!("[password:update] 密码哈希已更新: {:?}", hash_file);
+        Ok(())
+    }
+
     /// 验证密码
     ///
     /// # Arguments
@@ -283,5 +331,59 @@ mod tests {
         // 正确登录应该重置错误次数
         let _ = manager.verify_password("correct").unwrap();
         assert_eq!(manager.remaining_attempts(), 3);
+    }
+
+    #[test]
+    fn test_update_password_hash() {
+        let manager = PasswordManager::default();
+
+        // 1. 设置初始密码
+        manager.set_password("OldPassword123").unwrap();
+
+        // 2. 验证旧密码可以登录
+        let old_key = manager.verify_password("OldPassword123").unwrap();
+        assert_eq!(old_key.len(), 32);
+
+        // 3. 派生新密码的哈希
+        let (new_key, new_hash) = derive_key("NewPassword456").unwrap();
+
+        // 4. 更新密码哈希
+        manager.update_password_hash(&new_hash).unwrap();
+
+        // 5. 旧密码应该无法登录
+        let result = manager.verify_password("OldPassword123");
+        assert!(result.is_err());
+
+        // 6. 新密码应该可以登录
+        let verified_new_key = manager.verify_password("NewPassword456").unwrap();
+        assert_eq!(verified_new_key, new_key);
+        assert_eq!(verified_new_key.len(), 32);
+
+        // 7. 验证错误次数被重置
+        assert_eq!(manager.remaining_attempts(), 3);
+    }
+
+    #[test]
+    fn test_update_password_hash_resets_lockout() {
+        let manager = PasswordManager::new(3, 300);
+        manager.set_password("OldPassword").unwrap();
+
+        // 触发锁定
+        for _ in 0..3 {
+            let _ = manager.verify_password("wrong");
+        }
+        assert!(manager.is_locked());
+
+        // 更新密码哈希应该解除锁定
+        let (_, new_hash) = derive_key("NewPassword").unwrap();
+        manager.update_password_hash(&new_hash).unwrap();
+
+        // 验证锁定已解除
+        assert!(!manager.is_locked());
+        assert_eq!(manager.remaining_attempts(), 3);
+
+        // 新密码可以登录
+        let key = manager.verify_password("NewPassword").unwrap();
+        assert_eq!(key.len(), 32);
     }
 }
