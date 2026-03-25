@@ -18,7 +18,7 @@ pub mod models;
 mod commands;
 use commands::{
     scan_file_tree, encrypt_file, decrypt_file, delete_file, rename_file, create_tag,
-    is_master_key_set, derive_master_key, verify_password,
+    is_master_key_set, derive_master_key, verify_password, change_password,
     get_reset_stats, reset_app, write_frontend_log, move_file,
     export_diagnostic_logs, MasterKeyState
 };
@@ -163,6 +163,7 @@ pub fn run() {
             is_master_key_set,
             derive_master_key,
             verify_password,
+            change_password,
             get_reset_stats,
             reset_app,
             write_frontend_log,

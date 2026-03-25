@@ -186,3 +186,74 @@ pub fn verify_password(
 
     Ok(())
 }
+
+/// 修改主密码
+///
+/// 使用 Master Key Wrapping 架构的优势：
+/// - 修改密码只需重新包装主密钥，无需重新加密所有文件
+/// - 修改瞬间完成（<1秒）
+///
+/// 流程：
+/// 1. 验证旧密码（防止未授权修改）
+/// 2. 派生新密码的密钥
+/// 3. 用新密钥重新加密主密钥（KeyStore::rewrap）
+/// 4. 更新密码哈希文件（PasswordManager::update_password_hash）
+///
+/// # Arguments
+/// * `old_password` - 用户当前密码
+/// * `new_password` - 用户新密码
+/// * `password_manager` - 密码管理器状态
+///
+/// # Returns
+/// * `Ok(())` - 修改成功
+/// * `Err` - 修改失败（旧密码错误、新密码不符合规则等）
+#[tauri::command]
+pub fn change_password(
+    old_password: String,
+    new_password: String,
+    password_manager: State<PasswordManager>,
+) -> Result<(), String> {
+    log::info!("[auth:change_password] 开始修改密码");
+
+    // 1. 验证旧密码
+    let old_password_key = password_manager
+        .verify_password(&old_password)
+        .map_err(|e| {
+            log::warn!("[auth:change_password] 旧密码验证失败: {}", e);
+            format!("旧密码错误: {}", e)
+        })?;
+
+    log::info!("[auth:change_password] 旧密码验证成功");
+
+    // 2. 派生新密码的密钥
+    let (new_password_key, new_password_hash) = crate::crypto::kdf::derive_key(&new_password)
+        .map_err(|e| {
+            log::error!("[auth:change_password] 新密码派生失败: {}", e);
+            format!("新密码派生失败: {}", e)
+        })?;
+
+    log::info!("[auth:change_password] 新密码密钥已派生");
+
+    // 3. 用新密钥重新加密主密钥
+    let keystore = KeyStore::new();
+    keystore
+        .rewrap(&old_password_key, &new_password_key)
+        .map_err(|e| {
+            log::error!("[auth:change_password] 重新包装主密钥失败: {}", e);
+            format!("主密钥重新加密失败: {}", e)
+        })?;
+
+    log::info!("[auth:change_password] 主密钥已用新密码重新加密");
+
+    // 4. 更新密码哈希
+    password_manager
+        .update_password_hash(&new_password_hash)
+        .map_err(|e| {
+            log::error!("[auth:change_password] 更新密码哈希失败: {}", e);
+            format!("更新密码哈希失败: {}", e)
+        })?;
+
+    log::info!("[auth:change_password] 密码修改成功");
+
+    Ok(())
+}
