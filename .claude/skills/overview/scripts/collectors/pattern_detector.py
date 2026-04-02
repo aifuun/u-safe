@@ -17,8 +17,7 @@ import re
 from pathlib import Path
 from typing import List, Set
 
-# Add _shared to path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / '_shared'))
+# Add _scripts to path
 
 from fs_utils import check_file_exists
 

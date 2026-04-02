@@ -1,0 +1,19 @@
+# Next.js
+.next/
+out/
+build/
+dist/
+
+# CDK
+cdk.out/
+*.js
+*.d.ts
+!jest.config.js
+
+# Node
+node_modules/
+package-lock.json
+
+# Cache
+.cache/
+.turbo/

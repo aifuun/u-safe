@@ -1,35 +1,47 @@
 ---
 name: manage-rules
-version: "1.0.0"
-description: Generate profile-aware rules from templates
-allowed-tools: Bash, Read, Write, Glob, Grep, Edit
+version: "3.0.0"
+description: Generate profile-aware rules from templates using Python script (ADR-014 compliant)
+allowed-tools: Bash, Read
 user-invocable: true
+compliance: ADR-014
 ---
 
-# Manage Rules - Profile-Aware Rule Generation
+# Manage Rules - Profile-Aware Rule Generation v3.0
+
+**Compliance**: ADR-014 ✅ (Script-based pattern)
 
 Generate project-specific technical rules from templates based on project profile.
+
+## What's New in v3.0
+
+- ✅ **ADR-014 compliant**: Logic extracted to `scripts/generate_rules.py`
+- ✅ **Testable**: Unit tests with >60% coverage
+- ✅ **Maintainable**: Clear separation between AI orchestration and business logic
+- ✅ **Framework-only filtering**: Preserves Issue #401 functionality
+- ✅ **Shared utilities**: Extracted to `_scripts/utils/` for reuse
 
 ## Overview
 
 This skill automates rule file generation by:
 
 **What it does:**
-1. **Detects project profile** - Auto-reads `.framework-install` or accepts `--profile` argument
-2. **Loads profile configuration** - Reads `framework/profiles/{profile}.json` for whitelist
-3. **Scans rule templates** - Finds all templates in `docs/ai-guides/rules/templates/`
-4. **Filters by profile** - Applies `rules.include` whitelist (34-43 rules per stack)
-5. **Generates rule files** - Copies filtered templates to `.claude/rules/`
-6. **Reports results** - Shows generated count and file locations
+1. **Loads project profile** - Reads `docs/project-profile.md` for rules configuration
+2. **Validates profile** - Checks YAML syntax and required fields
+3. **Scans rule templates** - Finds all templates in `.claude/guides/rules/templates/` or `docs/ai-guides/rules/templates/`
+4. **Filters by profile** - Applies `rules.include` whitelist from profile
+5. **Filters framework-only** - Excludes templates with `framework-only: true` (Issue #401)
+6. **Generates rule files** - Copies filtered templates to `.claude/rules/`
+7. **Reports results** - Shows generated count and file locations
 
 **Why it's needed:**
 Different tech stacks need different rules. Tauri projects need Rust + TypeScript rules (34 files), while Next.js-AWS needs React + Node.js + AWS rules (43 files). Manual copying is error-prone and wastes time. This skill generates exactly the rules your project needs.
 
 **When to use:**
-- Project initialization (after framework install)
+- Project initialization (after profile setup)
 - Framework sync (`/update-framework`)
 - Manual rule updates when templates change
-- Switching project profiles
+- After changing project profile
 
 **Integration:**
 - Called by `/init-docs` during project setup
@@ -46,570 +58,440 @@ Different tech stacks need different rules. Tauri projects need Rust + TypeScrip
 ```bash
 /manage-rules                    # Auto-detect profile, generate instantly
 /manage-rules --plan             # Dry-run (show what would be generated)
-/manage-rules --profile=tauri    # Override profile detection
+/manage-rules --profile tauri    # Override profile detection
 /manage-rules --instant          # Force immediate generation (default)
-/manage-rules --update-from-guides  # Regenerate from latest templates
 ```
 
 **Options:**
 - `--plan` - Dry-run mode (show what would be generated without creating files)
 - `--instant` - Generate immediately (default mode)
-- `--update-from-guides` - Regenerate all rules from current templates
-- `--profile=<name>` - Override auto-detected profile (tauri, nextjs-aws, minimal)
-
-## Workflow
-
-Copy this checklist to track progress:
-
-```
-Task Progress:
-- [ ] Step 1: Detect profile
-- [ ] Step 2: Load profile config
-- [ ] Step 3: Scan templates
-- [ ] Step 4: Filter by profile
-- [ ] Step 5: Generate .claude/rules/ files
-- [ ] Step 6: Report results
-```
-
-Execute these steps in sequence:
-
-### Step 1: Detect Profile
-
-**Auto-detection** (priority order):
-1. Check `--profile` argument (manual override)
-2. Read `.framework-install` file (format: `profile: tauri`)
-3. Fallback to "tauri" (default)
-
-**Validation**: Verify `framework/profiles/{profile}.json` exists
-
-**Error handling**: If profile not found, show error and list available profiles
-
-### Step 2: Load Profile Configuration
-
-**Load config**:
-```bash
-# Read profile configuration
-config=$(cat framework/profiles/tauri.json)
-
-# Extract rules.include array
-include_rules=$(jq -r '.rules.include[]' framework/profiles/tauri.json)
-```
-
-**Expected structure**:
-```json
-{
-  "name": "tauri",
-  "rules": {
-    "include": [
-      "workflow",
-      "conventions",
-      "error-handling",
-      ...
-    ],
-    "exclude": []
-  }
-}
-```
-
-**Validation**: Ensure `rules.include` array exists and is not empty
-
-### Step 3: Scan Templates
-
-**Find all templates**:
-```bash
-# Scan docs/ai-guides/rules/templates/ for *.md.template files
-templates=$(find docs/ai-guides/rules/templates/ -name "*.md.template")
-```
-
-**Extract metadata**:
-- Category: Parent directory name (e.g., `core`, `architecture`)
-- Rule name: Filename without `.md.template` extension
-
-**Example mapping**:
-- `docs/ai-guides/rules/templates/core/workflow.md.template` → Category: `core`, Name: `workflow`
-
-### Step 4: Filter by Profile
-
-**Apply whitelist**:
-```python
-# For each rule in profile's include list
-for rule_name in include_rules:
-    # Find matching template
-    if template_exists(rule_name):
-        add_to_filtered(rule_name, template_path, category)
-    else:
-        warn(f"Template not found: {rule_name}")
-```
-
-**Apply exclude patterns** (if any):
-```python
-# Remove rules matching exclude patterns
-for pattern in config['rules'].get('exclude', []):
-    filtered = [r for r in filtered if not fnmatch(r, pattern)]
-```
-
-**Validation**: Verify filtered count matches expected (34/43/13)
-
-### Step 5: Generate .claude/rules/ Files
-
-**Create output structure**:
-```bash
-# Create .claude/rules/ directory
-mkdir -p .claude/rules
-
-# For each filtered template
-for template in filtered_templates:
-    category=$(get_category(template))
-    rule_name=$(get_rule_name(template))
-
-    # Create category subdirectory
-    mkdir -p .claude/rules/$category
-
-    # Copy template to output
-    cp $template .claude/rules/$category/$rule_name.md
-done
-```
-
-**File naming**: Template `workflow.md.template` → Output `workflow.md`
-
-**Directory structure**:
-```
-.claude/rules/
-├── core/
-│   ├── workflow.md
-│   ├── conventions.md
-│   └── error-handling.md
-├── architecture/
-│   ├── clean-architecture.md
-│   └── dependency-rules.md
-├── languages/
-│   ├── typescript.md
-│   └── rust.md
-...
-```
-
-### Step 6: Report Results
-
-**Success output**:
-```
-✅ Generated 34 rules for profile 'tauri'
-
-Output: .claude/rules/
-Categories: 7 (core, architecture, languages, frontend, backend, infrastructure, development)
-
-Files:
-  core/: 5 rules
-  architecture/: 4 rules
-  languages/: 8 rules
-  frontend/: 6 rules
-  backend/: 3 rules
-  infrastructure/: 5 rules
-  development/: 3 rules
-```
-
-**Dry-run output** (--plan mode):
-```
-📋 Plan: Would generate 34 rules for profile 'tauri'
-
-Templates to copy:
-  ✓ core/workflow.md
-  ✓ core/conventions.md
-  ✓ architecture/clean-architecture.md
-  ...
-
-(Use /manage-rules --instant to execute)
-```
-
-## Usage Modes
-
-### Mode 1: Auto-detect + Instant (Default)
-
-```bash
-/manage-rules
-```
-
-**Behavior**:
-- Auto-detects profile from `.framework-install`
-- Immediately generates `.claude/rules/`
-- Shows completion summary
-
-**Use when**: Normal rule generation
-
-### Mode 2: Dry-run (--plan)
-
-```bash
-/manage-rules --plan
-```
-
-**Behavior**:
-- Shows what would be generated
-- No files created
-- Displays template list
-
-**Use when**: Verifying before generation
-
-### Mode 3: Profile Override
-
-```bash
-/manage-rules --profile=nextjs-aws
-```
-
-**Behavior**:
-- Ignores `.framework-install`
-- Uses specified profile
-- Generates rules for that stack
-
-**Use when**: Testing different profiles, switching stacks
-
-### Mode 4: Update from Guides
-
-```bash
-/manage-rules --update-from-guides
-```
-
-**Behavior**:
-- Deletes existing `.claude/rules/`
-- Regenerates from current templates
-- Updates to latest template versions
-
-**Use when**: Templates have been updated
-
-## Profile Detection
-
-### Auto-Detection Method
-
-```python
-# Step 1: Check for .framework-install file
-if os.path.exists(".framework-install"):
-    with open(".framework-install", "r") as f:
-        content = f.read()
-    # Expected format: "profile: tauri"
-    profile = content.split(":")[1].strip()
-else:
-    profile = None
-
-# Step 2: Override with --profile argument
-if args.profile:
-    profile = args.profile
-
-# Step 3: Fallback to default
-if not profile:
-    profile = "tauri"
-    print("⚠️ No profile detected, defaulting to 'tauri'")
-
-# Step 4: Validate profile exists
-profile_config = f"framework/profiles/{profile}.json"
-if not os.path.exists(profile_config):
-    print(f"❌ Profile '{profile}' not found")
-    print(f"Available profiles: tauri, nextjs-aws, minimal")
-    sys.exit(1)
-```
-
-### Manual Override
-
-```bash
-# Specify profile explicitly
-/manage-rules --profile=minimal
-
-# Useful for:
-# - Testing different profiles
-# - Overriding incorrect auto-detection
-# - Switching tech stacks
-```
-
-### Validation
-
-**Profile config must exist**:
-```bash
-# Check for profile configuration
-ls framework/profiles/tauri.json
-
-# Expected profiles:
-# - tauri.json (34 rules)
-# - nextjs-aws.json (43 rules)
-# - minimal.json (13 rules)
-```
-
-## Template Filtering
-
-### Whitelist Filtering
-
-**Load include list**:
-```python
-# Read profile configuration
-config = read_json(f"framework/profiles/{profile}.json")
-include_rules = config['rules']['include']  # e.g., 34 for tauri
-
-# Expected structure:
-# {
-#   "rules": {
-#     "include": ["workflow", "typescript", "rust", ...]
-#   }
-# }
-```
-
-**Filter templates**:
-```python
-# Scan all templates
-template_dir = "docs/ai-guides/rules/templates/"
-all_templates = glob(f"{template_dir}/**/*.md.template", recursive=True)
-
-# Extract rule names from paths
-template_map = {}
-for tmpl in all_templates:
-    parts = tmpl.split('/')
-    category = parts[-2]  # e.g., "core"
-    rule_name = parts[-1].replace('.md.template', '')  # e.g., "workflow"
-    template_map[rule_name] = {
-        'path': tmpl,
-        'category': category
-    }
-
-# Filter by whitelist
-filtered = {}
-for rule_name in include_rules:
-    if rule_name in template_map:
-        filtered[rule_name] = template_map[rule_name]
-    else:
-        print(f"⚠️ Template not found: {rule_name}")
-```
-
-### Exclude Patterns
-
-**Apply exclusions** (if configured):
-```python
-# Get exclude patterns (optional)
-exclude_patterns = config['rules'].get('exclude', [])
-
-# Remove matching rules
-for pattern in exclude_patterns:
-    filtered = {k: v for k, v in filtered.items() if not fnmatch(k, pattern)}
-
-# Example: Exclude all testing rules
-# "exclude": ["*-test", "*-testing"]
-```
-
-### Missing Templates
-
-**Warning behavior**:
-```
-⚠️ Template not found: advanced-caching
-⚠️ Template not found: custom-logging
-
-Continuing with 32/34 templates found.
-```
-
-**Does not block generation** - missing templates are skipped
-
-### Custom Rules
-
-**Custom marker** (in template YAML):
-```yaml
----
-custom: true
----
-```
-
-**Behavior**: Skip templates marked `custom: true` (project-specific rules, not for generation)
-
-**Override marker** (in template YAML):
-```yaml
----
-override: true
----
-```
-
-**Behavior**: Preserve templates marked `override: true` (allow customization)
-
-## File Generation Logic
-
-### Output Directory Structure
-
-```python
-# Create output directory
-output_dir = ".claude/rules"
-os.makedirs(output_dir, exist_ok=True)
-
-# Generate files from filtered templates
-generated_count = 0
-for rule_name, info in filtered_templates.items():
-    template_path = info['path']
-    category = info['category']
-
-    # Create category subdirectory
-    category_dir = f"{output_dir}/{category}"
-    os.makedirs(category_dir, exist_ok=True)
-
-    # Read template content
-    content = read_file(template_path)
-
-    # Write to .claude/rules/{category}/{rule_name}.md
-    output_file = f"{category_dir}/{rule_name}.md"
-    write_file(output_file, content)
-
-    generated_count += 1
-
-# Report results
-print(f"✅ Generated {generated_count} rules for profile '{profile}'")
-print(f"Output: .claude/rules/ ({len(os.listdir(output_dir))} categories)")
-```
-
-### File Naming Convention
-
-**Template**: `workflow.md.template`
-**Output**: `workflow.md`
-
-**Rationale**: `.template` extension removed, content copied as-is
-
-### Category Preservation
-
-**Template location**: `docs/ai-guides/rules/templates/core/workflow.md.template`
-**Output location**: `.claude/rules/core/workflow.md`
-
-**Category hierarchy maintained** in output structure
+- `--profile <name>` - Override auto-detected profile (tauri, nextjs-aws, minimal)
 
 ## AI Execution Instructions
 
-**CRITICAL: Task creation and profile handling**
+**CRITICAL: This is a script-based skill (ADR-014)**
 
-When executing `/manage-rules`, AI MUST follow this pattern:
+AI MUST follow this pattern:
 
-### Step 1: Create 6 Workflow Tasks
+### Step 1: Validate Prerequisites
 
-```python
-tasks = [
-    TaskCreate(subject="Detect profile", description="Auto-detect from .framework-install or use --profile arg", activeForm="Detecting profile..."),
-    TaskCreate(subject="Load profile config", description="Read framework/profiles/{profile}.json", activeForm="Loading profile config..."),
-    TaskCreate(subject="Scan templates", description="Find all *.md.template files", activeForm="Scanning templates..."),
-    TaskCreate(subject="Filter by profile", description="Apply rules.include whitelist", activeForm="Filtering templates..."),
-    TaskCreate(subject="Generate .claude/rules/ files", description="Copy templates to output directory", activeForm="Generating rule files..."),
-    TaskCreate(subject="Report results", description="Show counts and file locations", activeForm="Reporting results...")
-]
-
-# Add dependencies
-for i in range(1, 6):
-    TaskUpdate(tasks[i].id, addBlockedBy=[tasks[i-1].id])
-```
-
-### Step 2: Execute Workflow
-
-```python
-for task in tasks:
-    # Mark in progress
-    TaskUpdate(task.id, status="in_progress")
-
-    # Execute step (see Workflow section for details)
-    execute_step(task)
-
-    # Mark completed
-    TaskUpdate(task.id, status="completed")
-```
-
-### Step 3: Validation
-
-**After generation**:
 ```bash
-# Verify output count matches profile
-expected_count=$(jq '.rules.include | length' framework/profiles/tauri.json)
-actual_count=$(find .claude/rules -name "*.md" | wc -l)
-
-if [ "$expected_count" != "$actual_count" ]; then
-    echo "⚠️ Count mismatch: expected $expected_count, got $actual_count"
+# Check Python script exists
+if [ ! -f ".claude/skills/manage-rules/scripts/generate_rules.py" ]; then
+  echo "❌ Error: generate_rules.py not found"
+  exit 1
 fi
+
+# Check dependencies installed
+python3 -c "import yaml" 2>/dev/null || {
+  echo "⚠️ Warning: PyYAML not installed"
+  echo "Install: pip install PyYAML"
+}
 ```
+
+### Step 2: Parse Arguments
+
+```python
+# Extract options from user arguments
+plan_mode = "--plan" in args
+instant_mode = "--instant" in args or not plan_mode  # Default: instant
+profile_override = extract_arg("--profile", args)  # Optional
+```
+
+### Step 3: Execute Python Script
+
+```bash
+# Basic execution (auto-detect profile, instant mode)
+python3 .claude/skills/manage-rules/scripts/generate_rules.py --instant
+
+# Dry-run (show plan)
+python3 .claude/skills/manage-rules/scripts/generate_rules.py --dry-run
+
+# Override profile
+python3 .claude/skills/manage-rules/scripts/generate_rules.py --profile tauri --instant
+
+# Interactive confirmation
+python3 .claude/skills/manage-rules/scripts/generate_rules.py
+# (prompts: "Proceed with generation? [y/N]:")
+```
+
+### Step 4: Report Results
+
+**Script output format**:
+```
+🔍 Detecting profile...
+✅ Profile: tauri
+
+📖 Loading profile configuration...
+✅ Config loaded: 34 include rules, 2 exclude patterns
+
+🔍 Filtering templates...
+✅ Filtered: 36 templates matched
+
+🔍 Filtering framework-only templates...
+✅ Filtered: 34 templates (excluded 2 framework-only)
+
+📝 Generating rules...
+✅ Generated 34 rules for profile 'tauri'
+```
+
+**AI should**:
+- Display script output directly
+- No need to re-explain the workflow (script handles it)
+- Report any errors from script stderr
+
+## Script Architecture
+
+**File**: `scripts/generate_rules.py`
+
+**Class**: `RuleGenerator`
+
+**Methods**:
+- `detect_profile()` → str: Detect profile from `docs/project-profile.md`
+- `load_profile_config(profile)` → dict: Load rules config from `.claude/profiles/{profile}.json`
+- `filter_templates(config)` → List[Path]: Filter by whitelist + exclude patterns
+- `filter_framework_only_skills(templates)` → List[Path]: Exclude framework-only templates (Issue #401)
+- `generate_rules(templates, dry_run)` → int: Generate rule files or show plan
+
+**Main entry point**:
+```python
+def main():
+    parser = argparse.ArgumentParser(...)
+    args = parser.parse_args()
+
+    generator = RuleGenerator(profile=args.profile, instant=args.instant)
+
+    # Step 1: Detect profile
+    profile = generator.detect_profile()
+
+    # Step 2: Load config
+    config = generator.load_profile_config(profile)
+
+    # Step 3-4: Filter templates
+    templates = generator.filter_templates(config)
+    filtered = generator.filter_framework_only_skills(templates)
+
+    # Step 5: Generate or show plan
+    count = generator.generate_rules(filtered, dry_run=args.dry_run)
+```
+
+**See**: [ARCHITECTURE.md](ARCHITECTURE.md) for detailed design
+
+## Testing
+
+**File**: `tests/test_rule_generator.py`
+
+**Coverage**: >60% (focus on core logic)
+
+**Test cases**:
+- Profile detection (normal, missing file, invalid YAML)
+- Template filtering (whitelist, exclude, combined)
+- Framework-only filtering (detect marker, no marker, invalid YAML)
+- Rule generation (normal, subdirs, dry-run)
+
+**Run tests**:
+```bash
+cd .claude/skills/manage-rules
+python3 -m unittest tests.test_rule_generator -v
+```
+
+**Requirements**:
+```bash
+pip install PyYAML>=6.0
+```
+
+## Examples
+
+### Example 1: Basic Generation
+
+**User:** "generate rules for this project"
+
+**Execute:**
+```bash
+python3 .claude/skills/manage-rules/scripts/generate_rules.py --instant
+```
+
+**Output:**
+```
+🔍 Detecting profile...
+✅ Profile: tauri
+
+📖 Loading profile configuration...
+✅ Config loaded: 34 include rules, 2 exclude patterns
+
+🔍 Filtering templates...
+✅ Filtered: 36 templates matched
+
+🔍 Filtering framework-only templates...
+✅ Filtered: 34 templates (excluded 2 framework-only)
+
+📝 Generating rules...
+✅ Generated 34 rules for profile 'tauri'
+```
+
+**Time:** ~2 seconds
+
+### Example 2: Dry Run
+
+**User:** "show me what rules would be generated"
+
+**Execute:**
+```bash
+python3 .claude/skills/manage-rules/scripts/generate_rules.py --dry-run
+```
+
+**Output:**
+```
+🔍 Detecting profile...
+✅ Profile: tauri
+
+📖 Loading profile configuration...
+✅ Config loaded: 34 include rules, 2 exclude patterns
+
+🔍 Filtering templates...
+✅ Filtered: 36 templates matched
+
+🔍 Filtering framework-only templates...
+✅ Filtered: 34 templates (excluded 2 framework-only)
+
+📋 Dry Run - Would generate 34 rules:
+  - .claude/guides/rules/templates/core/naming.md → .claude/rules/core/naming.md
+  - .claude/guides/rules/templates/core/types.md → .claude/rules/core/types.md
+  - .claude/guides/rules/templates/architecture/clean.md → .claude/rules/architecture/clean.md
+  ...
+```
+
+**Time:** ~1 second
+
+### Example 3: Override Profile
+
+**User:** "generate rules for nextjs-aws profile"
+
+**Execute:**
+```bash
+python3 .claude/skills/manage-rules/scripts/generate_rules.py --profile nextjs-aws --instant
+```
+
+**Output:**
+```
+🔍 Detecting profile...
+✅ Profile: nextjs-aws (overridden)
+
+📖 Loading profile configuration...
+✅ Config loaded: 43 include rules, 3 exclude patterns
+
+🔍 Filtering templates...
+✅ Filtered: 45 templates matched
+
+🔍 Filtering framework-only templates...
+✅ Filtered: 43 templates (excluded 2 framework-only)
+
+📝 Generating rules...
+✅ Generated 43 rules for profile 'nextjs-aws'
+```
+
+**Time:** ~2 seconds
 
 ## Error Handling
 
-### Profile Not Found
-
+**Profile not found:**
 ```
-❌ Profile 'unknown' not found
+❌ Profile Error: Profile file not found: docs/project-profile.md
 
-Available profiles:
-  - tauri (34 rules)
-  - nextjs-aws (43 rules)
-  - minimal (13 rules)
-
-Fix: Use /manage-rules --profile=<name>
+Fix: Run /manage-project --select-profile
 ```
 
-**Recovery**: List available profiles, suggest valid options
-
-### Template Not Found
-
+**Invalid YAML:**
 ```
-⚠️ Template not found: advanced-caching
-⚠️ Template not found: custom-logging
+❌ Profile Error: Invalid YAML syntax: ...
 
-Continuing with 32/34 templates found.
+Fix: Check docs/project-profile.md YAML frontmatter
 ```
 
-**Recovery**: Skip missing templates, continue with available ones
-
-### Permission Errors
-
+**Missing templates:**
 ```
-❌ Permission denied: .claude/rules/
+❌ Profile Error: Template directory not found
 
-Fix: Check directory permissions or run with appropriate access
+Fix: Ensure .claude/guides/rules/templates/ exists
 ```
 
-**Recovery**: Show clear error, suggest permission check
-
-### Invalid Config
-
+**PyYAML not installed:**
 ```
-❌ Invalid profile config: framework/profiles/tauri.json
-Missing required field: rules.include
+⚠️ Warning: PyYAML not installed
+Install: pip install PyYAML
 
-Fix: Ensure profile config has correct structure
+❌ Error: No module named 'yaml'
+
+Fix: pip install -r .claude/skills/manage-rules/requirements.txt
 ```
 
-**Recovery**: Validate config structure, show required format
+## Troubleshooting
 
-## Integration Points
+### Issue: Script not found
 
-**Called by /init-docs**:
+**Symptom:** `generate_rules.py not found`
+
+**Cause:** Skill not fully installed
+
+**Fix:**
 ```bash
-# During project initialization
-/init-docs
-  → /manage-rules --instant  # Generate rules for detected profile
+# Check script exists
+ls .claude/skills/manage-rules/scripts/generate_rules.py
+
+# If missing, sync from framework
+/update-skills ~/path/to/ai-dev
 ```
 
-**Called by /update-framework**:
+### Issue: PyYAML import error
+
+**Symptom:** `ModuleNotFoundError: No module named 'yaml'`
+
+**Cause:** Dependencies not installed
+
+**Fix:**
 ```bash
-# During framework sync
-/update-framework ~/dev/ai-dev
-  → /manage-rules --update-from-guides  # Regenerate with latest templates
+# Install dependencies
+pip install PyYAML
+
+# OR install from requirements
+cd .claude/skills/manage-rules
+pip install -r requirements.txt
 ```
 
-**Manual invocation**:
+### Issue: Wrong profile detected
+
+**Symptom:** Generated wrong set of rules
+
+**Cause:** Profile auto-detection incorrect
+
+**Fix:**
 ```bash
-# User can call directly
-/manage-rules --plan           # Preview
-/manage-rules --instant        # Execute
-/manage-rules --profile=tauri  # Override
+# Override profile explicitly
+/manage-rules --profile tauri --instant
+
+# Or fix profile in docs/project-profile.md
+```
+
+### Issue: Framework-only templates included
+
+**Symptom:** update-framework.md or other framework management skills copied to project
+
+**Cause:** Templates missing `framework-only: true` in YAML frontmatter
+
+**Fix:**
+```bash
+# Add to template YAML frontmatter:
+---
+framework-only: true
+---
+
+# Then regenerate
+/manage-rules --instant
+```
+
+### Issue: No templates filtered
+
+**Symptom:** "Filtered: 0 templates matched"
+
+**Cause:** Profile whitelist doesn't match any templates
+
+**Fix:**
+```bash
+# Check profile config
+cat .claude/profiles/{profile}.json
+
+# Verify templates exist
+ls .claude/guides/rules/templates/
+
+# Fix whitelist in profile config
+# Example: "rules": { "include": ["core/*", "architecture/*"] }
+```
+
+## Framework-Only Filtering (Issue #401)
+
+**Context:** Framework management skills (update-framework, update-skills, etc.) should not be copied to target projects during sync.
+
+**Solution:** YAML metadata marking
+
+**Implementation:**
+```python
+def has_framework_only_marker(template_path: Path) -> bool:
+    """Check if template has framework-only: true in YAML frontmatter"""
+    with open(template_path, 'r') as f:
+        content = f.read()
+
+    if content.startswith('---'):
+        yaml_end = content.find('---', 3)
+        frontmatter = content[3:yaml_end]
+
+        import yaml
+        metadata = yaml.safe_load(frontmatter)
+        return metadata.get('framework-only', False)
+
+    return False
+```
+
+**Usage:** Called automatically during `filter_framework_only_skills()` workflow step
+
+**Example template with marker:**
+```markdown
+---
+framework-only: true
+---
+
+# Update Framework Skill
+
+This skill is only for framework maintenance.
 ```
 
 ## Best Practices
 
-1. **Run after profile change** - Regenerate rules when switching tech stacks
-2. **Use --plan first** - Preview before generation for verification
-3. **Update from guides regularly** - Keep rules in sync with latest templates
-4. **Don't edit generated files** - Customizations belong in templates or overrides
-5. **Commit generated rules** - Track rule files in version control
+1. **Use instant mode by default** - Fast and convenient
+2. **Use dry-run for review** - Check before generating
+3. **Don't edit .claude/rules/ directly** - Regenerate from templates
+4. **Keep templates in sync** - Use `/update-framework` regularly
+5. **Profile-specific rules** - Use whitelist to customize per project
+
+## Performance
+
+- **Average time:** 2 seconds for 34 rules
+- **Dry-run:** 1 second (no file I/O)
+- **Template scanning:** O(n) where n = template count
+- **Filtering:** O(n × m) where m = whitelist size
+
+Fast because:
+- Efficient file operations
+- Minimal YAML parsing (frontmatter only)
+- Batch file copying
 
 ## Related Skills
 
-- **/init-docs** - Calls this skill during project initialization
-- **/update-framework** - Calls this skill when syncing framework
-- **/update-rules** - Alternative bidirectional sync (use manage-rules for generation)
+- **/manage-project** - Select and activate project profile
+- **/update-framework** - Sync framework content (calls this skill)
+- **/init-docs** - Initialize documentation (calls this skill)
+- **/manage-docs** - Document structure management
+- **/manage-adrs** - Architecture decision records
+
+## Migration from v2.0
+
+**Breaking changes:**
+- Script execution required (not pure markdown)
+- PyYAML dependency required
+
+**Migration steps:**
+1. Install dependencies: `pip install PyYAML`
+2. Test script: `python3 .claude/skills/manage-rules/scripts/generate_rules.py --dry-run`
+3. Regenerate rules: `/manage-rules --instant`
+
+**Behavioral compatibility:** v3.0 maintains identical behavior to v2.0 (same filtering logic, output structure, profile detection)
 
 ---
 
-**Version:** 1.0.0
-**Pattern:** Tool-Reference (guides AI through generation workflow)
-**Compliance:** ADR-001 ✅ | ADR-013 ✅
-**Last Updated:** 2026-03-27
+**Version:** 3.0.0
+**Pattern:** Script-based (ADR-014)
+**Compliance:** ADR-014 ✅
+**Last Updated:** 2026-03-30
 **Changelog:**
-- v1.0.0: Initial release with profile-aware generation (Issue #351)
+- v3.0.0: Refactored to script-based pattern (ADR-014), added unit tests (>60% coverage), preserved framework-only filtering (Issue #401)
+- v2.0.0: Profile source changed to docs/project-profile.md
+- v1.0.0: Initial release with .claude/profiles/*.json

@@ -15,7 +15,6 @@ import sys
 from pathlib import Path
 
 # Add formatters to path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 # Will import formatters when Xcode issue resolved:
 # from formatters import health_calculator, terminal_formatter, html_formatter

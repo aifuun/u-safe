@@ -1,0 +1,201 @@
+---
+category: "languages"
+title: "Typescript Nominal Types"
+description: "Branded types with Zod"
+tags: [typescript]
+profiles: [tauri, nextjs-aws, minimal]
+pillar_refs: [A]
+paths: ['**/*.{ts,tsx}']
+version: "1.0.0"
+last_updated: "2026-03-27"
+---
+
+---
+paths: "**/*.ts"
+---
+
+# TypeScript Nominal Types Rule
+
+> 📖 **Complete Guide**: `.claude/pillars/pillars/q1-data-integrity/pillar-a/nominal-typing.md`
+> This Rule focuses on practical TypeScript + Zod integration.
+
+## Quick Check (30 seconds)
+- [ ] All IDs use Branded Types (not `string` or `number`)
+- [ ] ID types defined with `& { readonly __brand: unique symbol }`
+- [ ] Zod schemas use `.brand()` for validation
+- [ ] Factory functions exist for creating branded types
+- [ ] No direct `as` casting in application code
+- [ ] Type guards (isUserId) for runtime checks
+
+## Core Pattern: Branded Types + Zod
+
+### 1. Define Branded Type
+```typescript
+// ✅ Correct
+export type UserId = string & { readonly __brand: unique symbol };
+export type OrderId = string & { readonly __brand: unique symbol };
+
+// ❌ Wrong
+export type UserId = string;  // No type safety
+```
+
+### 2. Zod Integration (TypeScript-specific)
+```typescript
+import { z } from 'zod';
+
+// Schema with branding
+const UserIdSchema = z.string().uuid().brand<UserId>();
+const OrderIdSchema = z.string().brand<OrderId>();
+
+// Factory function with validation
+export function createUserId(value: string): UserId {
+  return UserIdSchema.parse(value);
+}
+
+// Usage
+function getUser(userId: UserId): User {
+  // userId is guaranteed to be validated
+}
+
+// Validation at boundary
+const rawInput = req.params.id;
+const userId = createUserId(rawInput);  // Throws if invalid
+getUser(userId);  // ✅ Type-safe
+```
+
+### 3. Type Guards
+```typescript
+export function isUserId(value: unknown): value is UserId {
+  return UserIdSchema.safeParse(value).success;
+}
+
+// Usage
+if (isUserId(input)) {
+  getUser(input);  // input is now UserId
+}
+```
+
+## Real-World Patterns
+
+### Pattern 1: Common Entity IDs
+```typescript
+// 00_kernel/types/ids.ts
+export type UserId = string & { readonly __brand: unique symbol };
+export type OrderId = string & { readonly __brand: unique symbol };
+export type ProductId = string & { readonly __brand: unique symbol };
+
+const UserIdSchema = z.string().uuid().brand<UserId>();
+const OrderIdSchema = z.string().brand<OrderId>();
+const ProductIdSchema = z.string().brand<ProductId>();
+
+export function createUserId(id: string): UserId {
+  return UserIdSchema.parse(id);
+}
+
+export function createOrderId(id: string): OrderId {
+  return OrderIdSchema.parse(id);
+}
+
+export function createProductId(id: string): ProductId {
+  return ProductIdSchema.parse(id);
+}
+```
+
+### Pattern 2: Value Objects (Money)
+```typescript
+// 00_kernel/types/money.ts
+import { z } from 'zod';
+
+/**
+ * Money in cents (to avoid floating point errors).
+ * Branded to prevent accidental arithmetic.
+ */
+export type Money = number & { readonly __brand: unique symbol };
+
+const MoneySchema = z.number().int().nonnegative().brand<Money>();
+
+export function createMoney(cents: number): Money {
+  return MoneySchema.parse(cents);
+}
+
+export function addMoney(a: Money, b: Money): Money {
+  return createMoney(a + b);
+}
+
+export function formatMoney(amount: Money): string {
+  return `$${(amount / 100).toFixed(2)}`;
+}
+```
+
+### Pattern 3: Email Addresses
+```typescript
+// 00_kernel/types/email.ts
+import { z } from 'zod';
+
+export type Email = string & { readonly __brand: unique symbol };
+
+const EmailSchema = z.string().email().toLowerCase().brand<Email>();
+
+export function createEmail(email: string): Email {
+  return EmailSchema.parse(email);
+}
+
+export function isEmail(value: unknown): value is Email {
+  return EmailSchema.safeParse(value).success;
+}
+```
+
+### Pattern 4: API Response Validation
+```typescript
+import { z } from 'zod';
+
+const UserResponseSchema = z.object({
+  id: UserIdSchema,
+  name: z.string(),
+  email: EmailSchema,
+});
+
+type UserResponse = z.infer<typeof UserResponseSchema>;
+
+// At API boundary
+const response = await fetch('/api/users/123');
+const user = UserResponseSchema.parse(await response.json());
+// user.id is now UserId (branded and validated)
+```
+
+### Pattern 5: Database Repository
+```typescript
+// Repository pattern with branded IDs
+class UserRepository {
+  async findById(id: UserId): Promise<User | null> {
+    // id is already validated at boundary
+    return db.users.findUnique({ where: { id } });
+  }
+}
+
+// Usage - validation happens once at entry point
+const rawId = req.params.id;
+const userId = createUserId(rawId);  // Validate once
+const user = await userRepo.findById(userId);  // Use safely
+```
+
+## When to Read Full Pillar?
+- ❓ Need to understand branded types theory → Read Pillar A
+- ❓ Need examples in other languages (Python/Go) → Read Pillar A
+- ❓ Need design rationale and trade-offs → Read Pillar A
+- ❓ Need anti-patterns and common mistakes → Read Pillar A
+- ✅ Need TypeScript + Zod practical patterns → This Rule
+
+## Common Mistakes
+
+| Mistake | Fix |
+|---------|-----|
+| `type UserId = string` | Use branded type with `unique symbol` |
+| No validation at boundary | Use Zod schemas at API/DB entry points |
+| Direct `as` casting | Use factory functions with validation |
+| Mixing branded and primitive | Always use branded types for IDs |
+
+## Related
+- **Pillar A**: `.claude/pillars/pillars/q1-data-integrity/pillar-a/nominal-typing.md` (complete theory)
+- **Pillar B**: Airlock (validation at boundaries)
+- **Rule**: `typescript-strict.md` (strict mode config)

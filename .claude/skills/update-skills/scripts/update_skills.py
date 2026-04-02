@@ -5,7 +5,7 @@ This script provides:
 1. Smart sync with version detection
 2. Clean mode for complete directory replacement
 3. Dry-run preview capabilities
-4. Safety measures (backup, confirmation, mutual exclusion)
+4. Safety measures (confirmation, mutual exclusion)
 """
 
 import argparse
@@ -92,9 +92,7 @@ def clean_sync(source_skills_dir: Path, target_skills_dir: Path, dry_run: bool =
         "source": str(source_skills_dir),
         "target": str(target_skills_dir),
         "skills_deleted": 0,
-        "skills_copied": 0,
-        "backup_created": False,
-        "backup_path": None
+        "skills_copied": 0
     }
 
     # Count skills
@@ -145,15 +143,6 @@ def clean_sync(source_skills_dir: Path, target_skills_dir: Path, dry_run: bool =
         print("❌ Operation cancelled")
         sys.exit(1)
 
-    # Create backup
-    if target_skills_dir.exists():
-        timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-        backup_dir = target_skills_dir.parent / f".skills-backup-{timestamp}"
-        print(f"\n📦 Creating backup: {backup_dir}")
-        shutil.copytree(target_skills_dir, backup_dir)
-        results["backup_created"] = True
-        results["backup_path"] = str(backup_dir)
-
     # Delete target directory
     if target_skills_dir.exists():
         print(f"🗑️  Deleting: {target_skills_dir}")
@@ -166,9 +155,6 @@ def clean_sync(source_skills_dir: Path, target_skills_dir: Path, dry_run: bool =
     # Report
     print(f"\n✅ Clean sync complete!")
     print(f"   - Skills synced: {len(source_skills)}")
-    if results["backup_created"]:
-        print(f"   - Backup location: {results['backup_path']}")
-
     print(f"\n⚠️  All skills replaced. Target is now identical to source.")
 
     return results

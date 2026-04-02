@@ -574,7 +574,7 @@ Version bump: minor (new feature - auto-fix)
 
 ### 框架文档
 
-- **[SKILL_GUIDE.md](../../docs/ai-guides/SKILL_GUIDE.md)** - 技能创建完整指南
+- **[SKILL_GUIDE.md](../../.claude/guides/SKILL_GUIDE.md)** - 技能创建完整指南
   - 核心概念、设计模式、最佳实践
   - 端到端创建流程（5 个阶段）
   - Atomic/Composite/Meta 三种模式

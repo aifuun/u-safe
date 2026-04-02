@@ -639,7 +639,7 @@ This is a **workflow skill** and must follow the standard pattern:
 - **/eval-plan** - Validate plan before execution (Phase 1.5 - recommended next step)
 - **/execute-plan** - Execute implementation plan (Phase 2 after eval-plan)
 - **/finish-issue** - Complete issue workflow (Phase 4 - final step)
-- **/work-issue** - Complete lifecycle with checkpoints (calls this skill)
+- **/auto-solve-issue** - Complete lifecycle with checkpoints (calls this skill)
 - **/issue** - Issue management (list, view, close)
 - **/plan** - Custom planning (if auto-plan isn't enough)
 - **/next** - Get next task from plan

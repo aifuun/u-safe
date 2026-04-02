@@ -1,0 +1,6 @@
+framework_path: /Users/woo/dev/ai-dev
+framework_commit: $(cd . && git rev-parse HEAD 2>/dev/null || echo "unknown")
+synced_at: $(date -Iseconds)
+synced_by: update-guides v1.3.0
+file_count: 20
+subdirs: workflow,doc-templates,rules,profiles

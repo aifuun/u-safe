@@ -1,0 +1,204 @@
+# {{projectName}}
+
+> {{projectDescription}}
+
+## 📚 Documentation Hub
+
+Welcome to the {{projectName}} documentation. This hub provides quick access to all project documentation.
+
+<!-- {{#if tauri}} -->
+**Project Type**: Desktop Application (Local-First)
+<!-- {{/if}} -->
+
+<!-- {{#if tauri-aws}} -->
+**Project Type**: Hybrid Desktop + Cloud Application
+<!-- {{/if}} -->
+
+<!-- {{#if nextjs-aws}} -->
+**Project Type**: Full-Stack Web Application
+<!-- {{/if}} -->
+
+## 🚀 Quick Start
+
+<!-- TODO: Add quick start command -->
+<!-- Example: npm install && npm run dev -->
+
+```bash
+# Install dependencies
+{{packageManager}} install
+
+<!-- {{#if tauri}} -->
+# Run desktop app in development mode
+{{packageManager}} run tauri dev
+<!-- {{/if}} -->
+
+<!-- {{#if nextjs-aws}} -->
+# Run web app in development mode
+{{packageManager}} run dev
+<!-- {{/if}} -->
+```
+
+## 📖 Documentation
+
+| Document | Description |
+|----------|-------------|
+| [PRD](PRD.md) | Product requirements and user stories |
+| [Architecture](ARCHITECTURE.md) | System architecture and design decisions |
+| [Schema](SCHEMA.md) | Data models and database schema |
+| [API](API.md) | API endpoints and integration guide |
+| [Setup](SETUP.md) | Installation and configuration guide |
+| [Test Plan](TEST_PLAN.md) | Testing strategy and test cases |
+| [Deployment](DEPLOYMENT.md) | Deployment procedures and operations |
+
+## 🎯 Key Features
+
+<!-- TODO: List 3-5 key features of your project -->
+<!-- Example:
+- **Feature 1**: Real-time collaboration
+- **Feature 2**: Offline-first architecture
+- **Feature 3**: End-to-end encryption
+-->
+
+## 🏗️ Tech Stack
+
+<!-- {{#if tauri}} -->
+**Desktop Framework**:
+- Frontend: {{frontendStack}}
+- Backend: Tauri (Rust)
+- Database: {{databaseType}} (local)
+<!-- {{/if}} -->
+
+<!-- {{#if tauri-aws}} -->
+**Desktop Frontend**:
+- UI: {{frontendStack}}
+- Desktop Runtime: Tauri (Rust)
+
+**Cloud Backend**:
+- API: {{backendStack}}
+- Database: {{databaseType}}
+- Infrastructure: AWS (CDK)
+<!-- {{/if}} -->
+
+<!-- {{#if nextjs-aws}} -->
+**Frontend**:
+- Framework: {{frontendStack}}
+- Styling: {{stylingLibrary}}
+
+**Backend**:
+- Runtime: {{backendStack}}
+- Database: {{databaseType}}
+- Infrastructure: AWS (CDK)
+<!-- {{/if}} -->
+
+## 📁 Project Structure
+
+```
+{{projectName}}/
+├── src/                  # Source code
+<!-- {{#if tauri}} -->
+├── src-tauri/            # Tauri backend (Rust)
+<!-- {{/if}} -->
+├── docs/                 # Documentation (this directory)
+├── tests/                # Test suites
+<!-- {{#if nextjs-aws}} -->
+├── infrastructure/       # AWS CDK infrastructure
+<!-- {{/if}} -->
+<!-- {{#if tauri-aws}} -->
+├── backend/              # Cloud backend services
+├── infrastructure/       # AWS infrastructure
+<!-- {{/if}} -->
+└── README.md             # This file
+```
+
+## 🧪 Testing
+
+```bash
+<!-- {{#if tauri}} -->
+# Run frontend tests
+{{packageManager}} test
+
+# Run Tauri integration tests
+{{packageManager}} run tauri test
+<!-- {{/if}} -->
+
+<!-- {{#if nextjs-aws}} -->
+# Run unit tests
+{{packageManager}} test
+
+# Run integration tests
+{{packageManager}} run test:integration
+
+# Run E2E tests
+{{packageManager}} run test:e2e
+<!-- {{/if}} -->
+```
+
+See [Test Plan](TEST_PLAN.md) for detailed testing strategy.
+
+## 🚀 Deployment
+
+<!-- {{#if tauri}} -->
+**Desktop App Distribution**:
+```bash
+# Build production app
+{{packageManager}} run tauri build
+
+# Generates platform-specific installers:
+# - macOS: .dmg, .app
+# - Windows: .msi, .exe
+# - Linux: .deb, .AppImage
+```
+<!-- {{/if}} -->
+
+<!-- {{#if nextjs-aws}} -->
+**Web App Deployment**:
+```bash
+# Deploy to AWS
+cd infrastructure
+cdk deploy
+
+# Deploys to:
+# - Frontend: S3 + CloudFront
+# - Backend: Lambda + API Gateway
+# - Database: RDS/DynamoDB
+```
+<!-- {{/if}} -->
+
+<!-- {{#if tauri-aws}} -->
+**Hybrid Deployment**:
+1. **Desktop App**: Build installers for distribution
+2. **Cloud Backend**: Deploy to AWS with CDK
+```bash
+# Build desktop app
+{{packageManager}} run tauri build
+
+# Deploy backend
+cd infrastructure
+cdk deploy
+```
+<!-- {{/if}} -->
+
+See [Deployment Guide](DEPLOYMENT.md) for detailed procedures.
+
+## 📋 Development Workflow
+
+1. **Pick an issue**: Browse [GitHub Issues]({{repositoryUrl}}/issues)
+2. **Start work**: `/start-issue #N` (creates branch + plan)
+3. **Implement**: `/execute-plan #N` (guided implementation)
+4. **Review**: `/review` (quality check)
+5. **Ship**: `/finish-issue #N` (commit + PR + merge)
+
+## 🤝 Contributing
+
+<!-- TODO: Add contribution guidelines -->
+<!-- Example: See CONTRIBUTING.md for guidelines -->
+
+## 📄 License
+
+<!-- TODO: Specify license -->
+<!-- Example: MIT License - see LICENSE file -->
+
+---
+
+**Documentation Generated**: {{currentDate}}
+**Framework**: [AI Development Framework](https://github.com/aifuun/ai-dev)

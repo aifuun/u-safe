@@ -107,7 +107,7 @@ BASELINE_SCORE=$(/check-docs --score-only)
 echo "📊 Baseline score: $BASELINE_SCORE/100"
 
 # Detect project profile
-PROFILE=$(cat .framework-install 2>/dev/null | grep -oP 'profile=\K\w+' || echo "unknown")
+PROFILE=$(cat docs/project-profile.md 2>/dev/null | grep -oP 'profile=\K\w+' || echo "unknown")
 echo "🔍 Detected profile: $PROFILE"
 ```
 

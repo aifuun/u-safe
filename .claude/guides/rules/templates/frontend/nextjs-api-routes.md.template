@@ -1,0 +1,510 @@
+---
+category: "frontend"
+title: "Nextjs Api Routes"
+description: "Next.js API routes"
+tags: [nextjs, typescript]
+profiles: [nextjs-aws]
+paths: ['**/*.{ts,tsx}']
+version: "1.0.0"
+last_updated: "2026-03-27"
+---
+
+---
+paths:
+  - "app/api/**/*.ts"
+  - "src/app/api/**/*.ts"
+---
+# Next.js API Routes Rules
+
+> Next.js 13+ Route Handlers in App Router. Server-side API endpoints with full request/response control.
+
+## Quick Check
+
+### Route Handler Structure
+- [ ] File named `route.ts` (not `page.tsx`)
+- [ ] Exports HTTP method functions: `GET`, `POST`, `PUT`, `DELETE`, `PATCH`
+- [ ] Returns `Response` or `NextResponse`
+- [ ] Handles errors with try/catch
+- [ ] Validates inputs with type guards/schemas
+
+### Request Handling
+- [ ] Access search params from `request.nextUrl.searchParams`
+- [ ] Access body with `await request.json()`
+- [ ] Access headers with `request.headers.get()`
+- [ ] Use `cookies()` for cookie operations
+- [ ] Type request/response with TypeScript
+
+### Response
+- [ ] Return `NextResponse.json()` for JSON
+- [ ] Set status codes explicitly
+- [ ] Set headers when needed (CORS, caching)
+- [ ] Handle errors with appropriate status codes
+
+### Security
+- [ ] Validate all inputs
+- [ ] Sanitize user data
+- [ ] Check authentication/authorization
+- [ ] Use CORS headers for public APIs
+- [ ] Rate limit sensitive endpoints
+
+## Core Patterns
+
+### 1. Basic GET Handler
+
+```typescript
+// app/api/users/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+
+export async function GET(request: NextRequest) {
+  try {
+    // ✅ Access search params
+    const searchParams = request.nextUrl.searchParams;
+    const page = searchParams.get('page') || '1';
+    const limit = searchParams.get('limit') || '10';
+
+    // ✅ Fetch data
+    const users = await getUsersPaginated(parseInt(page), parseInt(limit));
+
+    // ✅ Return JSON response
+    return NextResponse.json({
+      data: users,
+      page: parseInt(page),
+      limit: parseInt(limit),
+    });
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch users' },
+      { status: 500 }
+    );
+  }
+}
+```
+
+### 2. POST with Body Validation
+
+```typescript
+// app/api/users/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+
+// ✅ Define schema for validation
+const CreateUserSchema = z.object({
+  name: z.string().min(1).max(100),
+  email: z.string().email(),
+  age: z.number().int().min(18).optional(),
+});
+
+export async function POST(request: NextRequest) {
+  try {
+    // ✅ Parse and validate body
+    const body = await request.json();
+    const validatedData = CreateUserSchema.parse(body);
+
+    // ✅ Create user
+    const user = await createUser(validatedData);
+
+    // ✅ Return 201 Created
+    return NextResponse.json(user, { status: 201 });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      // ✅ Validation error - 400 Bad Request
+      return NextResponse.json(
+        { error: 'Validation failed', details: error.errors },
+        { status: 400 }
+      );
+    }
+
+    console.error('Error creating user:', error);
+    return NextResponse.json(
+      { error: 'Failed to create user' },
+      { status: 500 }
+    );
+  }
+}
+```
+
+### 3. Dynamic Route Handler
+
+```typescript
+// app/api/users/[id]/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+
+// ✅ Access dynamic params
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const user = await getUserById(params.id);
+
+    if (!user) {
+      return NextResponse.json(
+        { error: 'User not found' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json(user);
+  } catch (error) {
+    console.error('Error fetching user:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch user' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    await deleteUser(params.id);
+
+    // ✅ 204 No Content for successful delete
+    return new Response(null, { status: 204 });
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    return NextResponse.json(
+      { error: 'Failed to delete user' },
+      { status: 500 }
+    );
+  }
+}
+```
+
+### 4. Authentication Check
+
+```typescript
+// app/api/protected/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+import { verifyAuth } from '@/lib/auth';
+
+export async function GET(request: NextRequest) {
+  // ✅ Check authentication
+  const token = request.headers.get('authorization')?.split(' ')[1];
+
+  if (!token) {
+    return NextResponse.json(
+      { error: 'Unauthorized' },
+      { status: 401 }
+    );
+  }
+
+  try {
+    const user = await verifyAuth(token);
+
+    // ✅ Return protected data
+    return NextResponse.json({
+      message: 'Protected data',
+      user: user.id,
+    });
+  } catch (error) {
+    return NextResponse.json(
+      { error: 'Invalid token' },
+      { status: 401 }
+    );
+  }
+}
+```
+
+### 5. CORS Headers
+
+```typescript
+// app/api/public/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+
+export async function GET(request: NextRequest) {
+  const data = await getPublicData();
+
+  // ✅ Add CORS headers
+  return NextResponse.json(data, {
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    },
+  });
+}
+
+// ✅ Handle OPTIONS preflight
+export async function OPTIONS(request: NextRequest) {
+  return new Response(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    },
+  });
+}
+```
+
+### 6. Cookie Operations
+
+```typescript
+// app/api/session/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
+
+export async function POST(request: NextRequest) {
+  const { username, password } = await request.json();
+
+  // Verify credentials...
+  const sessionId = await createSession(username);
+
+  // ✅ Set cookie
+  cookies().set('session', sessionId, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: 60 * 60 * 24 * 7, // 1 week
+  });
+
+  return NextResponse.json({ success: true });
+}
+
+export async function DELETE(request: NextRequest) {
+  // ✅ Delete cookie
+  cookies().delete('session');
+
+  return NextResponse.json({ success: true });
+}
+```
+
+### 7. Streaming Response
+
+```typescript
+// app/api/stream/route.ts
+import { NextRequest } from 'next/server';
+
+export async function GET(request: NextRequest) {
+  // ✅ Create streaming response
+  const encoder = new TextEncoder();
+
+  const stream = new ReadableStream({
+    async start(controller) {
+      for (let i = 0; i < 10; i++) {
+        const data = await fetchChunk(i);
+        controller.enqueue(encoder.encode(JSON.stringify(data) + '\n'));
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+      controller.close();
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      'Content-Type': 'application/json',
+      'Transfer-Encoding': 'chunked',
+    },
+  });
+}
+```
+
+### 8. Middleware Pattern
+
+```typescript
+// lib/api-middleware.ts
+import { NextRequest, NextResponse } from 'next/server';
+
+export function withAuth(
+  handler: (req: NextRequest, context: any) => Promise<Response>
+) {
+  return async (request: NextRequest, context: any) => {
+    const token = request.headers.get('authorization')?.split(' ')[1];
+
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    try {
+      const user = await verifyToken(token);
+      // ✅ Attach user to request
+      (request as any).user = user;
+      return handler(request, context);
+    } catch (error) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
+  };
+}
+
+// app/api/protected/route.ts
+export const GET = withAuth(async (request: NextRequest) => {
+  const user = (request as any).user;
+  return NextResponse.json({ userId: user.id });
+});
+```
+
+## Anti-Patterns
+
+### ❌ Not Handling Errors
+
+```typescript
+// ❌ BAD - No error handling
+export async function GET(request: NextRequest) {
+  const users = await getUsers(); // Might fail!
+  return NextResponse.json(users);
+}
+
+// ✅ GOOD - Proper error handling
+export async function GET(request: NextRequest) {
+  try {
+    const users = await getUsers();
+    return NextResponse.json(users);
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch users' },
+      { status: 500 }
+    );
+  }
+}
+```
+
+### ❌ Not Validating Input
+
+```typescript
+// ❌ BAD - No validation
+export async function POST(request: NextRequest) {
+  const body = await request.json();
+  const user = await createUser(body); // Unsafe!
+  return NextResponse.json(user);
+}
+
+// ✅ GOOD - Validate with schema
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const validatedData = CreateUserSchema.parse(body);
+    const user = await createUser(validatedData);
+    return NextResponse.json(user, { status: 201 });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: 'Validation failed', details: error.errors },
+        { status: 400 }
+      );
+    }
+    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+  }
+}
+```
+
+### ❌ Using Wrong File Name
+
+```typescript
+// ❌ BAD - Route handlers must be in route.ts
+// app/api/users/api.ts
+// app/api/users/handler.ts
+
+// ✅ GOOD - Must be route.ts
+// app/api/users/route.ts
+export async function GET(request: NextRequest) {
+  // ...
+}
+```
+
+### ❌ Mixing Page and Route in Same Segment
+
+```typescript
+// ❌ BAD - Cannot have both page.tsx and route.ts in same folder
+// app/users/page.tsx
+// app/users/route.ts  // Conflict!
+
+// ✅ GOOD - Separate concerns
+// app/users/page.tsx           (UI)
+// app/api/users/route.ts       (API)
+```
+
+## Status Codes Reference
+
+| Code | Meaning | Use Case |
+|------|---------|----------|
+| 200 | OK | Successful GET, PUT, PATCH |
+| 201 | Created | Successful POST (new resource) |
+| 204 | No Content | Successful DELETE |
+| 400 | Bad Request | Validation error, malformed input |
+| 401 | Unauthorized | Missing/invalid authentication |
+| 403 | Forbidden | Authenticated but not authorized |
+| 404 | Not Found | Resource doesn't exist |
+| 409 | Conflict | Duplicate resource |
+| 422 | Unprocessable Entity | Semantic validation error |
+| 429 | Too Many Requests | Rate limit exceeded |
+| 500 | Internal Server Error | Server-side error |
+
+## Caching
+
+```typescript
+// ✅ Cache static data
+export async function GET(request: NextRequest) {
+  const data = await getStaticData();
+
+  return NextResponse.json(data, {
+    headers: {
+      'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400',
+    },
+  });
+}
+
+// ✅ Disable caching for dynamic data
+export async function GET(request: NextRequest) {
+  const data = await getDynamicData();
+
+  return NextResponse.json(data, {
+    headers: {
+      'Cache-Control': 'no-store, must-revalidate',
+    },
+  });
+}
+
+// ✅ Or use Next.js route config
+export const dynamic = 'force-dynamic'; // Never cache
+export const revalidate = 60; // Revalidate every 60 seconds
+```
+
+## Testing
+
+```typescript
+// __tests__/api/users/route.test.ts
+import { GET, POST } from '@/app/api/users/route';
+import { NextRequest } from 'next/server';
+
+describe('/api/users', () => {
+  describe('GET', () => {
+    it('returns users list', async () => {
+      const request = new NextRequest('http://localhost:3000/api/users');
+      const response = await GET(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(Array.isArray(data)).toBe(true);
+    });
+  });
+
+  describe('POST', () => {
+    it('creates new user', async () => {
+      const request = new NextRequest('http://localhost:3000/api/users', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: 'John Doe',
+          email: 'john@example.com',
+        }),
+      });
+
+      const response = await POST(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(201);
+      expect(data.name).toBe('John Doe');
+    });
+  });
+});
+```
+
+---
+
+**Version**: 1.0.0
+**Next.js Version**: 13.4+ (App Router)
+**See Also**: nextjs-app-router.md, react-server-actions.md

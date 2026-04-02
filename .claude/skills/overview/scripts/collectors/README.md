@@ -21,7 +21,7 @@ This package contains 5 collector modules that gather project data:
 - Type hints on all functions
 - Comprehensive docstrings
 - Error handling with graceful fallbacks
-- Leverage shared utilities from `_shared/`
+- Leverage shared utilities from `_scripts/`
 
 **Module Structure:**
 ```
@@ -214,7 +214,7 @@ pytest tests/
 
 - [ADR-003: Python-Only Policy](../../../../../docs/ADRs/003-python-only-for-skill-scripts.md)
 - [Issue #85: Phase 3 - Migrate collectors](https://github.com/aifuun/ai-dev/issues/85)
-- [Shared Utilities](../../../_shared/README.md)
+- [Shared Utilities](../../../_scripts/README.md)
 
 ---
 

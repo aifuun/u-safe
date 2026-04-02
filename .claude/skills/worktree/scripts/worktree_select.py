@@ -5,7 +5,6 @@ import sys
 from pathlib import Path
 
 # Add _scripts to path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent / "_scripts"))
 
 from git.worktree import list_worktrees, detect_current_worktree
 

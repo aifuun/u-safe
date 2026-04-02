@@ -1,7 +1,8 @@
 ---
 name: update-guides
-version: "1.1.0"
-description: Sync 6 AI development guides between projects - ensures AI has latest reference standards.
+version: "1.3.1"
+framework-only: true
+description: Sync AI development guides and profiles between projects - ensures AI has latest reference standards.
 triggers:
   - user wants to sync AI guides
   - user mentions "update guides"
@@ -10,26 +11,26 @@ triggers:
 do_not_trigger:
   - user wants to update skills/rules/pillars (use respective update-* skills)
   - user just wants to read guides documentation
-last-updated: "2026-03-24"
+last-updated: "2026-03-28"
 ---
 
 # update-guides - Sync AI Development Guides
 
-Synchronize 6 AI development reference guides from framework to target projects.
+Synchronize AI development reference guides and profiles from framework to target projects.
 
 ## Overview
 
-This skill syncs AI development reference standards (guides) between the framework and target projects.
+This skill syncs AI development reference standards (guides + profiles) between the framework and target projects.
 
 **What it does:**
-1. Detects framework's `docs/ai-guides/` directory
-2. Deletes target project's `docs/ai-guides/` (if exists)
-3. Copies all 6 AI guides from framework to target
+1. Detects framework's `.claude/guides/` directory
+2. Deletes target project's `.claude/guides/` (if exists)
+3. Copies all AI guides and profiles from framework to target
 4. Creates `.ai-guides-version` tracking file
 5. Generates detailed sync report
 
 **Why it's needed:**
-AI skills read these guides to get development standards and workflows. When guides are updated in the framework, projects need the latest versions to ensure AI uses current best practices.
+AI skills read these guides and profiles to get development standards and workflows. When guides are updated in the framework, projects need the latest versions to ensure AI uses current best practices.
 
 **When to use:**
 - After framework guides are updated
@@ -43,28 +44,59 @@ AI skills read these guides to get development standards and workflows. When gui
 
 **Primary audience**: AI (Claude Code)
 - AI skills read guides to get standards, templates, workflows
-- Example: `/adr` reads `ADR_GUIDE.md` to get ADR templates
-- Example: `/maintain-project` reads `CLAUDE_MD_GUIDE.md` for CLAUDE.md structure
+- Example: `/manage-adrs` reads `ADR_GUIDE.md` to get ADR templates
+- Example: `/manage-claude-md` reads `CLAUDE_MD_GUIDE.md` for CLAUDE.md structure
 
 **Secondary audience**: Humans
 - Humans can also read guides to understand AI's decision-making
 - Helps humans review AI-generated content
 - Provides transparency into AI development standards
 
-**Location**: `docs/ai-guides/` (same in framework and projects)
+**Location**: `.claude/guides/` (same in framework and projects)
 
-## The 6 AI Guides
+## Synced Content
 
-| Guide | Purpose | Used By Skills |
-|-------|---------|----------------|
-| **ADR_GUIDE.md** | AI 创建 ADR 的参考标准 | /adr, /maintain-project |
-| **CLAUDE_MD_GUIDE.md** | AI 维护 CLAUDE.md 的参考标准 | /maintain-project |
+**Directory structure**: `.claude/guides/` with 4 subdirectories, **18 files total**
+
+### Workflow Guides (workflow/ - 6 files)
+
+| File | Purpose | Used By Skills |
+|------|---------|----------------|
+| **README.md** | Index of workflow guides | - |
+| **ADR_GUIDE.md** | AI 创建 ADR 的参考标准 | /manage-adrs |
+| **CLAUDE_MD_GUIDE.md** | AI 维护 CLAUDE.md 的参考标准 | /manage-claude-md |
 | **ISSUE_LIFECYCLE_GUIDE.md** | AI 执行 issue 工作流的参考标准 | /solve-issues, /auto-solve-issue |
-| **DOCS_GUIDE.md** | AI 组织文档的参考标准 | /init-docs, /check-docs |
-| **PROJECT_PLANNING_GUIDE.md** | AI 规划项目的参考标准 | /plan (if exists) |
+| **PROJECT_PLANNING_GUIDE.md** | AI 规划项目的参考标准 | /plan |
 | **SKILL_GUIDE.md** | AI 创建技能的参考标准 | /skill-creator |
 
-**All 6 guides are synced together** to ensure consistency.
+### Doc Templates (doc-templates/ - 3 files)
+
+| File | Purpose | Used By Skills |
+|------|---------|----------------|
+| **README.md** | Index of doc templates | - |
+| **MANAGE_DOCS_GUIDE.md** | AI 管理文档的参考标准 | /manage-docs, /init-docs, /check-docs |
+| **STACK_TAGS.md** | Tech stack tag definitions | /manage-docs |
+
+### Rules Guides (rules/ - 5 files)
+
+| File | Purpose | Used By Skills |
+|------|---------|----------------|
+| **README.md** | Index of rules guides | - |
+| **RULES_GUIDE.md** | Rules management standards | /manage-rules |
+| **RULES_MAPPING.md** | Profile-to-rules mapping | /manage-rules |
+| **PROFILE_CONSISTENCY.md** | Profile consistency checks | /manage-rules |
+| **MIGRATION_REPORT.md** | Rules migration documentation | Internal |
+
+### Profiles (profiles/ - 4 files)
+
+| File | Description | Used By Skills |
+|------|-------------|----------------|
+| **README.md** | Index of profiles | - |
+| **tauri.md** | Desktop app (Tauri + React) | /manage-project, /manage-rules |
+| **nextjs-aws.md** | Full-stack (Next.js + AWS) | /manage-project, /manage-rules |
+| **tauri-aws.md** | Hybrid (Tauri + AWS) | /manage-project, /manage-rules |
+
+**All guides and profiles are synced together** to ensure consistency across projects.
 
 ## Arguments
 
@@ -93,16 +125,24 @@ AI skills read these guides to get development standards and workflows. When gui
 ### 1. Validate Framework Directory
 
 ```bash
-# Check framework has docs/ai-guides/
+# Check framework has .claude/guides/
 if [ ! -d "$FRAMEWORK_DIR/docs/ai-guides" ]; then
-    echo "❌ 错误：框架目录不存在 docs/ai-guides/"
+    echo "❌ 错误：框架目录不存在 .claude/guides/"
     exit 1
 fi
 
-# Count guides (should be 6)
-GUIDE_COUNT=$(find "$FRAMEWORK_DIR/docs/ai-guides" -name "*.md" -type f | wc -l)
-if [ $GUIDE_COUNT -lt 6 ]; then
-    echo "⚠️ 警告：仅找到 $GUIDE_COUNT 个 guide 文件（期望 6 个）"
+# Verify 4 subdirectories exist
+for subdir in workflow doc-templates rules profiles; do
+    if [ ! -d "$FRAMEWORK_DIR/.claude/guides/$subdir" ]; then
+        echo "❌ 错误：缺少子目录 $subdir"
+        exit 1
+    fi
+done
+
+# Count total .md files (should be 18)
+TOTAL_FILES=$(find "$FRAMEWORK_DIR/docs/ai-guides" -name "*.md" -type f | wc -l)
+if [ $TOTAL_FILES -lt 18 ]; then
+    echo "⚠️ 警告：仅找到 $TOTAL_FILES 个文件（期望 18 个）"
 fi
 ```
 
@@ -141,12 +181,13 @@ fi
 
 ```bash
 # Record sync metadata
-cat > "$TARGET_DIR/docs/ai-guides/.ai-guides-version" << EOF
+cat > "$TARGET_DIR/.claude/guides/.ai-guides-version" << EOF
 framework_path: $FRAMEWORK_DIR
 framework_commit: $(cd "$FRAMEWORK_DIR" && git rev-parse HEAD)
 synced_at: $(date -Iseconds)
-synced_by: update-guides.sh v1.0.0
-guide_count: 6
+synced_by: update-guides.sh v1.3.0
+file_count: 18
+subdirs: workflow,doc-templates,rules,profiles
 EOF
 ```
 
@@ -158,18 +199,35 @@ EOF
 ### 5. Generate Sync Report
 
 ```bash
-echo "✅ 同步完成"
+echo "✅ 同步完成 - 18 个文件已同步"
 echo ""
-echo "| Guide | 状态 | 用途 |"
-echo "|-------|------|------|"
-echo "| ADR_GUIDE.md | ✅ | AI 创建 ADR 的参考标准 |"
-echo "| CLAUDE_MD_GUIDE.md | ✅ | AI 维护 CLAUDE.md 的参考标准 |"
-echo "| ISSUE_LIFECYCLE_GUIDE.md | ✅ | AI 执行 issue 工作流的参考标准 |"
-echo "| DOCS_GUIDE.md | ✅ | AI 组织文档的参考标准 |"
-echo "| PROJECT_PLANNING_GUIDE.md | ✅ | AI 规划项目的参考标准 |"
-echo "| SKILL_GUIDE.md | ✅ | AI 创建技能的参考标准 |"
+echo "📁 workflow/ (6 files)"
+echo "  ✅ README.md"
+echo "  ✅ ADR_GUIDE.md - AI 创建 ADR 的参考标准"
+echo "  ✅ CLAUDE_MD_GUIDE.md - AI 维护 CLAUDE.md 的参考标准"
+echo "  ✅ ISSUE_LIFECYCLE_GUIDE.md - AI 执行 issue 工作流的参考标准"
+echo "  ✅ PROJECT_PLANNING_GUIDE.md - AI 规划项目的参考标准"
+echo "  ✅ SKILL_GUIDE.md - AI 创建技能的参考标准"
 echo ""
-echo "AI 现在可以使用最新的开发参考标准"
+echo "📁 doc-templates/ (3 files)"
+echo "  ✅ README.md"
+echo "  ✅ MANAGE_DOCS_GUIDE.md - AI 管理文档的参考标准"
+echo "  ✅ STACK_TAGS.md - Tech stack tag definitions"
+echo ""
+echo "📁 rules/ (5 files)"
+echo "  ✅ README.md"
+echo "  ✅ RULES_GUIDE.md - Rules management standards"
+echo "  ✅ RULES_MAPPING.md - Profile-to-rules mapping"
+echo "  ✅ PROFILE_CONSISTENCY.md - Profile consistency checks"
+echo "  ✅ MIGRATION_REPORT.md - Rules migration documentation"
+echo ""
+echo "📁 profiles/ (4 files)"
+echo "  ✅ README.md"
+echo "  ✅ tauri.md - Desktop app profile"
+echo "  ✅ nextjs-aws.md - Full-stack profile"
+echo "  ✅ tauri-aws.md - Hybrid profile"
+echo ""
+echo "AI 现在可以使用最新的开发参考标准（18 个文件，4 个子目录）"
 ```
 
 ## Examples
@@ -194,18 +252,35 @@ echo "AI 现在可以使用最新的开发参考标准"
 📋 拷贝 AI 开发指南...
 📝 创建版本标记...
 
-✅ 同步完成
+✅ 同步完成 - 18 个文件已同步
 
-| Guide | 状态 | 用途 |
-|-------|------|------|
-| ADR_GUIDE.md | ✅ | AI 创建 ADR 的参考标准 |
-| CLAUDE_MD_GUIDE.md | ✅ | AI 维护 CLAUDE.md 的参考标准 |
-| ISSUE_LIFECYCLE_GUIDE.md | ✅ | AI 执行 issue 工作流的参考标准 |
-| DOCS_GUIDE.md | ✅ | AI 组织文档的参考标准 |
-| PROJECT_PLANNING_GUIDE.md | ✅ | AI 规划项目的参考标准 |
-| SKILL_GUIDE.md | ✅ | AI 创建技能的参考标准 |
+📁 workflow/ (6 files)
+  ✅ README.md
+  ✅ ADR_GUIDE.md - AI 创建 ADR 的参考标准
+  ✅ CLAUDE_MD_GUIDE.md - AI 维护 CLAUDE.md 的参考标准
+  ✅ ISSUE_LIFECYCLE_GUIDE.md - AI 执行 issue 工作流的参考标准
+  ✅ PROJECT_PLANNING_GUIDE.md - AI 规划项目的参考标准
+  ✅ SKILL_GUIDE.md - AI 创建技能的参考标准
 
-AI 现在可以使用最新的开发参考标准
+📁 doc-templates/ (3 files)
+  ✅ README.md
+  ✅ MANAGE_DOCS_GUIDE.md - AI 管理文档的参考标准
+  ✅ STACK_TAGS.md - Tech stack tag definitions
+
+📁 rules/ (5 files)
+  ✅ README.md
+  ✅ RULES_GUIDE.md - Rules management standards
+  ✅ RULES_MAPPING.md - Profile-to-rules mapping
+  ✅ PROFILE_CONSISTENCY.md - Profile consistency checks
+  ✅ MIGRATION_REPORT.md - Rules migration documentation
+
+📁 profiles/ (4 files)
+  ✅ README.md
+  ✅ tauri.md - Desktop app profile
+  ✅ nextjs-aws.md - Full-stack profile
+  ✅ tauri-aws.md - Hybrid profile
+
+AI 现在可以使用最新的开发参考标准（18 个文件，4 个子目录）
 ```
 
 ### Example 2: Error Handling - Framework Missing
@@ -220,20 +295,21 @@ AI 现在可以使用最新的开发参考标准
 ❌ 错误：框架目录不存在 AI guides
    期望路径: /invalid/path/docs/ai-guides
 
-请确保框架目录包含 docs/ai-guides/ 并且已创建所有 6 大 guides。
+请确保框架目录包含 .claude/guides/ 并且包含 4 个子目录（workflow, doc-templates, rules, profiles）。
 ```
 
 ### Example 3: Warning - Incomplete Guides
 
-**Scenario:** Framework only has 4 out of 6 guides
+**Scenario:** Framework only has 12 out of 18 files
 
 **Output:**
 ```
-⚠️ 警告：框架中仅找到 4 个 guide 文件（期望 6 个）
+⚠️ 警告：仅找到 12 个文件（期望 18 个）
 
 📋 拷贝 AI 开发指南...
 ...
-✅ 同步完成 (with missing guides marked ❌)
+✅ 同步完成 - 12 个文件已同步
+(缺失的文件将在报告中用 ❌ 标记)
 ```
 
 ## Integration
@@ -244,10 +320,10 @@ AI 现在可以使用最新的开发参考标准
 # Complete framework sync
 /update-framework ../target-project
   → Calls /update-pillars
-  → Calls /update-rules
-  → Calls /update-workflow
   → Calls /update-skills
-  → Calls /update-guides ← THIS SKILL
+  → (Optional) /update-guides ← THIS SKILL
+
+Note: /update-guides is now optional, not part of main framework sync
 ```
 
 ### With init-project.py
@@ -265,8 +341,8 @@ if args.sync_guides:
 ### With Related Skills
 
 **Skills that read AI guides:**
-- `/adr` - Reads `ADR_GUIDE.md` for ADR templates and standards
-- `/maintain-project` - Reads `CLAUDE_MD_GUIDE.md` for CLAUDE.md structure
+- `/manage-adrs` - Reads `ADR_GUIDE.md` for ADR templates and standards
+- `/manage-claude-md` - Reads `CLAUDE_MD_GUIDE.md` for CLAUDE.md structure
 - `/solve-issues` - Reads `ISSUE_LIFECYCLE_GUIDE.md` for workflow
 - `/init-docs` - Reads `DOCS_GUIDE.md` for documentation structure
 - `/check-docs` - Reads `DOCS_GUIDE.md` for validation standards
@@ -274,7 +350,7 @@ if args.sync_guides:
 
 **Workflow:**
 ```
-1. Update guides in framework: Edit docs/ai-guides/*.md
+1. Update guides in framework: Edit .claude/guides/*.md
 2. Sync to projects: /update-guides --from framework project
 3. AI skills read guides: Skills use Read tool to access guides
 4. AI executes with standards: Guides inform AI's decisions
@@ -285,10 +361,11 @@ if args.sync_guides:
 | Error | Cause | Solution |
 |-------|-------|----------|
 | Framework path missing | --from not specified | Add --from argument |
-| Framework guides missing | docs/ai-guides/ doesn't exist | Create guides in framework first |
+| Framework guides missing | .claude/guides/ doesn't exist | Create guides in framework first |
+| Missing subdirectory | One of 4 subdirectories missing | Check framework has workflow, doc-templates, rules, profiles |
 | Target not writable | Permission denied | Check directory permissions |
 | Copy failed | Disk full, permissions | Check disk space and permissions |
-| Incomplete guides | <6 guides found | Warning shown, continues anyway |
+| Incomplete guides | <18 files found | Warning shown, continues anyway |
 
 ## Best Practices
 
@@ -309,20 +386,21 @@ if args.sync_guides:
 **Why not incremental:**
 - Guides are documentation (not code with history)
 - Complete replacement is simpler
-- Sync is fast (6 markdown files)
+- Sync is fast (18 markdown files across 4 subdirectories)
 - No risk of partial updates
 
 ## Version Tracking
 
-**File:** `docs/ai-guides/.ai-guides-version`
+**File:** `.claude/guides/.ai-guides-version`
 
 **Content:**
 ```yaml
 framework_path: /Users/woo/dev/ai-dev
 framework_commit: a1b2c3d4e5f6...
-synced_at: 2026-03-24T10:00:00+08:00
-synced_by: update-guides.sh v1.0.0
-guide_count: 6
+synced_at: 2026-03-28T10:00:00+08:00
+synced_by: update-guides.sh v1.3.0
+file_count: 18
+subdirs: workflow,doc-templates,rules,profiles
 ```
 
 **Usage:**
@@ -333,8 +411,8 @@ guide_count: 6
 
 ## Performance
 
-- **Execution time:** <2 seconds (6 markdown files)
-- **Disk space:** ~50KB (all 6 guides)
+- **Execution time:** <3 seconds (18 markdown files across 4 subdirectories)
+- **Disk space:** ~100KB (all 18 files)
 - **Network:** None (local file copy)
 
 Fast because:
@@ -344,25 +422,30 @@ Fast because:
 
 ## Related Skills
 
-- **/update-framework** - Meta-skill that calls this (complete sync)
+- **/update-framework** - Meta-skill that optionally calls this (guides sync is optional)
 - **/update-pillars** - Sync Pillars documentation
-- **/update-rules** - Sync technical rules
 - **/update-skills** - Sync skills
-- **/update-workflow** - Sync workflow documentation
-- **/adr** - Reads ADR_GUIDE.md
-- **/maintain-project** - Reads CLAUDE_MD_GUIDE.md
+- **/manage-rules** - Generate project-specific rules (replaces deprecated /update-rules)
+- **/manage-adrs** - Reads ADR_GUIDE.md for ADR creation
+- **/manage-claude-md** - Reads CLAUDE_MD_GUIDE.md for CLAUDE.md maintenance
 
 ## Troubleshooting
 
 **Q: Guides not syncing?**
 - Check framework path exists
-- Verify `docs/ai-guides/` in framework
+- Verify `.claude/guides/` in framework with 4 subdirectories
 - Check file permissions
 
 **Q: Missing guides after sync?**
-- Check framework has all 6 guides
+- Check framework has all 4 subdirectories (workflow, doc-templates, rules, profiles)
+- Verify expected file count: 18 total files
 - Look for errors in sync output
 - Verify target directory writable
+
+**Q: Missing subdirectory after sync?**
+- Check framework has the subdirectory
+- Verify subdirectory contains expected files
+- Check error messages for specific subdirectory failures
 
 **Q: AI not using latest guides?**
 - Check `.ai-guides-version` file
@@ -376,9 +459,11 @@ Fast because:
 
 ---
 
-**Version:** 1.0.0
+**Version:** 1.3.0
 **Pattern:** Simple (SKILL.md + Bash script)
 **Compliance:** ADR-001 ✅
-**Last Updated:** 2026-03-24
+**Last Updated:** 2026-03-28
 **Changelog:**
+- v1.3.0 (2026-03-28): Update ai-guides structure documentation - 4 subdirectories, 18 files total
+- v1.2.0 (2026-03-27): Added profiles support
 - v1.0.0 (2026-03-24): Initial release - sync 6 AI guides between projects

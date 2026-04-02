@@ -108,7 +108,7 @@ Save to `.claude/plans/active/[feature-name]-plan.md`
 
 ## Smart Context Integration
 
-Leverage project context: read architecture docs, check installed Pillars (.prot/), review similar features, consider ADRs, and identify reusable patterns. Adapt plan to match project standards.
+Leverage project context: read architecture docs, check installed Pillars (.claude/pillars/), review similar features, consider ADRs, and identify reusable patterns. Adapt plan to match project standards.
 
 ## Usage Examples
 

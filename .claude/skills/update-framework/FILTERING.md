@@ -78,7 +78,7 @@ When `.framework-install` exists:
 
 **What happens:**
 1. Reads `.framework-install` → Profile detected (e.g., "minimal")
-2. Loads `framework/profiles/minimal.json`
+2. Loads `.claude/profiles/minimal.json`
 3. Extracts rules array from profile
 4. **Skips questionnaire** (uses profile filtering)
 5. Applies profile-based filters during sync

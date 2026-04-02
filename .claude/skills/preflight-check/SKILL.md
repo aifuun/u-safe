@@ -20,7 +20,7 @@ This skill performs comprehensive environment checks before work-issue begins, a
 
 **What it does:**
 1. **Permission configuration check** - Validates .claude/settings.json permissions
-2. **Framework configuration check** - Ensures .claude/, .prot/ directories exist
+2. **Framework configuration check** - Ensures .claude/, .claude/pillars/ directories exist
 3. **Git environment check** - Verifies Git repository, branch status, clean working directory
 4. **GitHub environment check** - Confirms gh CLI installation and authentication
 5. **Project structure check** - Validates package.json, src/, .gitignore
@@ -174,7 +174,7 @@ fi
 
 **Checks:**
 - `.claude/` directory exists
-- `.prot/` directory exists
+- `.claude/pillars/` directory exists
 - `.claude/plans/` directory exists
 - `.claude/skills/` directory exists
 
@@ -182,7 +182,7 @@ fi
 ```bash
 mkdir -p .claude/plans/active .claude/plans/archive
 mkdir -p .claude/skills
-mkdir -p .prot/pillars
+mkdir -p .claude/pillars/pillars
 ```
 
 **Priority:** ⭐⭐⭐ (Important - framework dependencies)
@@ -560,7 +560,7 @@ Time: 0.5s
 ## Related Skills
 
 - **/configure-permissions** - Called by this skill to fix permission issues
-- **/work-issue** - Calls this skill at Phase 0
+- **/auto-solve-issue** - Calls this skill at Phase 0
 - **/overview** - Shows comprehensive project status
 
 ---

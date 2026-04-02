@@ -96,7 +96,7 @@ last-updated: "2026-03-20"
 
 ```python
 # Read workflow guide for 5-phase standards
-lifecycle_guide = read_file("docs/ai-guides/ISSUE_LIFECYCLE_GUIDE.md")
+lifecycle_guide = read_file(".claude/guides/ISSUE_LIFECYCLE_GUIDE.md")
 
 # Extract workflow standards
 workflow_standards = extract_workflow_standards(lifecycle_guide)
@@ -436,7 +436,7 @@ Task系统 + Subagents
 |------|------|--------|--------|
 | **/solve-issues** | 批处理包装器 | ~50行 | 低 |
 | **/auto-solve-issue** | 核心实现 | ~200行 | 中 |
-| **/work-issue** (已删除) | 旧实现 | ~300行 | 高 |
+| **/auto-solve-issue** (已删除) | 旧实现 | ~300行 | 高 |
 
 **设计理念：**
 - ✅ 单一职责：包装器只负责批处理逻辑

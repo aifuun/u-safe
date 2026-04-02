@@ -49,9 +49,9 @@ def find_files(pattern: str, root: str = '.') -> List[str]:
         Found 42 Python files
         >>> for f in py_files[:3]:
         ...     print(f"- {f}")
-        - _shared/git_utils.py
-        - _shared/fs_utils.py
-        - _shared/format_utils.py
+        - _scripts/git_utils.py
+        - _scripts/fs_utils.py
+        - _scripts/format_utils.py
     """
     root_path = Path(root)
 

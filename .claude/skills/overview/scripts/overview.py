@@ -34,7 +34,6 @@ from typing import Dict, Any
 
 # Add collectors and formatters to path
 script_dir = Path(__file__).parent
-sys.path.insert(0, str(script_dir))
 
 from collectors import (
     git_collector,

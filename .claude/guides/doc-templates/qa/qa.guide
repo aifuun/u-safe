@@ -1,0 +1,105 @@
+# QA Documentation Guide
+
+> How to create and update test plans and quality assurance documentation
+
+## When to Create
+
+- After architecture is defined
+- Before development begins
+- When adding new features
+
+## Core Document: TEST_PLAN.md
+
+### Purpose
+- Define testing strategy
+- Document test cases
+- Specify coverage goals
+
+### Structure
+
+```markdown
+## Testing Strategy
+
+### Unit Tests
+- **Coverage Goal**: 80%+
+- **Tools**: Jest, Vitest
+- **Scope**: Individual functions, components
+
+### Integration Tests
+- **Coverage Goal**: Key workflows
+- **Tools**: Playwright, Cypress
+- **Scope**: API endpoints, user flows
+
+### E2E Tests
+- **Coverage Goal**: Critical paths
+- **Tools**: Playwright
+- **Scope**: Full user journeys
+
+## Test Cases
+
+### Test Case 1: {FEATURE_NAME}
+**Objective**: Verify {WHAT}
+**Steps**:
+1. {STEP_1}
+2. {STEP_2}
+**Expected Result**: {OUTCOME}
+**Actual Result**: {PASS/FAIL}
+
+## Coverage Requirements
+- Critical paths: 100%
+- Core features: 80%+
+- Edge cases: 50%+
+
+## Test Data
+- Mock data sources
+- Test accounts
+- Sample datasets
+```
+
+## Quality Standards
+
+- ✅ **Clear test strategy** for each testing level
+- ✅ **Specific test cases** with steps and expected results
+- ✅ **Coverage goals** defined
+- ✅ **Test data documented**
+- ✅ **CI/CD integration** specified
+
+## Common Test Types
+
+### 1. Unit Tests
+```javascript
+describe('calculateTotal', () => {
+  it('should sum array of numbers', () => {
+    expect(calculateTotal([1, 2, 3])).toBe(6);
+  });
+});
+```
+
+### 2. Integration Tests
+```javascript
+describe('API /users', () => {
+  it('should create user', async () => {
+    const response = await request(app).post('/api/users').send({...});
+    expect(response.status).toBe(201);
+  });
+});
+```
+
+### 3. E2E Tests
+```javascript
+test('user can login', async ({ page }) => {
+  await page.goto('/login');
+  await page.fill('[name=email]', 'test@example.com');
+  await page.click('button[type=submit]');
+  await expect(page).toHaveURL('/dashboard');
+});
+```
+
+## Template Location
+
+Use template: `framework/guides/qa/templates/TEST_PLAN.md.template`
+
+## Related Guides
+
+- [PRD](../prd/prd.guide) - Test cases validate requirements
+- [ARCHITECTURE](../architecture/arch.guide) - Tests verify architecture

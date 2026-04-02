@@ -56,7 +56,7 @@ PROFILE=$(grep "^**Profile**:" .framework-install | sed 's/**Profile**: //')
 Load the corresponding profile JSON from the framework:
 
 ```bash
-PROFILE_FILE="$FRAMEWORK_ROOT/framework/profiles/$PROFILE.json"
+PROFILE_FILE="$FRAMEWORK_ROOT/.claude/profiles/$PROFILE.json"
 cat "$PROFILE_FILE"
 ```
 
@@ -248,7 +248,7 @@ detect_profile() {
 load_profile_rules() {
   local profile="$1"
   local framework_root="$2"
-  local profile_file="$framework_root/framework/profiles/$profile.json"
+  local profile_file="$framework_root/.claude/profiles/$profile.json"
 
   if [ -f "$profile_file" ]; then
     jq -r '.rules[]' "$profile_file"

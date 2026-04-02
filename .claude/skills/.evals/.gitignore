@@ -1,6 +1,0 @@
-# Ignore eval results (generated during test runs)
-results/
-*.log
-
-# Keep directory structure
-!.gitkeep

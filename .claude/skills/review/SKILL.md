@@ -5,7 +5,8 @@ description: |
   TRIGGER when: user wants code reviewed ("review my code", "check this PR", "review these changes", "quality check").
   Dynamically detects project configuration (Pillars, architecture rules, ADRs) and adapts checks accordingly.
   DO NOT TRIGGER when: user wants to create/write code (not reviewing), or just wants explanations without quality assessment.
-version: "2.3.0"
+version: "2.4.1"
+last-updated: "2026-03-30"
 argument-hint: "[options]"
 ---
 
@@ -20,639 +21,319 @@ This skill provides comprehensive code review by:
 **What it does:**
 1. Runs quality gates (types, tests, linting)
 2. Validates architecture patterns (dynamically detected)
-3. **Checks skill version updates** (NEW in v2.3.0 - prevents version conflicts)
+3. **Checks skill version updates** (prevents version conflicts - Issue #401)
 4. Checks Pillar compliance (based on project profile)
-5. Verifies ADR compliance (scans docs/adr/)
+5. Verifies ADR compliance (scans docs/ADRs/)
 6. Identifies security vulnerabilities
 7. Detects performance issues
-8. Writes review status for /finish-issue integration
+8. Writes review status for `/finish-issue` integration
 
 **Why it's needed:**
-Manual code review is time-consuming and inconsistent. This skill automates quality checks while adapting to each project's specific configuration (minimal vs full-stack, different architecture patterns, custom ADRs).
+Manual code review is time-consuming and inconsistent. This skill automates quality checks while adapting to each project's specific configuration.
 
 **Key feature - Dynamic Detection:**
 - No hardcoded assumptions
 - Reads project profile to determine which Pillars to check
-- Scans architecture rules from .claude/rules/architecture/
-- Discovers ADRs from docs/adr/
+- Scans architecture rules from `.claude/rules/architecture/`
+- Discovers ADRs from `docs/ADRs/`
 - Different projects → different checks
+
+**When to use:**
+- After `/execute-plan` completes implementation
+- Before `/finish-issue` creates PR
+- Anytime you want code quality validation
+
+## Arguments
+
+```bash
+/review [options]
+```
+
+**Common usage:**
+```bash
+/review                   # Review current branch changes
+/review --strict          # Treat warnings as errors
+/review --mode=auto       # Minimal output (for automation)
+```
+
+**Options:**
+- `--strict` - Treat recommendations as blocking issues
+- `--mode=auto` - Auto mode output (2 lines, used by /auto-solve-issue)
+- `--files="pattern"` - Review specific files only
+
+## AI Execution Instructions
+
+**CRITICAL: Adaptive strategy and worktree support**
+
+When executing `/review`, AI MUST follow this pattern:
+
+### Step 0: Smart Decision (Adaptive Strategy)
+
+**BEFORE running checks**, analyze changes and select strategy:
+
+```bash
+# Get change statistics
+LINES_CHANGED=$(git diff --stat main...HEAD | tail -1 | grep -oE '[0-9]+ insertions' | cut -d' ' -f1)
+
+if [ "$LINES_CHANGED" -lt 50 ]; then
+  STRATEGY="SMALL"  # Focus on quality gates
+elif [ "$LINES_CHANGED" -lt 200 ]; then
+  STRATEGY="MEDIUM"  # Balanced review
+else
+  STRATEGY="LARGE"  # Deep review with full dimensions
+fi
+```
+
+### Step 1: Create Todo List
+
+```python
+tasks = [
+    TaskCreate("Smart decision - select strategy"),
+    TaskCreate("Check goal coverage"),
+    TaskCreate("Check skill version updates"),
+    TaskCreate("Run quality gates"),
+    TaskCreate("Check architecture patterns"),
+    TaskCreate("Verify Pillar compliance"),
+    TaskCreate("Check ADR compliance"),
+    TaskCreate("Security scan"),
+    TaskCreate("Performance check"),
+    TaskCreate("Write review status file")
+]
+```
+
+### Step 2: Check Goal Coverage (Phase 1)
+
+**CRITICAL FIRST CHECK**: Verify implementation solves Issue requirements.
+
+```bash
+# Get issue number and load issue body
+ISSUE_NUM=$(git branch --show-current | grep -oE '[0-9]+')
+gh issue view $ISSUE_NUM --json body --jq '.body' > /tmp/issue-body.md
+
+# Extract acceptance criteria
+grep -E '- \[ \]|^- |^[0-9]+\.' /tmp/issue-body.md > /tmp/acceptance-criteria.txt
+
+# Check if all criteria are addressed in code changes
+# Score: requirements_coverage * 100
+# If score < 80, auto-reject
+```
+
+**See**: [QUALITY.md](./QUALITY.md) for scoring details
+
+### Step 3: Check Skill Version Updates
+
+**Triggered when**: `.claude/skills/*/SKILL.md` files are modified.
+
+```python
+# AI-EXECUTABLE
+import sys
+from pathlib import Path
+sys.path.insert(0, '.claude/skills/_scripts')
+
+from utils.version import check_version_field, compare_versions
+
+# Detect modified SKILL.md files
+modified_skills = Bash("git diff --name-only HEAD | grep '.claude/skills/.*/SKILL.md'")
+
+for skill_file in modified_skills.strip().split('\n'):
+    if not skill_file:
+        continue
+
+    skill_path = Path(skill_file)
+
+    # Check current version
+    current_result = check_version_field(skill_path)
+
+    # Get old version from git
+    old_content = Bash(f"git show HEAD:{skill_file}")
+    old_version = get_version_from_frontmatter(old_content)
+
+    if current_result['has_version'] and old_version:
+        if current_result['version'] == old_version:
+            issues.append({
+                "file": skill_file,
+                "category": "version_unchanged",
+                "severity": "warning",
+                "message": f"Version not updated: {old_version}"
+            })
+```
+
+**Shared module**: Uses `.claude/skills/_scripts/utils/version.py` (Issue #406)
+**See**: [VERSION_CHECK.md](./VERSION_CHECK.md) for complete logic
+
+### Step 4-9: Run Review Dimensions
+
+Execute checks based on strategy selected in Step 0:
+
+| Strategy | Dimensions | Focus |
+|----------|------------|-------|
+| SMALL | Quality gates, quick architecture | Fast validation |
+| MEDIUM | All dimensions (standard weights) | Balanced |
+| LARGE | Deep architecture, full Pillars | Comprehensive |
+
+**Dimensions:**
+1. **Quality Gates** (30 pts) - Types, tests, linting, build
+2. **Architecture** (25 pts) - Layer separation, dependencies
+3. **Pillars** (20 pts) - Error handling, logging, validation
+4. **ADRs** (10 pts) - Compliance with decisions
+5. **Security** (10 pts) - Vulnerabilities, input validation
+6. **Performance** (5 pts) - Algorithm efficiency
+
+**See**: [CHECKLIST.md](./CHECKLIST.md) for complete checklist
+
+### Step 10: Write Status File
+
+**CRITICAL**: Always write `.claude/.review-status.json`:
+
+```python
+import json
+from datetime import datetime, timedelta
+
+status = {
+    "timestamp": datetime.now().isoformat(),
+    "issue_number": issue_number,
+    "status": "approved" if score > 90 else "needs_improvement" if score >= 70 else "rejected",
+    "score": score,
+    "breakdown": {
+        "quality_gates": quality_score,
+        "architecture": arch_score,
+        "pillar_compliance": pillar_score,
+        "adr_compliance": adr_score,
+        "security": security_score,
+        "performance": perf_score
+    },
+    "issues_count": {
+        "blocking": len(blocking_issues),
+        "recommendations": len(recommendations)
+    },
+    "valid_until": (datetime.now() + timedelta(minutes=90)).isoformat()
+}
+
+with open(".claude/.review-status.json", "w") as f:
+    json.dump(status, f, indent=2)
+```
+
+### Step 11: Output Results (Mode-Aware)
+
+**Auto mode** (--mode=auto or called by /auto-solve-issue):
+```text
+✅ Review complete: 92/100 (approved)
+Status: .claude/.review-status.json
+```
+
+**Interactive mode** (direct invocation):
+```markdown
+# Code Review: Issue #421
+
+Score: 92/100 (approved)
+Issues: 0 blocking, 2 recommendations
+
+Top Recommendations:
+1. Architecture - Move API call to service layer (-2 pts)
+2. Performance - Use Set for faster lookup (-2 pts)
+
+Full details: .claude/.review-status.json
+Next: /finish-issue #421
+```
 
 ## Workflow Steps
 
 Copy this checklist to track progress:
 
-```
+```markdown
 Task Progress:
 - [ ] Step 0: Smart decision (adaptive strategy)
 - [ ] Step 1: Create todo list
-- [ ] Step 2: Check goal coverage (conditional)
-- [ ] Step 3: Check skill version updates (conditional)
+- [ ] Step 2: Check goal coverage
+- [ ] Step 3: Check skill version updates
 - [ ] Step 4: Run quality gates
-- [ ] Step 5: Check architecture patterns (conditional)
-- [ ] Step 6: Verify Pillar compliance (conditional)
-- [ ] Step 7: Check ADR compliance (conditional)
-- [ ] Step 8: Security scan (conditional)
-- [ ] Step 9: Performance check (conditional)
+- [ ] Step 5: Check architecture patterns
+- [ ] Step 6: Verify Pillar compliance
+- [ ] Step 7: Check ADR compliance
+- [ ] Step 8: Security scan
+- [ ] Step 9: Performance check
 - [ ] Step 10: Write review status file
 ```
 
-Execute these steps in sequence:
-
-### Step 1: Create Todo List
-
-**Initialize review tracking** using TaskCreate:
-
-```
-Task #1: Smart decision (analyze changes, select strategy)
-Task #2: Check goal coverage (conditional based on decision)
-Task #3: Check skill version updates (conditional - if SKILL.md modified)
-Task #4: Run quality gates (types, tests, linting)
-Task #5: Check architecture patterns (conditional based on decision)
-Task #6: Verify Pillar compliance (conditional based on decision)
-Task #7: Check ADR compliance (conditional based on decision)
-Task #8: Security scan (conditional based on decision)
-Task #9: Performance check (conditional based on decision)
-Task #10: Write review status file (blocked by all previous tasks)
-```
-
-After creating tasks, proceed with review execution.
-
-### Step 2: Check Goal Coverage (NEW - Phase 1 of Unified Evaluation)
-
-**CRITICAL FIRST STEP**: Verify that the implementation actually solves the Issue requirements.
-
-**Why this is first:**
-- Code can be perfect but solve the wrong problem
-- Issue goal vs actual implementation gap must be caught early
-- If coverage < 80%, mark as NEEDS_IMPROVEMENT immediately
-
-**Process:**
-
-1. **Load Issue and Plan**:
-   ```bash
-   # Get issue number from git branch or plan file
-   ISSUE_NUM=$(git branch --show-current | grep -oE '[0-9]+' | head -1)
-
-   # Fetch Issue body
-   gh issue view $ISSUE_NUM --json body --jq '.body' > /tmp/issue-body.md
-
-   # Load plan file (from worktree if exists)
-   if [ -f .claude/plans/active/issue-${ISSUE_NUM}-plan.md ]; then
-     PLAN_PATH=".claude/plans/active/issue-${ISSUE_NUM}-plan.md"
-   else
-     WORKTREE_PATH=$(grep "^**Worktree**:" .claude/plans/active/issue-*-plan.md | cut -d' ' -f2)
-     PLAN_PATH="${WORKTREE_PATH}/.claude/plans/active/issue-${ISSUE_NUM}-plan.md"
-   fi
-   ```
-
-2. **Run Goal Coverage Analysis** (using goal-coverage.ts logic):
-   ```typescript
-   import { analyzeCoverage } from '.claude/skills/review/goal-coverage.ts';
-
-   const issueBody = readFile('/tmp/issue-body.md');
-   const planContent = readFile(PLAN_PATH);
-
-   const coverage = analyzeCoverage(issueBody, planContent);
-   ```
-
-3. **Check Coverage Results**:
-   ```
-   Coverage Analysis:
-   - Issue Requirements: {coverage.requirements.covered}/{coverage.requirements.total} ({coverage.requirements.coverage_rate * 100}%)
-   - Plan Tasks: {coverage.tasks.completed}/{coverage.tasks.total} completed ({coverage.tasks.completion_rate * 100}%)
-   - Extra Features: {coverage.extras.features.length} (Justified: {coverage.extras.justified})
-   - Overall Score: {coverage.overall_score * 100}/100
-   - Status: {coverage.status}
-   ```
-
-4. **Apply Pass/Fail Logic**:
-   ```
-   if (coverage.overall_score < 0.8) {
-     // Auto-fail: Coverage too low
-     return {
-       status: 'NEEDS_IMPROVEMENT',
-       blocking: true,
-       reason: 'Goal coverage below 80%',
-       uncovered_requirements: coverage.requirements.uncovered,
-       incomplete_tasks: coverage.tasks.incomplete
-     };
-   }
-   ```
-
-5. **Output to User** (Interactive mode only):
-   ```markdown
-   ## 1. 目标达成检查 ✅/⚠️/❌
-
-   **Issue需求覆盖**: 8/10 (80%) ⚠️
-   未覆盖需求:
-   - AC3: 支持批量操作
-   - AC7: 添加撤销功能
-
-   **计划任务完成**: 12/12 (100%) ✅
-
-   **额外功能**: 1个 (已说明理由) ✅
-   - Task 5: 重构日志模块 (技术债偿还)
-
-   **综合得分**: 85/100 ⚠️
-   **判定**: NEEDS_IMPROVEMENT (需要补充AC3和AC7的实现)
-   ```
-
-**Auto mode output** (2 lines max):
-```
-Goal coverage: 85/100 (needs improvement)
-Missing: AC3 (批量操作), AC7 (撤销功能)
-```
-
-**Integration with .review-status.json**:
-```json
-{
-  "goal_coverage": {
-    "score": 85,
-    "requirements_coverage": 0.8,
-    "tasks_completion": 1.0,
-    "uncovered": ["AC3: 批量操作", "AC7: 撤销功能"],
-    "status": "NEEDS_IMPROVEMENT"
-  }
-}
-```
-
-### Step 0: Smart Decision (NEW - Adaptive Strategy Selection)
-
-**BEFORE running any checks**, analyze the changes and select an appropriate review strategy.
-
-**Why this matters:**
-- Small changes don't need full 4-perspective review (wastes tokens)
-- Critical path changes need deeper scrutiny regardless of size
-- Adaptive strategy saves ~50% token consumption on average
-
-**Process:**
-
-1. **Get git diff statistics**:
-   ```bash
-   # In worktree if exists, otherwise current directory
-   if [ -n "$WORKTREE_PATH" ]; then
-     cd "$WORKTREE_PATH"
-   fi
-
-   git diff --stat main...HEAD > /tmp/diff-stat.txt
-   ```
-
-2. **Run change analysis** (using change-analyzer.ts logic):
-   ```typescript
-   import { analyzeChanges } from '.claude/skills/common/change-analyzer.ts';
-
-   const diffStat = readFile('/tmp/diff-stat.txt');
-   const analysis = analyzeChanges(diffStat);
-   ```
-
-3. **Make decision** (using decision-engine.ts logic):
-   ```typescript
-   import { makeDecision, summarizeDecision } from '.claude/skills/common/decision-engine.ts';
-
-   const decision = makeDecision(analysis);
-   console.log(summarizeDecision(decision));
-   // 输出示例：策略: targeted | 视角: goal_achievement, architecture_design, risk_control | 预估token: 6000
-   ```
-
-4. **Output decision to user** (Interactive mode only):
-   ```markdown
-   ## 🧠 智能决策
-
-   **改动分析**:
-   - 文件数: {analysis.files_changed}
-   - 改动行数: {analysis.total_changes} (+{analysis.total_additions}/-{analysis.total_deletions})
-   - 规模: {analysis.scale}
-   - 复杂度: {analysis.complexity.level} ({analysis.complexity.score}/100)
-   - 关键路径: {analysis.critical_paths.map(p => p.name).join(', ') || '无'}
-
-   **检查策略**: {decision.strategy} (预估{decision.estimated_tokens} tokens)
-   **启用视角**: {enabledPerspectives.join(', ')}
-   **决策理由**:
-   {decision.reasoning.map(r => '- ' + r).join('\n')}
-   ```
-
-5. **Auto mode output** (2 lines max):
-   ```
-   Smart decision: {decision.strategy} ({analysis.files_changed} files, {analysis.total_changes} lines)
-   Perspectives: {enabledPerspectives.join(', ')} | Est. {decision.estimated_tokens} tokens
-   ```
-
-6. **Store decision for later use**:
-   ```json
-   {
-     "decision": {
-       "strategy": "targeted",
-       "perspectives": { ... },
-       "depth": { ... },
-       "reasoning": [...],
-       "estimated_tokens": 6000
-     },
-     "analysis": {
-       "files_changed": 3,
-       "total_changes": 150,
-       "critical_paths": ["认证系统"]
-     }
-   }
-   ```
-
-**Then proceed with checks based on decision.perspectives**:
-- If `decision.perspectives.goal_achievement == false`, skip Step 2
-- If `decision.perspectives.architecture_design == false`, skip Step 5
-- If `decision.perspectives.quality_assurance == false`, skip Step 6
-- Always run Step 3 (skill version updates) if SKILL.md files modified
-- Always run Step 4 (quality gates) as baseline
-- Always run Step 8 (risk control) as baseline
-
-### Step 3: Check Skill Version Updates (NEW - Prevent Version Conflicts)
-
-**CRITICAL CHECK**: When SKILL.md files are modified, verify version numbers are updated.
-
-**Why this matters:**
-- Developers often forget to update version numbers when modifying skills
-- Outdated versions cause CONFLICT状态 during `/update-skills` sync (Issue #285)
-- Early detection prevents sync issues and wasted debugging time
-
-**When to run:**
-- Triggered when git diff shows changes to any `.claude/skills/*/SKILL.md` file
-- Skip if no SKILL.md files were modified (performance optimization)
-
-**Process:**
-
-1. **Detect modified SKILL.md files**:
-   ```bash
-   # Get list of modified SKILL.md files
-   git diff --name-only HEAD | grep '.claude/skills/.*/SKILL.md' > /tmp/modified-skills.txt
-
-   # If empty, skip version check
-   if [ ! -s /tmp/modified-skills.txt ]; then
-     echo "ℹ️ No SKILL.md files modified, skipping version check"
-     exit 0
-   fi
-   ```
-
-2. **For each modified SKILL.md, compare versions**:
-   ```bash
-   while read skill_file; do
-     # Extract current version from YAML frontmatter
-     CURRENT_VERSION=$(grep '^version:' "$skill_file" | sed 's/version: *"\(.*\)"/\1/')
-
-     # Extract previous version from HEAD
-     OLD_VERSION=$(git show HEAD:"$skill_file" | grep '^version:' | sed 's/version: *"\(.*\)"/\1/')
-
-     # Compare versions
-     if [ "$CURRENT_VERSION" = "$OLD_VERSION" ]; then
-       # Content changed but version unchanged - record issue
-       echo "⚠️ Version not updated: $skill_file"
-       echo "   Current: $CURRENT_VERSION"
-       echo "   Content: CHANGED"
-       echo "   Action: NEEDS_VERSION_BUMP"
-
-       # Detect change type and suggest version bump
-       DIFF=$(git diff HEAD -- "$skill_file")
-       if echo "$DIFF" | grep -qE "BREAKING|removed|deleted"; then
-         SUGGESTED="major bump ($(semver_increment "$CURRENT_VERSION" major))"
-       elif echo "$DIFF" | grep -qE "added|new feature|enhance"; then
-         SUGGESTED="minor bump ($(semver_increment "$CURRENT_VERSION" minor))"
-       else
-         SUGGESTED="patch bump ($(semver_increment "$CURRENT_VERSION" patch))"
-       fi
-
-       echo "   Suggested: $SUGGESTED"
-       echo ""
-     fi
-   done < /tmp/modified-skills.txt
-   ```
-
-3. **Version increment helper**:
-   ```bash
-   function semver_increment() {
-     local version=$1
-     local part=$2
-
-     # Parse semantic version (major.minor.patch)
-     IFS='.' read -r major minor patch <<< "$version"
-
-     case $part in
-       major)
-         echo "$((major + 1)).0.0"
-         ;;
-       minor)
-         echo "$major.$((minor + 1)).0"
-         ;;
-       patch)
-         echo "$major.$minor.$((patch + 1))"
-         ;;
-     esac
-   }
-   ```
-
-4. **Determine change type** (keywords to detect):
-   - **Major bump** (breaking changes):
-     - Keywords: "BREAKING", "removed", "deleted parameter", "incompatible"
-     - Examples: Removed arguments, changed behavior, API breakage
-
-   - **Minor bump** (new features):
-     - Keywords: "added", "new feature", "new parameter", "enhance"
-     - Examples: New functionality, new options, backward-compatible changes
-
-   - **Patch bump** (bug fixes/docs):
-     - Default for all other changes
-     - Examples: Bug fixes, documentation updates, typo corrections
-
-5. **Output results** (Interactive mode):
-   ```markdown
-   ## 3. Skill版本检查 ✅/⚠️
-
-   **修改的Skills**: 2个
-
-   ✅ `.claude/skills/eval-plan/SKILL.md`
-      版本: 1.1.0 → 1.2.0 (minor bump)
-      变更: 添加auto-fix功能
-
-   ⚠️ `.claude/skills/review/SKILL.md`
-      版本: 2.2.0 (未更新) ← 内容已变化
-      建议: minor bump → 2.3.0
-      原因: 添加了版本检查功能
-
-      修复方法:
-      1. Edit .claude/skills/review/SKILL.md
-      2. Change: version: "2.2.0"
-      3. To: version: "2.3.0"
-      4. Re-run /review
-   ```
-
-6. **Auto mode output** (2 lines max):
-   ```
-   Skill version check: 1 issue found
-   ⚠️ review/SKILL.md unchanged (2.2.0) - suggest 2.3.0
-   ```
-
-7. **Integration with .review-status.json**:
-   ```json
-   {
-     "skill_version_check": {
-       "modified_skills": 2,
-       "version_issues": 1,
-       "issues": [
-         {
-           "file": ".claude/skills/review/SKILL.md",
-           "current_version": "2.2.0",
-           "suggested_version": "2.3.0",
-           "change_type": "minor",
-           "reason": "Added version check feature"
-         }
-       ],
-       "status": "NEEDS_IMPROVEMENT"
-     }
-   }
-   ```
-
-8. **Pass/Fail logic**:
-   ```
-   if (version_issues.length > 0) {
-     return {
-       status: 'NEEDS_IMPROVEMENT',
-       blocking: true,
-       reason: 'Skill version numbers not updated',
-       fix: 'Update version numbers in YAML frontmatter'
-     };
-   }
-   ```
-
-**Performance optimization**:
-- Only runs when `.claude/skills/*/SKILL.md` files are modified
-- Uses `git diff --name-only` for fast file detection
-- Skips check entirely if no skills modified
-
-**Example scenario** (Issue #285):
-```
-修改了 .claude/skills/update-skills/SKILL.md
-- 内容: 添加了 --clean 默认行为
-- 版本: 2.4.0 (未更新)
-- 检测: ⚠️ Breaking change detected
-- 建议: major bump → 3.0.0
-- 原因: 默认行为改变是破坏性变更
-```
+Execute these steps in sequence with TaskCreate/TaskUpdate for progress tracking.
 
 ## Review Dimensions
 
-### 1. Quality Gates
+### 1. Quality Gates (30 points)
 
-Basic quality checks that every project needs:
+Basic quality checks:
+- TypeScript compilation (types valid)
+- Test execution (all passing)
+- Linting (no errors)
+- Build success
 
-```
-✅ Types valid (TypeScript compiles)
-✅ Tests passing
-✅ Linting passes
-✅ No obvious bugs
-```
+### 2. Architecture Validation (25 points)
 
-**How to check:**
-```bash
-# TypeScript
-npx tsc --noEmit
+Check architecture patterns:
+- Layer separation (UI → Domain → Data)
+- Dependency direction (inward only)
+- Module boundaries (no circular deps)
 
-# Tests
-npm test
+### 3. Pillar Compliance (20 points)
 
-# Linting
-npm run lint
-```
+Based on project profile:
+- Error handling present
+- Logging at appropriate levels
+- Input validation at boundaries
+- Documentation for public APIs
+- Test coverage for changes
 
-### 2. Architecture Validation
+### 4. ADR Compliance (10 points)
 
-**Dynamic detection** - scans `.claude/rules/architecture/` to find which rules are enabled:
+Adherence to Architecture Decision Records:
+- Scan `docs/ADRs/` directory
+- Check code follows applicable ADRs
+- Flag deviations with justification needed
 
-```
-Process:
-1. List files in .claude/rules/architecture/
-2. For each rule file found, check compliance
-3. Common rules to look for:
-   - clean-architecture.md → Check module boundaries
-   - dependency-rules.md → Check dependency direction
-   - layer-boundaries.md → Check layer separation
-   - naming-conventions.md → Check naming patterns
-   - error-handling.md → Check error patterns
+### 5. Security (10 points)
 
-If no architecture rules found:
-  ℹ️ Skip architecture checks (not configured for this project)
-```
+Identify vulnerabilities:
+- Input validation
+- SQL injection prevention
+- XSS prevention
+- No secrets in code
+- Dependency vulnerabilities
 
-### 3. Pillar Compliance
+### 6. Performance (5 points)
 
-**Dynamic detection** - determines which Pillars to check based on project profile:
+Detect performance issues:
+- Algorithmic complexity (avoid O(n²) where O(n) possible)
+- Efficient data structures
+- No memory leaks
+- Database queries optimized
 
-```
-Detection Method:
-1. Read .framework-install file for profile
-   OR scan .prot/pillars/ for installed Pillars
-2. Map profile to Pillars:
-   - minimal: A, B, K (3 Pillars)
-   - node-lambda: A, B, K, M, Q, R (6 Pillars)
-   - react-aws: A, B, K, L, M, Q, R (7 Pillars)
-   - custom: Whatever exists in .prot/pillars/
-
-3. Only check enabled Pillars
-
-Example checks (if enabled):
-✅ Pillar A (Nominal Types) - Branded types for IDs
-✅ Pillar B (Airlock) - Schema validation at boundaries
-✅ Pillar K (Testing) - Test pyramid structure
-✅ Pillar M (Saga) - Transaction compensation
-✅ Pillar Q (Idempotency) - Idempotent operations
-✅ Pillar R (Logging) - Semantic logging with traceId
-```
-
-**Important:** Only check Pillars enabled in THIS project. Don't assume all Pillars exist.
-
-### 4. ADR Compliance
-
-**Dynamic scanning** - discovers and checks ADRs specific to this project:
-
-```
-Process:
-1. Scan docs/adr/ (or docs/ADRs/) for all *.md files
-2. Extract ADR number, title, and requirements
-3. Identify which ADRs are relevant to changed code
-4. Check compliance for each relevant ADR
-5. Report violations with file:line references
-
-Example (project-specific):
-✅ ADR-001 (Official Skill Patterns)
-   Check: SKILL.md has YAML frontmatter
-   Check: Description has TRIGGER conditions
-
-⚠️ ADR-009 (Zustand Vanilla Store)
-   Violation: src/stores/taskStore.ts:5
-   Issue: Using create() instead of createStore()
-   Fix: import { createStore } from 'zustand/vanilla'
-
-When no ADRs found:
-  ℹ️ No ADRs in docs/adr/ - skip ADR checks
-```
-
-**Key point:** ADR checks are 100% project-specific. Different projects have different ADRs.
-
-### 5. Security
-
-Common security checks:
-
-```
-✅ Input validation present
-✅ No hardcoded secrets or API keys
-✅ SQL injection prevention (parameterized queries)
-✅ CSRF protection (if web app)
-✅ XSS prevention (escaped output)
-```
-
-### 6. Performance
-
-Basic performance checks:
-
-```
-✅ No N+1 queries
-✅ Proper caching strategy
-✅ Reasonable algorithm complexity (no O(n²) in hot paths)
-✅ Lazy loading where appropriate
-```
-
-## Review Output
-
-**Output adapts based on mode:**
-
-### Auto Mode Output (2 lines)
-
-When called by `/work-issue --auto`:
-
-```
-✅ Code review: 92/100 (approved)
-Status: .claude/.review-status.json
-```
-
-### Interactive Mode Output (≤20 lines)
-
-When called directly by user:
-
-```markdown
-# Code Review: Issue #{issue_number}
-
-Score: 85/100 (approved_with_recommendations)
-Files: 8 changed (+150/-50)
-Issues: 0 blocking, 2 recommendations
-
-Quality Gates: ✅ All passed
-Pillars: 7/7 compliant
-ADRs: 2/3 compliant
-
-Top Issues:
-1. ADR-009 violation: taskStore.ts:5 - Use createStore()
-2. Performance: N+1 query in userLoader.ts:23
-
-Status: .claude/.review-status.json
-Next: Fix issues or /finish-issue
-```
-
-### Full Report Format (status file only)
-
-Complete review stored in `.claude/.review-status.json`:
-
-```json
-{
-  "timestamp": "2026-03-11T14:30:00Z",
-  "issue_number": 23,
-  "status": "approved_with_recommendations",
-  "score": 85,
-  "breakdown": {
-    "quality_gates": 90,
-    "architecture": 88,
-    "security": 90,
-    "performance": 75
-  },
-  "issues_count": {
-    "blocking": 0,
-    "recommendations": 2
-  },
-  "issues": [
-    {
-      "file": "src/stores/taskStore.ts",
-      "line": 5,
-      "category": "adr_compliance",
-      "description": "ADR-009 violation: Using create() instead of createStore()",
-      "fix": "Import from 'zustand/vanilla'"
-    }
-  ]
-}
-```
+**See**: [QUALITY.md](./QUALITY.md) for scoring details
 
 ## Approval Levels
 
-**✅ Green (Approved)**
-- All quality checks pass
-- Architecture sound
-- Pillars correctly implemented
-- ADRs complied with
-- No security issues
+### ✅ Approved (Score > 90)
+- All critical gates pass
+- No blocking issues
 - Ready to merge
 
-**⚠️ Yellow (Approved with recommendations)**
-- Minor issues that don't block merge
-- Non-critical ADR deviations (with justification)
-- Can be addressed in follow-up
-- Merge allowed with observations
+### ⚠️ Needs Improvement (Score 70-90)
+- Some gates fail or recommendations present
+- No blocking issues
+- Can merge with awareness
 
-**❌ Red (Changes required)**
+### ❌ Rejected (Score < 70)
+- Critical gates fail
+- Blocking issues present
 - Must fix before merge
-- Security vulnerabilities
-- Breaking changes
-- Architecture violations
-- Critical ADR violations
+
+**See**: [QUALITY.md](./QUALITY.md) for threshold details
 
 ## Integration with /finish-issue
 
-After review, `/finish-issue` can read the status file to skip re-review if results are still valid (within 90 minutes).
+After review, `/finish-issue` reads the status file to skip re-review if valid (within 90 minutes).
 
 **Workflow:**
-```
+```bash
 /review              # Review code, write status
 /finish-issue #N     # Reads status, skips re-review if valid
 ```
@@ -663,33 +344,35 @@ After review, write `.claude/.review-status.json`:
 
 ```json
 {
-  "timestamp": "2026-03-11T14:30:00Z",
-  "issue_number": 23,
+  "timestamp": "2026-03-30T14:30:00Z",
+  "issue_number": 421,
   "status": "approved",
   "score": 92,
   "breakdown": {
-    "quality_gates": 90,
-    "architecture": 95,
-    "security": 90,
-    "performance": 92
+    "quality_gates": 30,
+    "architecture": 23,
+    "pillar_compliance": 18,
+    "adr_compliance": 10,
+    "security": 10,
+    "performance": 1
   },
   "issues_count": {
     "blocking": 0,
     "recommendations": 2
   },
-  "valid_until": "2026-03-11T16:00:00Z"
+  "valid_until": "2026-03-30T16:00:00Z"
 }
 ```
 
 **Status values:**
 - `"approved"` - Score > 90, no blocking issues
-- `"approved_with_recommendations"` - Score 70-90, minor issues
-- `"issues_found"` - Score < 70, must fix before proceeding
+- `"needs_improvement"` - Score 70-90, minor issues
+- `"rejected"` - Score < 70, must fix before proceeding
 
 **Validity:** 90 minutes from review completion
 
 **Used by:**
-- `/work-issue` - Checkpoint 2 logic (auto-skip if score > 90)
+- `/auto-solve-issue` - Checkpoint 2 logic (auto-continue if score ≥ 90)
 - `/finish-issue` - Skips re-review if status valid
 
 ## Usage Examples
@@ -697,78 +380,55 @@ After review, write `.claude/.review-status.json`:
 ### Example 1: Review Current Changes
 
 **User says:**
-> "review my code changes"
+> "review my code"
 
 **What happens:**
-1. Detect project config (profile, rules, ADRs)
-2. Run quality gates
-3. Check architecture, Pillars, ADRs
-4. Generate report
-5. Write .review-status.json
-6. Show approval status
+1. Detect issue number from branch
+2. Run smart decision (analyze change size)
+3. Execute adaptive review strategy
+4. Generate report with score
+5. Write status file
 
-### Example 2: Review Specific Files
+**See**: [EXAMPLES.md](./EXAMPLES.md) for more examples
 
-**User says:**
-> "review src/auth/ for security issues"
+### Example 2: Goal Coverage Failure
 
-**What happens:**
-1. Focus on src/auth/ directory
-2. Run security checks
-3. Check relevant Pillars (B for validation)
-4. Check relevant ADRs
-5. Report findings
+**Scenario:** Issue requires 5 acceptance criteria, only 3 implemented.
 
-### Example 3: Pre-PR Review
+**Output:**
+```markdown
+## 1. Goal Coverage Check ❌
 
-**User says:**
-> "check if this is ready for PR"
+**Issue Requirements**: 3/5 (60%) ← Below 80% threshold
+Missing: AC3, AC5
 
-**What happens:**
-1. Full review all dimensions
-2. Check quality gates
-3. Validate all applicable patterns
-4. Provide go/no-go recommendation
-5. Write status for /finish-issue
+**Status**: REJECTED (blocking)
+```
+
+### Example 3: Skill Version Not Updated
+
+**Scenario:** Modified SKILL.md but forgot version bump.
+
+**Output:**
+```markdown
+## 3. Skill Version Check ⚠️
+
+⚠️ `.claude/skills/eval-plan/SKILL.md`
+   Version: 1.1.0 (unchanged)
+   Suggested: 1.2.0 (minor bump)
+
+**Status**: NEEDS_IMPROVEMENT (blocking)
+```
+
+**See**: [VERSION_CHECK.md](./VERSION_CHECK.md) for details
 
 ## Best Practices
 
 1. **Run before /finish-issue** - Catches issues early
 2. **Trust dynamic detection** - Skill adapts to your project
-3. **Fix blocking issues** - Don't merge with red flags
+3. **Fix blocking issues** - Don't merge with critical failures
 4. **Learn from reviews** - Improves code quality over time
 5. **Re-review after fixes** - Status expires in 90 minutes
-
-## Task Management
-
-**After completing each review dimension**, update progress:
-
-```
-Quality gates done → Update Task #1
-Architecture validated → Update Task #2
-Pillars checked → Update Task #3
-ADRs verified → Update Task #4
-Security scanned → Update Task #5
-Performance checked → Update Task #6
-Status file written → Update Task #7
-```
-
-Provides real-time visibility of review progress.
-
-## Final Verification
-
-**Before completing review**, verify:
-
-```
-- [ ] All 7 review tasks completed
-- [ ] Status file written (.claude/.review-status.json)
-- [ ] Approval level determined (✅/⚠️/❌)
-- [ ] All blocking issues documented
-- [ ] Score calculated (0-100)
-- [ ] Valid until timestamp set (90 min)
-```
-
-Missing items indicate incomplete review.
 
 ## Worktree Support
 
@@ -776,69 +436,77 @@ If the issue was started with `/start-issue` and a worktree was created, review 
 
 ### Auto-Detection
 
-**Extract worktree path from plan**:
 ```bash
 PLAN_FILE=".claude/plans/active/issue-${ISSUE_NUM}-plan.md"
 WORKTREE_PATH=$(grep "^**Worktree**:" "$PLAN_FILE" | cut -d' ' -f2)
 ```
 
-### File Operations with Worktree
+### File Operations
 
 **All file reads must use absolute worktree paths**:
 
 ```bash
 # ✅ CORRECT - Review files in worktree
-Read ${WORKTREE_PATH}/.claude/skills/start-issue/SKILL.md
 Read ${WORKTREE_PATH}/src/components/Button.tsx
-Read ${WORKTREE_PATH}/tests/button.test.ts
-
-# Check git diff in worktree
 git -C ${WORKTREE_PATH} diff main...HEAD
 
-# Get changed files in worktree
-git -C ${WORKTREE_PATH} diff --name-only main...HEAD
-
-# ❌ WRONG - Reviews main repo instead of worktree
-Read .claude/skills/start-issue/SKILL.md
+# ❌ WRONG - Reviews main repo instead
+Read src/components/Button.tsx
 git diff main...HEAD
 ```
 
-### Review Workflow with Worktree
+## Task Management
 
-**Step-by-step**:
+After each step completion, update progress using TaskUpdate:
 
-1. **Read plan from worktree** to identify issue and scope
-2. **Get changed files** from worktree git diff
-3. **Review each file** using absolute worktree paths
-4. **Check tests** in worktree test directory
-5. **Verify builds** in worktree (if applicable)
-6. **Write status file** to main repo (for /work-issue integration)
+```python
+# Mark task in progress
+TaskUpdate(task_id, status="in_progress")
 
-### Fallback Behavior
+# Execute review dimension
+execute_dimension()
 
-If no worktree path found:
-- ✅ Use current working directory
-- ✅ Standard relative paths work
-- ✅ Backward compatible
+# Mark complete
+TaskUpdate(task_id, status="completed")
+```
 
----
+## Final Verification
+
+Before completing review, verify:
+
+```markdown
+- [ ] All review tasks completed
+- [ ] Status file written (.claude/.review-status.json)
+- [ ] Approval level determined (✅/⚠️/❌)
+- [ ] All blocking issues documented
+- [ ] Score calculated (0-100)
+- [ ] Valid until timestamp set (90 min)
+```
 
 ## Related Skills
 
 - **/eval-plan** - Validates plans (Phase 1.5 - symmetric validation for planning)
-- **/work-issue** - Calls this skill in Phase 2.5 (quality check after implementation)
+- **/auto-solve-issue** - Calls this skill in Phase 2.5 (quality check after implementation)
 - **/finish-issue** - Uses review status to skip re-review
-- **/pillar** - Deep dive into specific Pillar
-- **/adr** - Create or check Architecture Decision Records
+- **/execute-plan** - Implementation phase (run before this)
+
+## Documentation
+
+- **[CHECKLIST.md](./CHECKLIST.md)** - Complete review checklist for all dimensions
+- **[QUALITY.md](./QUALITY.md)** - Scoring methodology and approval thresholds
+- **[VERSION_CHECK.md](./VERSION_CHECK.md)** - Skill version validation logic (Issue #401)
+- **[EXAMPLES.md](./EXAMPLES.md)** - Real-world usage examples
 
 ---
 
-**Version:** 2.3.0
+**Version:** 2.4.1
+**Last Updated:** 2026-03-30
 **Pattern:** Tool-Reference (guides review process)
-**Compliance:** ADR-001 ✅ | WORKFLOW_PATTERNS.md ✅
-**Last Updated:** 2026-03-24
+**Compliance:** ADR-001 ✅ | ADR-014 ✅ | WORKFLOW_PATTERNS.md ✅
 **Changelog:**
-- v2.3.0: Added skill version check to prevent version conflicts (Issue #294)
-- v2.2.0: Added mode-aware output (2 lines auto, ≤20 lines interactive) (Issue #263)
+- v2.4.1: Use shared version.py module for version checking (Issue #406)
+- v2.4.0: Split into 5 documents for ADR-014 compliance (Issue #421)
+- v2.3.0: Added skill version check to prevent version conflicts (Issue #401)
+- v2.2.0: Added mode-aware output (2 lines auto, ≤20 lines interactive)
 - v2.1.0: Dynamic configuration detection
 - v2.0.0: Added Pillar and ADR compliance checks

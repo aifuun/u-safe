@@ -19,7 +19,7 @@ Auto-generate standard documentation structure for projects with profile-aware c
 This skill automatically creates a comprehensive documentation structure following the framework's documentation standards:
 
 **What it does:**
-1. **Auto-detects project profile** from `.framework-install` (tauri, tauri-aws, nextjs-aws)
+1. **Auto-detects project profile** from `docs/project-profile.md` (tauri, tauri-aws, nextjs-aws)
 2. **Creates standard directories** - docs/ADRs/, docs/architecture/, docs/api/, docs/guides/, docs/diagrams/
 3. **Generates template files** - README, PRD, ARCHITECTURE, SCHEMA, API, SETUP, TEST_PLAN, DEPLOYMENT
 4. **Copies documentation manual** - DOCUMENTATION_MANUAL.md from framework to target project
@@ -74,7 +74,7 @@ When executing `/init-docs`, AI MUST follow this pattern:
 
 ```python
 # Read docs guide for structure standards
-docs_guide = read_file("docs/ai-guides/DOCS_GUIDE.md")
+docs_guide = read_file(".claude/guides/DOCS_GUIDE.md")
 
 # Extract structure standards
 structure_standards = extract_docs_standards(docs_guide)
@@ -98,9 +98,9 @@ structure_standards = extract_docs_standards(docs_guide)
 ### Step 1: Detect Project Profile
 
 ```python
-# Read .framework-install to get profile
-if os.path.exists('.framework-install'):
-    with open('.framework-install', 'r') as f:
+# Read docs/project-profile.md to get profile
+if os.path.exists('docs/project-profile.md'):
+    with open('docs/project-profile.md', 'r') as f:
         data = json.load(f)
         profile = data.get('profile', 'tauri')  # Default to tauri
 else:
@@ -179,7 +179,7 @@ project_name = get_project_name()  # From package.json or directory name
 tech_stack = get_tech_stack(profile)  # Profile-specific stack
 
 for template_name, description in templates:
-    template_path = f'framework/.prot-template/docs-templates/{template_name}.template'
+    template_path = f'.claude/pillars/docs-templates/{template_name}.template'
 
     if os.path.exists(template_path):
         content = load_template(template_path)
@@ -224,7 +224,7 @@ Use the `/adr` skill:
 /adr "Title of decision"
 ```
 
-Or manually create files following the template in `framework/.prot-template/adr-template.md`.
+Or manually create files following the template in `.claude/pillars/adr-template.md`.
 
 ## ADR Lifecycle
 
@@ -296,9 +296,9 @@ Execute in sequence with progress tracking.
 
 **Auto-detection:**
 ```bash
-# Check for .framework-install
-if [ -f .framework-install ]; then
-    PROFILE=$(jq -r '.profile' .framework-install)
+# Check for docs/project-profile.md
+if [ -f docs/project-profile.md ]; then
+    PROFILE=$(jq -r '.profile' docs/project-profile.md)
 else
     PROFILE="tauri"  # Default
 fi
@@ -332,7 +332,7 @@ fi
 
 3. Template directory accessible
    ```bash
-   if [ ! -d framework/.prot-template/docs-templates/ ]; then
+   if [ ! -d .claude/pillars/docs-templates/ ]; then
        echo "⚠️  Template directory not found"
        echo "Creating stub templates instead"
    fi
@@ -471,7 +471,7 @@ done
 
 **Template loading:**
 ```bash
-TEMPLATE_DIR="framework/.prot-template/docs-templates"
+TEMPLATE_DIR=".claude/pillars/docs-templates"
 
 if [ -f "$TEMPLATE_DIR/${filename}.template" ]; then
     sed -e "s/{{projectName}}/$PROJECT_NAME/g" \
@@ -579,7 +579,7 @@ Run without --dry-run to execute
 ❌ Documentation already initialized
 
 Found: docs/ directory
-Created: {date from .framework-install}
+Created: {date from docs/project-profile.md}
 
 Options:
 1. Use --force to overwrite
@@ -603,7 +603,7 @@ Fix: /init-docs --profile tauri
 ```
 ⚠️  Template directory not found
 
-Expected: framework/.prot-template/docs-templates/
+Expected: .claude/pillars/docs-templates/
 Actual: Not found
 
 Creating stub templates instead...
@@ -626,7 +626,7 @@ Fix: Check directory permissions
 > "initialize documentation"
 
 **Workflow:**
-1. Read `.framework-install` → profile: tauri
+1. Read `docs/project-profile.md` → profile: tauri
 2. Validate: no docs/ exists
 3. Create 6 directories
 4. Generate 9 template files
@@ -765,9 +765,9 @@ Project Initialization:
 - `docs/ADRs/README.md` - ADR index
 
 **Files read:**
-- `.framework-install` - Profile detection
+- `docs/project-profile.md` - Profile detection
 - `package.json` - Project name, description
-- `framework/.prot-template/docs-templates/` - Template source
+- `.claude/pillars/docs-templates/` - Template source
 
 ## Best Practices
 

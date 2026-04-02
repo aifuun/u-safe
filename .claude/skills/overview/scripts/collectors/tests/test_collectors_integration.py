@@ -15,7 +15,6 @@ import sys
 from pathlib import Path
 
 # Add collectors to path
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
 # Would import collectors here when Xcode issue resolved:
 # from collectors import (

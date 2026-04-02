@@ -1,10 +1,11 @@
 ---
 name: update-framework
 description: |
-  Sync entire framework (Pillars, Rules, Workflow, Skills) in one command - meta-skill orchestrating all update-* skills.
+  Sync framework content (Pillars, Skills) - Rules excluded (use /manage-rules).
   TRIGGER when: user wants complete framework sync ("update framework from X", "sync entire framework", "pull all from framework", "upgrade framework").
-  DO NOT TRIGGER when: user wants specific components only (use /update-pillars, /update-rules, /update-workflow, /update-skills), or just wants to read framework docs.
-version: "2.1.0"
+  DO NOT TRIGGER when: user wants specific components only (use /update-pillars, /update-skills), or just wants to read framework docs.
+version: "4.1.1"
+framework-only: true
 allowed-tools: Bash(cp *), Bash(mkdir *), Bash(ls *), Bash(find *), Bash(test *), Bash(cat *), Bash(git *), Bash(gh *), Read, Write, Glob, Grep, Edit
 disable-model-invocation: false
 user-invocable: true
@@ -12,23 +13,21 @@ user-invocable: true
 
 # Update Framework - Complete Framework Synchronization Meta-Skill
 
-Sync all framework components (Pillars, Rules, Workflow, Skills) between projects in one command.
+Sync framework components (Pillars, Guides, Skills) between projects in one command.
 
 ## Overview
 
-This meta-skill orchestrates all 4 update-* skills for complete framework synchronization:
+This meta-skill orchestrates framework content synchronization:
 
 **What it does:**
-0. (NEW) Conducts tech stack questionnaire for intelligent filtering
-1. Calls update-pillars, update-rules, update-workflow, update-skills in sequence
-2. Aggregates analysis from all 4 components
-3. Shows unified diff preview (with filter summary)
-4. Confirms once before syncing everything
-5. Executes all 4 syncs with smart filtering
-6. Reports comprehensive summary
+1. Syncs Pillars from framework (18 coding standards)
+2. Syncs Guides (AI reference docs and profiles)
+3. Syncs Skills (workflow automation commands)
+
+**Note**: Rules are project-specific and generated via `/manage-rules` (see ADR-013).
 
 **Why it's needed:**
-Monthly framework upgrades require syncing 4 components. Running 4 separate commands with 4 confirmations takes ~2 minutes. This meta-skill does it in one command with one confirmation in ~30 seconds.
+Monthly framework upgrades require syncing framework components. Running separate commands with multiple confirmations takes time. This meta-skill does it in one command in ~30 seconds.
 
 **When to use:**
 - Monthly framework upgrades (pull all updates)
@@ -42,7 +41,7 @@ Monthly framework upgrades require syncing 4 components. Running 4 separate comm
 
 When executing `/update-framework`, AI MUST follow this pattern:
 
-### Step 1: Create 7 or 8 Subtasks
+### Step 1: Create 6 or 7 Subtasks
 
 ```python
 # Create all tasks at the start
@@ -62,15 +61,10 @@ tasks = {
         description="Call /update-pillars with profile filters",
         activeForm="Syncing Pillars..."
     ),
-    "rules": TaskCreate(
-        subject="Sync Rules via update-rules",
-        description="Call /update-rules with profile-based filters",
-        activeForm="Syncing Rules..."
-    ),
-    "workflow": TaskCreate(
-        subject="Sync Workflow via update-workflow",
-        description="Call /update-workflow",
-        activeForm="Syncing Workflow..."
+    "guides": TaskCreate(
+        subject="Sync Guides via update-guides",
+        description="Call /update-guides",
+        activeForm="Syncing Guides..."
     ),
     "skills": TaskCreate(
         subject="Sync Skills via update-skills",
@@ -87,9 +81,9 @@ tasks = {
 # Add permissions task by default (unless --without-permission-enable flag set)
 if not without_permission_enable:
     tasks["permissions"] = TaskCreate(
-        subject="Configure permissions via configure-permissions",
-        description="Call /configure-permissions to set up work-issue auto mode",
-        activeForm="Configuring permissions..."
+        subject="Sync permissions via update-permissions",
+        description="Copy .claude/settings.json from framework to target",
+        activeForm="Syncing permissions..."
     )
 ```
 
@@ -111,25 +105,20 @@ TaskUpdate(tasks["pillars"], "in_progress")
 Skill("update-pillars", args=f"--to {target} --pillars {profile.pillars}")
 TaskUpdate(tasks["pillars"], "completed")
 
-# Call update-rules sub-skill
-TaskUpdate(tasks["rules"], "in_progress")
-Skill("update-rules", args=f"--to {target} --profile {profile.name}")
-TaskUpdate(tasks["rules"], "completed")
-
-# Call update-workflow sub-skill
-TaskUpdate(tasks["workflow"], "in_progress")
-Skill("update-workflow", args=f"--to {target}")
-TaskUpdate(tasks["workflow"], "completed")
+# Call update-guides sub-skill
+TaskUpdate(tasks["guides"], "in_progress")
+Skill("update-guides", args=f"--to {target}")
+TaskUpdate(tasks["guides"], "completed")
 
 # Call update-skills sub-skill
 TaskUpdate(tasks["skills"], "in_progress")
 Skill("update-skills", args=f"--to {target}")
 TaskUpdate(tasks["skills"], "completed")
 
-# Call configure-permissions sub-skill by default (unless --without-permission-enable flag set)
+# Call update-permissions sub-skill by default (unless --without-permission-enable flag set)
 if not without_permission_enable and "permissions" in tasks:
     TaskUpdate(tasks["permissions"], "in_progress")
-    Skill("configure-permissions", args=f"{target}")
+    Skill("update-permissions", args=f"--to {target}")
     TaskUpdate(tasks["permissions"], "completed")
 
 # Summary
@@ -142,8 +131,8 @@ TaskUpdate(tasks["summary"], "completed")
 
 **❌ WRONG - Do not do this:**
 ```python
-rsync -av framework/.prot-template/pillars/ ../target/.prot/pillars/
-rsync -av framework/.claude-template/rules/ ../target/.claude/rules/
+rsync -av .claude/pillars/ ../target/.claude/pillars/
+rsync -av .claude/rules/ ../target/.claude/rules/
 rm -rf ../target/.claude/rules/backend  # Manual cleanup
 ```
 
@@ -151,7 +140,6 @@ rm -rf ../target/.claude/rules/backend  # Manual cleanup
 ```python
 Skill("update-pillars", args="--to ../target --pillars A,B,K,L")
 Skill("update-rules", args="--to ../target --profile nextjs-aws")
-Skill("update-workflow", args="--to ../target")
 Skill("update-skills", args="--to ../target")
 ```
 
@@ -164,8 +152,8 @@ Skill("update-skills", args="--to ../target")
 **Before syncing, auto-detect the target project's profile** to filter irrelevant components.
 
 **How it works:**
-1. **Auto-detect profile** from `.framework-install` file in target project
-2. **Load profile configuration** from `framework/profiles/{profile}.json`
+1. **Auto-detect profile** from `docs/project-profile.md` file in target project
+2. **Load profile configuration** from `.claude/profiles/{profile}.json`
 3. **Extract rules list** from profile's `rules` array
 4. **Filter during sync** - only copy rules that match the profile
 5. **Fallback to questionnaire** if `.framework-install` not found
@@ -210,19 +198,17 @@ After creating tasks, proceed with meta-sync execution.
 
 ```
 Sync Order (dependency-optimized):
-1. 📚 Pillars    → .prot/pillars/              (Foundation)
-2. 📋 Rules      → .claude/rules/              (Reference Pillars)
-3. 📖 Workflow   → CLAUDE.md + .claude/workflow/ (Uses Rules)
-4. ⚡ Skills     → .claude/skills/             (Implements Workflow)
+1. 📚 Pillars    → .claude/pillars/            (Foundation)
+2. 📖 Guides     → .claude/guides/             (AI reference docs)
+3. ⚡ Skills     → .claude/skills/             (Implements workflow)
 ```
 
 ### Component Details
 
 | Component | What Syncs | Delegated Skill |
 |-----------|------------|-----------------|
-| **Pillars** | 18 coding standards (.prot/pillars/) | /update-pillars |
-| **Rules** | 40+ technical rules (.claude/rules/) | /update-rules |
-| **Workflow** | CLAUDE.md + workflow templates | /update-workflow |
+| **Pillars** | 18 coding standards (.claude/pillars/) | /update-pillars |
+| **Guides** | AI guides & profiles (.claude/guides/) | /update-guides |
 | **Skills** | All skills (.claude/skills/) | /update-skills |
 
 ## Usage
@@ -272,14 +258,13 @@ Preview all changes without applying:
 Sync only specific components:
 
 ```bash
-/update-framework --from ~/dev/ai-dev --only skills,workflow
+/update-framework --from ~/dev/ai-dev --only skills
 /update-framework --from ~/dev/ai-dev --skip pillars
 ```
 
 **Available components:**
 - `pillars` - Pillar documentation
-- `rules` - Technical rules
-- `workflow` - Workflow documentation
+- `guides` - AI guides and profiles
 - `skills` - Skills (commands)
 
 **Note:** Cannot use both --skip and --only together.
@@ -321,9 +306,9 @@ Update tech stack configuration and regenerate filters:
 ```
 
 **What happens by default:**
-1. Complete framework sync (Pillars, Rules, Workflow, Skills)
-2. Automatically call `/configure-permissions` skill
-3. Configure `.claude/settings.json` with required permissions
+1. Complete framework sync (Pillars, Skills)
+2. Automatically call `/update-permissions` skill
+3. Copy `.claude/settings.json` from framework to target
 4. Show permission summary in final report
 
 **Configured permissions:**
@@ -353,7 +338,7 @@ After configuration, `work-issue --auto` runs without permission prompts.
 ```
 
 **Sync order (dependency-aware):**
-- Pillars → Rules → Workflow → Skills
+- Pillars → Skills
 
 **See**: [ADVANCED.md](ADVANCED.md) for complete delegation flow, output examples, and partial failure recovery.
 
@@ -377,33 +362,28 @@ Task Progress:
    ✅ Synced 4 Pillars (A, B, K, L)
 ✅ Task 3/7: Complete
 
-⏳ Task 4/7: Syncing Rules via update-rules...
-   Launching skill: update-rules
-   ✅ Synced 23 rules (tauri profile, 23 filtered)
+⏳ Task 4/7: Syncing Guides via update-guides...
+   Launching skill: update-guides
+   ✅ Synced 18 guide files
 ✅ Task 4/7: Complete
 
-⏳ Task 5/7: Syncing Workflow via update-workflow...
-   Launching skill: update-workflow
-   ✅ Synced 6 workflow files
+⏳ Task 5/7: Syncing Skills via update-skills...
+   Launching skill: update-skills
+   ✅ Synced 35 skills
 ✅ Task 5/7: Complete
 
-⏳ Task 6/7: Syncing Skills via update-skills...
-   Launching skill: update-skills
-   ✅ Synced 18 skills
-✅ Task 6/7: Complete
-
-✅ Task 7/7: Report comprehensive summary
+✅ Task 6/7: Report comprehensive summary
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Summary
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Profile: tauri
-✅ Pillars: 4 synced
-✅ Rules: 23 synced (23 filtered by profile)
-✅ Workflow: 6 synced
-✅ Skills: 18 synced
+✅ Pillars: 18 synced
+✅ Guides: 18 synced
+✅ Skills: 35 synced
+⚠️  Rules NOT synced (use /manage-rules --profile tauri)
 
-Total: 51 items synced in 28 seconds
+Total: 71 items synced in 25 seconds
 ```
 
 **Time:** ~30 seconds
@@ -430,7 +410,7 @@ Total: 51 items synced in 28 seconds
 
 **What happens:**
 1. `/update-framework --from ~/dev/ai-dev --skip skills`
-2. Only call update-pillars, update-rules, update-workflow
+2. Only call update-pillars
 3. Aggregate: 8 items to sync (skip skills)
 4. Confirm and sync
 5. Report: "Updated 8 items (skipped skills)"
@@ -461,7 +441,7 @@ Total: 51 items synced in 28 seconds
 - ✅ Dry-run preview available
 
 **Smart defaults:**
-- Dependency-aware sync order (Pillars → Rules → Workflow → Skills)
+- Dependency-aware sync order (Pillars → Skills)
 - Aggregated summary before confirmation
 - Progress shown for each component
 - Clean error messages per component
@@ -484,7 +464,7 @@ Expected framework components in: ../nonexistent/
 
 Please check:
 1. Path is correct
-2. Project has framework components (.prot/, .claude/)
+2. Project has framework components (.claude/pillars/, .claude/)
 3. You have read permissions
 ```
 
@@ -495,10 +475,8 @@ Please check:
 
 Missing: update-pillars
 
-This meta-skill requires all 4 component skills:
+This meta-skill requires these component skills:
 - update-pillars
-- update-rules
-- update-workflow
 - update-skills
 
 Please ensure all skills are installed.
@@ -515,10 +493,8 @@ Current project has all latest versions.
 ┌────────────┬─────┬─────┬──────┐
 │ Component  │ New │ Upd │ Same │
 ├────────────┼─────┼─────┼──────┤
-│ Pillars    │  0  │  0  │   3  │
-│ Rules      │  0  │  0  │  40  │
-│ Workflow   │  0  │  0  │   5  │
-│ Skills     │  0  │  0  │  12  │
+│ Pillars    │  0  │  0  │  18  │
+│ Skills     │  0  │  0  │  35  │
 └────────────┴─────┴─────┴──────┘
 ```
 
@@ -528,15 +504,14 @@ Current project has all latest versions.
 ⚠️  Framework sync completed with warnings
 
 ✅ Pillars: Updated 2 items
-✅ Rules: Updated 4 items
-❌ Workflow: Failed (permission denied)
 ✅ Skills: Updated 3 items
+⚠️  Rules NOT synced (use /manage-rules)
 
 Summary:
-- Successful: 3/4 components
-- Failed: 1 component (workflow)
+- Successful: 2/2 components
+- Total: 5 items synced
 
-Would you like to retry failed components? (y/n)
+Framework sync complete.
 ```
 
 ## Best Practices
@@ -578,9 +553,10 @@ Would you like to retry failed components? (y/n)
 ```bash
 # Fine-grained control
 /update-pillars --from ~/dev/ai-dev --pillars A,B,K
-/update-rules --from ~/dev/ai-dev --categories core,architecture
-/update-workflow --from ~/dev/ai-dev --files CLAUDE.md
-/update-skills --from ~/dev/ai-dev --incremental --skills adr,review  # v3.0.0: --skills requires --incremental
+/update-skills --from ~/dev/ai-dev --skills adr,review
+
+# For rules, use /manage-rules (deprecated: /update-rules)
+/manage-rules --profile tauri --instant
 
 # Coarse-grained control (this meta-skill)
 /update-framework --from ~/dev/ai-dev
@@ -618,9 +594,9 @@ Provides real-time visibility of meta-sync progress.
 **Before declaring sync complete**, verify:
 
 ```
-- [ ] All 6 meta-sync tasks completed
+- [ ] All 6 or 7 meta-sync tasks completed (depending on permissions flag)
 - [ ] Source and target paths valid
-- [ ] All 4 component skills called successfully
+- [ ] All 3 component skills called successfully (pillars, guides, skills)
 - [ ] User confirmed unified changes
 - [ ] All components synced (or partial failure reported)
 - [ ] Comprehensive summary displayed
@@ -632,11 +608,39 @@ Missing items indicate incomplete meta-sync.
 
 | Aspect | Individual Skills | update-framework |
 |--------|-------------------|------------------|
-| **Commands** | 4 separate | 1 command |
-| **Confirmations** | 4 prompts | 1 prompt |
-| **Time** | ~2 minutes | ~30 seconds |
-| **Complexity** | Must remember 4 | Simple, memorable |
+| **Commands** | 3 separate | 1 command |
+| **Confirmations** | 3 prompts | 1 prompt |
+| **Time** | ~90 seconds | ~25 seconds |
+| **Complexity** | Must remember 3 | Simple, memorable |
 | **Use case** | Fine-grained | Complete sync |
+
+## Migration from v2.x
+
+**Breaking Change**: Rules are no longer synced by `/update-framework`.
+
+**Old workflow (v2.x)**:
+```bash
+/update-framework --from ~/dev/ai-dev
+# Rules automatically synced
+```
+
+**New workflow (v4.0.0+)**:
+```bash
+# 1. Sync framework content (Pillars, Guides, Skills)
+/update-framework --from ~/dev/ai-dev
+
+# 2. Generate project-specific rules
+/manage-rules --profile tauri --instant
+```
+
+**Why this change**: Rules are now profile-aware and project-specific. Different tech stacks need different rules (Tauri: 34, Next.js-AWS: 43, Minimal: 13). See ADR-013 for architecture details.
+
+**Migration steps**:
+1. Run `/update-framework` to sync Pillars, Guides, Skills (guides now included)
+2. Run `/manage-rules --profile <your-profile>` to generate rules
+3. Commit generated rules to your project
+
+**See**: ADR-013 (#348) for complete architecture
 
 ## Workflow Skills Requirements
 
@@ -651,15 +655,19 @@ This is a **workflow skill** and must follow the standard pattern:
 ## Related Skills
 
 - **/update-pillars** - Sync Pillars (called by this meta-skill)
-- **/update-rules** - Sync rules (called by this meta-skill)
-- **/update-workflow** - Sync workflow docs (called by this meta-skill)
+- **/update-guides** - Sync AI guides and profiles (called by this meta-skill)
 - **/update-skills** - Sync skills (called by this meta-skill)
+- **/manage-rules** - Generate project-specific rules (separate workflow, ADR-013)
 
 ---
 
-**Version:** 2.1.0
-**Last Updated:** 2026-03-12
+**Version:** 4.1.0
+**Pattern:** Meta-Skill (orchestrates update-* skills)
+**Compliance:** ADR-001 ✅ | ADR-013 ✅
+**Last Updated:** 2026-03-29
 **Changelog:**
-- v2.1.0 (2026-03-12): Meta-skill to sync entire framework (pillars + rules + workflow + skills)
-**Pattern:** Meta-Skill (orchestrates other skills)
-**Compliance:** ADR-001 Section 4 ✅
+- v4.1.0: Replace /configure-permissions with /update-permissions for direct framework copy (Issue #398)
+- v4.0.0: Remove outdated workflow/rules references, update component structure (Issue #375)
+- v3.0.0: **BREAKING** - Remove rules sync, use /manage-rules instead (Issue #353, ADR-013)
+- v2.1.0: Added update-guides orchestration
+- v2.0.0: Meta-skill architecture

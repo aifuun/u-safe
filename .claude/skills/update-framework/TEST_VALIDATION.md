@@ -57,7 +57,7 @@ cd ~/dev/ai-dev
 # "Launching skill: update-skills"
 
 # Should NOT see:
-# "rsync -av framework/.prot-template/pillars/"
+# "rsync -av .claude/pillars/pillars/"
 ```
 
 **Pass Criteria**: ✅ 4 sub-skills invoked, no direct rsync

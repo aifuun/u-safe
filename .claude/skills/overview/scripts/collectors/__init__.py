@@ -24,7 +24,7 @@ class Collector(Protocol):
     - Have comprehensive type hints
     - Have docstrings with Args, Returns, Example
     - Handle errors gracefully (return empty/default values)
-    - Use shared utilities from _shared/ where possible
+    - Use shared utilities from _scripts/ where possible
     """
 
     def collect(self) -> Dict[str, Any]:

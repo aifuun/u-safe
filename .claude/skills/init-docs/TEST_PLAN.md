@@ -94,7 +94,7 @@ This skill is documentation-only (no executable code), so testing focuses on **s
 
 | Dependency | Status | Notes |
 |------------|--------|-------|
-| `framework/.prot-template/docs-templates/` | ⚠️ Pending | Issue #224 (docs-templates) not yet created |
+| `.claude/pillars/docs-templates/` | ⚠️ Pending | Issue #224 (docs-templates) not yet created |
 | `.framework-install` | ✅ Exists | Created by init-project.py |
 | `package.json` | ✅ Standard | Present in all Node.js projects |
 

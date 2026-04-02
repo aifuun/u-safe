@@ -1,0 +1,52 @@
+{
+  "name": "tauri",
+  "description": "Desktop application (Tauri + React, local-first)",
+  "pillars": ["A", "B", "K", "L"],
+  "rules": {
+    "include": [
+      "workflow",
+      "naming",
+      "debugging",
+      "docs",
+      "memory-management",
+      "planning-context",
+      "clean-architecture",
+      "dependency-rule",
+      "service-layer",
+      "headless",
+      "adapters",
+      "identity",
+      "typescript-strict",
+      "typescript-nominal-types",
+      "typescript-esm",
+      "design-system",
+      "zustand-hooks",
+      "views",
+      "css",
+      "stores",
+      "debug-panel",
+      "tauri-stack",
+      "secrets"
+    ],
+    "exclude": [
+      "backend/lambda-*.md",
+      "backend/saga*.md",
+      "infrastructure/aws-*.md",
+      "infrastructure/cdk-*.md",
+      "languages/python-*.md",
+      "languages/go-*.md"
+    ]
+  },
+  "techStack": {
+    "frontend": "React + TypeScript",
+    "backend": "Rust (Tauri)",
+    "desktop": "Tauri",
+    "state": "Zustand",
+    "build": "Vite"
+  },
+  "metadata": {
+    "created": "2026-03-12",
+    "version": "1.0.0",
+    "category": "desktop"
+  }
+}

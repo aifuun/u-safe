@@ -4,7 +4,8 @@ description: |
   Sync Pillars between projects - bidirectional copy with smart filtering.
   TRIGGER when: user wants to sync Pillars ("update pillars from X", "sync pillars", "pull pillars from framework", "push pillars to project").
   DO NOT TRIGGER when: user wants to update rules/skills/workflow (use respective update-* skills), or just wants to read Pillar docs.
-version: "2.1.0"
+version: "2.1.1"
+framework-only: true
 allowed-tools: Bash(cp *), Bash(mkdir *), Bash(ls *), Bash(find *), Bash(test *), Bash(cat *), Bash(git *), Read, Write, Glob, Grep, Edit
 disable-model-invocation: false
 user-invocable: true
@@ -16,7 +17,7 @@ Sync Pillar documentation between projects bidirectionally with profile-aware fi
 
 ## Overview
 
-This skill synchronizes Pillar documentation (.prot/pillars/) between projects:
+This skill synchronizes Pillar documentation (.claude/pillars/) between projects:
 
 **What it does:**
 1. Scans source and target projects for Pillars
@@ -65,15 +66,15 @@ Pull Pillars from source project to current project:
 ```
 
 **What happens:**
-1. Scan source project: `<source>/.prot/pillars/`
-2. Scan current project: `.prot/pillars/`
+1. Scan source project: `<source>/.claude/pillars/`
+2. Scan current project: `.claude/pillars/`
 3. Compare modification times and sizes
 4. Detect: NEW, NEWER, SAME, OLDER
 5. Show analysis table
 6. Confirm and copy updated Pillars
 
 **Profile-aware filtering:**
-- Reads `.framework-install` to determine profile
+- Reads `docs/project-profile.md` to determine profile
 - Only updates Pillars enabled in profile
 - Example: `minimal` profile → only A, B, K
 
@@ -163,12 +164,12 @@ Summary:
 **Profile detection:**
 
 ```bash
-# Method 1: Read .framework-install
-cat .framework-install
+# Method 1: Read docs/project-profile.md
+cat docs/project-profile.md
 # → profile: minimal
 
 # Method 2: Scan installed Pillars
-ls .prot/pillars/
+ls .claude/pillars/
 # → pillar-a, pillar-b, pillar-k
 ```
 
@@ -179,7 +180,7 @@ ls .prot/pillars/
 | minimal | A, B, K only (3 Pillars) |
 | node-lambda | A, B, K, M, Q, R (6 Pillars) |
 | react-aws | A, B, K, L, M, Q, R (7 Pillars) |
-| custom/none | All Pillars in .prot/pillars/ |
+| custom/none | All Pillars in .claude/pillars/ |
 
 **Example:**
 ```
@@ -192,7 +193,7 @@ Current profile: minimal (A, B, K)
 ## What Gets Synced
 
 ```
-.prot/pillars/
+.claude/pillars/
 ├── pillar-a/
 │   └── *.md              ✅ Synced
 ├── pillar-b/
@@ -201,7 +202,7 @@ Current profile: minimal (A, B, K)
 │   └── *.md              ✅ Synced
 └── README.md             ✅ Synced (if exists)
 
-.prot/
+.claude/pillars/
 ├── checklists/           ❌ Not synced (project-specific)
 └── other files           ❌ Not synced
 ```
@@ -254,7 +255,7 @@ Current profile: minimal (A, B, K)
 
 **Pre-flight checks:**
 - ✅ Source/target paths exist
-- ✅ Source has .prot/pillars/ directory
+- ✅ Source has .claude/pillars/ directory
 - ✅ User confirmation before changes
 - ✅ Dry-run preview available
 
@@ -276,11 +277,11 @@ Current profile: minimal (A, B, K)
 ❌ Error: Project not found
 
 Path: ../nonexistent
-Expected: ../nonexistent/.prot/pillars/
+Expected: ../nonexistent/.claude/pillars/
 
 Please check:
 1. Path is correct
-2. Project has .prot/pillars/ directory
+2. Project has .claude/pillars/ directory
 3. You have read permissions
 ```
 

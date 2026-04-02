@@ -1,0 +1,155 @@
+# Color System
+
+> Comprehensive color palette and semantic tokens for {PROJECT_NAME}
+
+## Color Palette
+
+### Primary Colors
+```css
+--color-primary-50: {HEX};
+--color-primary-100: {HEX};
+--color-primary-200: {HEX};
+--color-primary-300: {HEX};
+--color-primary-400: {HEX};
+--color-primary-500: {HEX};  /* Base primary */
+--color-primary-600: {HEX};
+--color-primary-700: {HEX};
+--color-primary-800: {HEX};
+--color-primary-900: {HEX};
+```
+
+### Secondary Colors
+```css
+--color-secondary-50: {HEX};
+--color-secondary-500: {HEX};  /* Base secondary */
+--color-secondary-900: {HEX};
+```
+
+### Neutral/Gray Scale
+```css
+--color-gray-50: {HEX};   /* Lightest */
+--color-gray-100: {HEX};
+--color-gray-200: {HEX};
+--color-gray-300: {HEX};
+--color-gray-400: {HEX};
+--color-gray-500: {HEX};
+--color-gray-600: {HEX};
+--color-gray-700: {HEX};
+--color-gray-800: {HEX};
+--color-gray-900: {HEX};  /* Darkest */
+```
+
+### Semantic Colors
+```css
+/* Success (Green) */
+--color-success-50: {HEX};
+--color-success-500: {HEX};
+--color-success-700: {HEX};
+
+/* Error (Red) */
+--color-error-50: {HEX};
+--color-error-500: {HEX};
+--color-error-700: {HEX};
+
+/* Warning (Yellow/Orange) */
+--color-warning-50: {HEX};
+--color-warning-500: {HEX};
+--color-warning-700: {HEX};
+
+/* Info (Blue) */
+--color-info-50: {HEX};
+--color-info-500: {HEX};
+--color-info-700: {HEX};
+```
+
+## Semantic Tokens (Use These in Code)
+
+### Background Colors
+```css
+--bg-default: var(--color-gray-50);        /* Page background */
+--bg-surface: white;                       /* Card, modal background */
+--bg-subtle: var(--color-gray-100);       /* Hover states */
+--bg-muted: var(--color-gray-200);        /* Disabled states */
+
+--bg-primary: var(--color-primary-500);   /* Primary buttons */
+--bg-primary-hover: var(--color-primary-600);
+
+--bg-success: var(--color-success-50);    /* Success backgrounds */
+--bg-error: var(--color-error-50);        /* Error backgrounds */
+--bg-warning: var(--color-warning-50);    /* Warning backgrounds */
+--bg-info: var(--color-info-50);          /* Info backgrounds */
+```
+
+### Text Colors
+```css
+--text-default: var(--color-gray-900);    /* Body text */
+--text-subtle: var(--color-gray-600);     /* Secondary text */
+--text-muted: var(--color-gray-500);      /* Placeholder text */
+--text-inverse: white;                     /* Text on dark backgrounds */
+
+--text-primary: var(--color-primary-600);
+--text-success: var(--color-success-700);
+--text-error: var(--color-error-700);
+--text-warning: var(--color-warning-700);
+```
+
+### Border Colors
+```css
+--border-default: var(--color-gray-300);
+--border-subtle: var(--color-gray-200);
+--border-focus: var(--color-primary-500);
+--border-error: var(--color-error-500);
+--border-success: var(--color-success-500);
+```
+
+## Accessibility Standards
+
+### Contrast Ratios (WCAG 2.1)
+- **Normal text (< 18px)**: 4.5:1 minimum
+- **Large text (≥ 18px)**: 3:1 minimum
+- **UI components**: 3:1 minimum
+
+### Color Testing
+Test all color combinations with:
+- [WebAIM Contrast Checker](https://webaim.org/resources/contrastchecker/)
+- Browser DevTools (Lighthouse accessibility audit)
+
+### Color Blindness Considerations
+- Never rely on color alone to convey information
+- Use icons, labels, or patterns in addition to color
+- Test with color blindness simulators
+
+## Dark Mode (Optional)
+
+```css
+@media (prefers-color-scheme: dark) {
+  --bg-default: var(--color-gray-900);
+  --bg-surface: var(--color-gray-800);
+  --text-default: var(--color-gray-100);
+  --text-subtle: var(--color-gray-400);
+  /* ... */
+}
+```
+
+## Usage Examples
+
+```css
+/* Good */
+.card {
+  background: var(--bg-surface);
+  color: var(--text-default);
+  border: 1px solid var(--border-default);
+}
+
+/* Bad */
+.card {
+  background: #ffffff;
+  color: #111827;
+  border: 1px solid #d1d5db;
+}
+```
+
+---
+
+**Last Updated**: {DATE}
+**Version**: {VERSION}

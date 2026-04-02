@@ -1,0 +1,17 @@
+# Rust
+target/
+**/*.rs.bk
+Cargo.lock
+
+# Tauri
+src-tauri/target/
+src-tauri/Cargo.lock
+
+# Node
+node_modules/
+package-lock.json
+yarn.lock
+
+# Build
+dist/
+build/

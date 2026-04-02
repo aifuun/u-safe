@@ -184,7 +184,7 @@ Add code to `_scripts/` when:
 
 **Old locations (deprecated):**
 - ❌ `scripts/worktree_manager.py`
-- ❌ `.claude/skills/_shared/`
+- ❌ `.claude/skills/_scripts/`
 
 **New locations:**
 - ✅ `.claude/skills/_scripts/git/worktree.py`

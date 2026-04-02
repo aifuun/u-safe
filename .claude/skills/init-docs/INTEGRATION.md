@@ -74,7 +74,7 @@
 **init-docs reads:**
 - `.framework-install` - Profile detection
 - `package.json` - Project name, description
-- `framework/.prot-template/docs-templates/` - Template source
+- `.claude/pillars/docs-templates/` - Template source
 
 **init-docs creates:**
 - `docs/` - All subdirectories

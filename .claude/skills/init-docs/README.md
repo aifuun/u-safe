@@ -25,7 +25,7 @@ Creates a complete documentation structure with:
 ## Dependencies
 
 - Requires: `.framework-install` (for profile auto-detection)
-- Requires: `framework/.prot-template/docs-templates/` (template source - from issue #224)
+- Requires: `.claude/pillars/docs-templates/` (template source - from issue #224)
 - Works with: `/check-docs` (validation counterpart)
 
 ## Status
