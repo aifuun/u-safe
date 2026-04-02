@@ -1,0 +1,109 @@
+# {PROJECT_NAME} Design System
+
+> Comprehensive design system documentation for {PROJECT_NAME}
+
+## Overview
+
+This document serves as the central reference for all design decisions, visual standards, and UI/UX patterns used in {PROJECT_NAME}.
+
+## Design System Structure
+
+### Foundation (Design Tokens)
+- [COLOR.md](ui/foundation/COLOR.md) - Color palette and semantic tokens
+- [TYPOGRAPHY.md](ui/foundation/TYPOGRAPHY.md) - Font scales, line heights, weights
+- [SPACING.md](ui/foundation/SPACING.md) - Space tokens for padding, margin, gaps
+- [RADIUS.md](ui/foundation/RADIUS.md) - Border radius standards
+- [SHADOWS.md](ui/foundation/SHADOWS.md) - Elevation and shadow system
+- [MOTION.md](ui/foundation/MOTION.md) - Animation and transition tokens
+
+### Components (UI Specs)
+- [BUTTONS.md](ui/components/BUTTONS.md) - Button variants, states, sizes
+- [FORMS.md](ui/components/FORMS.md) - Input, Select, Textarea, Checkbox, Radio
+- [FEEDBACK.md](ui/components/FEEDBACK.md) - Toast, Modal, Progress, Loading
+- [ACCESSIBILITY.md](ui/components/ACCESSIBILITY.md) - WCAG compliance standards
+
+### User Experience
+- [USER_JOURNEYS.md](ux/USER_JOURNEYS.md) - User stories and touchpoints
+- [USER_FLOWS.md](ux/USER_FLOWS.md) - Flow diagrams and decision points
+- [SCENARIOS.md](ux/SCENARIOS.md) - Use cases and edge cases
+
+## Design Principles
+
+{DESIGN_PRINCIPLES}
+
+Example:
+1. **Simplicity First** - Minimize cognitive load
+2. **Consistency** - Use design tokens, not hard-coded values
+3. **Accessibility** - WCAG 2.1 AA minimum
+4. **Performance** - Optimize for mobile-first
+
+## Token Usage Rules
+
+### Rule 1: No Hard-Coded Values
+
+❌ **NEVER do this**:
+```css
+.button {
+  padding: 12px 16px;          /* Hard-coded */
+  color: #1f2937;              /* Hard-coded */
+  background: #3b82f6;         /* Hard-coded */
+}
+```
+
+✅ **ALWAYS do this**:
+```css
+.button {
+  padding: var(--space-3) var(--space-4);    /* Token */
+  color: var(--text-default);                 /* Token */
+  background: var(--color-primary);           /* Token */
+}
+```
+
+### Rule 2: Semantic Naming
+
+Use semantic tokens for context-specific needs:
+- `--bg-success`, `--bg-error`, `--bg-warning` (not color names)
+- `--text-default`, `--text-subtle`, `--text-inverse`
+- `--border-default`, `--border-focus`, `--border-error`
+
+## Responsive Breakpoints
+
+```css
+/* Mobile: < 640px */
+/* Tablet: 640px - 1024px */
+/* Desktop: > 1024px */
+
+@media (min-width: 640px) { /* Tablet */ }
+@media (min-width: 1024px) { /* Desktop */ }
+```
+
+## Pre-Development Checklist
+
+Before coding ANY component:
+
+- [ ] Identify component type (button/form/feedback/custom)
+- [ ] Read relevant foundation docs (COLOR, TYPOGRAPHY, SPACING)
+- [ ] Read component spec doc (BUTTONS, FORMS, FEEDBACK)
+- [ ] Check accessibility requirements (ACCESSIBILITY.md)
+- [ ] Verify responsive behavior
+- [ ] Test with reduced motion preference
+
+## Implementation Workflow
+
+1. **Read** design docs for your component
+2. **Check** required tokens (colors, spacing, typography)
+3. **Verify** accessibility standards
+4. **Code** with tokens only (no hard-coded values)
+5. **Test** responsive + accessibility
+
+## Related Documentation
+
+- Framework-specific implementation: {FRAMEWORK_DOC_LINK}
+- Component library: {COMPONENT_LIB_LINK}
+- Design tools: {DESIGN_TOOL_LINK}
+
+---
+
+**Last Updated**: {DATE}
+**Maintained By**: {MAINTAINER}
+**Version**: {VERSION}

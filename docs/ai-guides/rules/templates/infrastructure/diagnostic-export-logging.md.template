@@ -1,0 +1,384 @@
+---
+category: "infrastructure"
+title: "Diagnostic Export Logging"
+description: "CloudWatch logging"
+tags: [typescript, aws, cloudwatch]
+profiles: [nextjs-aws]
+pillar_refs: [R]
+paths: ['**/*.{ts,tsx}']
+version: "1.0.0"
+last_updated: "2026-03-27"
+---
+
+---
+paths: "**/telemetry/*.ts,**/logging/*.ts,**/logger*.ts"
+---
+# Structured Logging & Diagnostic Export
+
+> 📖 **Complete Guide**: `.prot/pillars/q4-resilience-observability/pillar-r/observability.md`
+> JSON semantic logging with traceId propagation for end-to-end observability
+
+## Quick Check (30 seconds)
+- [ ] All logs use JSON format (not console.log or plain text)
+- [ ] Every log includes: `event`, `timestamp`, `traceId`, `level`
+- [ ] Event names use semantic IDs (`domain:entity:action`)
+- [ ] TraceId propagates through all layers (view → service → adapter → Lambda)
+- [ ] Log files stored as JSONL (one JSON object per line)
+- [ ] CloudWatch Logs configured with retention policy
+- [ ] Structured logger library used (pino, winston, or custom)
+
+## Core Pattern: JSON Semantic Logging
+
+**Golden Rule**: Never use console.log in production. Always use structured logger.
+
+```typescript
+// Step 1: Setup structured logger (kernel/telemetry/logger.ts)
+import pino from 'pino';
+
+export const logger = pino({
+  level: process.env.LOG_LEVEL || 'info',
+  formatters: {
+    level(label) {
+      return { level: label };
+    },
+  },
+  timestamp: () => `,"timestamp":"${new Date().toISOString()}"`,
+});
+
+// Step 2: Log with semantic event IDs
+import { logger } from '@/kernel/telemetry';
+
+export async function processOrder(orderId: OrderId, traceId: string) {
+  logger.info({
+    event: 'order:processing:start',  // domain:entity:action
+    orderId,
+    traceId,
+    timestamp: new Date().toISOString(),
+  });
+
+  try {
+    const result = await chargePayment(orderId);
+
+    logger.info({
+      event: 'order:payment:success',
+      orderId,
+      traceId,
+      paymentId: result.paymentId,
+      amount: result.amount,
+    });
+  } catch (error) {
+    logger.error({
+      event: 'order:payment:failed',
+      orderId,
+      traceId,
+      error: error.message,
+      stack: error.stack,
+    });
+    throw error;
+  }
+}
+
+// Step 3: Query logs by traceId
+// cat logs/2026-02-05.jsonl | jq 'select(.traceId == "trace-abc123")'
+```
+
+**Why semantic event IDs?**
+- ✅ Searchable: `jq 'select(.event | startswith("order:"))'`
+- ✅ Hierarchical: `order:payment:success` vs `order:payment:failed`
+- ✅ Self-documenting: Event name describes what happened
+- ✅ Filterable: Group by domain, entity, or action
+
+---
+
+## TraceId Propagation Pattern
+
+**Single traceId flows end-to-end through all layers:**
+
+```
+Client (View Layer)
+  ↓ Generate traceId: crypto.randomUUID()
+  ↓ Pass to Service Layer
+  ↓ Service logs with traceId
+  ↓ Pass to Adapter Layer
+  ↓ Adapter includes traceId in HTTP headers
+  ↓ Lambda extracts traceId from headers/body
+  ↓ Lambda logs all events with same traceId
+  ↓ Lambda includes traceId in response
+  ↓ Client validates response traceId matches
+```
+
+### Implementation Example
+
+```typescript
+// View Layer: Generate traceId
+function DiagnosticPanel() {
+  const handleExport = async () => {
+    const traceId = crypto.randomUUID();
+
+    logger.debug({
+      event: 'diagnostic:export:initiated',
+      traceId,
+      userId,
+    });
+
+    const result = await diagnosticService.execute({ userId, traceId });
+
+    logger.info({
+      event: 'diagnostic:export:complete',
+      traceId,
+      reportId: result.reportId,
+    });
+  };
+}
+
+// Service Layer: Propagate traceId
+export class DiagnosticService {
+  async execute({ userId, traceId }: { userId: string; traceId: string }) {
+    logger.debug({
+      event: 'diagnostic:service:start',
+      traceId,
+      userId,
+    });
+
+    const result = await diagnosticAdapter.export({ userId, traceId });
+
+    return result;
+  }
+}
+
+// Adapter Layer: Include traceId in request
+export const diagnosticAdapter = {
+  async export({ userId, traceId }: { userId: string; traceId: string }) {
+    const response = await fetch(LAMBDA_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Trace-Id': traceId,  // HTTP header
+      },
+      body: JSON.stringify({ userId, traceId }),  // Also in body
+    });
+
+    logger.debug({
+      event: 'diagnostic:api:response',
+      traceId,
+      statusCode: response.status,
+    });
+
+    return response.json();
+  },
+};
+
+// Lambda: Extract and use traceId
+export const handler = async (event) => {
+  const { userId, traceId } = JSON.parse(event.body);
+
+  logger.info({
+    event: 'diagnostic:lambda:start',
+    traceId,
+    userId,
+  });
+
+  try {
+    const report = await generateReport(userId);
+
+    logger.info({
+      event: 'diagnostic:lambda:success',
+      traceId,
+      reportId: report.id,
+      fileSize: report.size,
+    });
+
+    return {
+      statusCode: 200,
+      body: JSON.stringify({ ...report, traceId }),
+    };
+  } catch (error) {
+    logger.error({
+      event: 'diagnostic:lambda:error',
+      traceId,
+      error: error.message,
+    });
+    throw error;
+  }
+};
+```
+
+---
+
+## Log Storage Patterns
+
+### Local Development: JSONL Files
+
+```typescript
+// kernel/telemetry/logger.ts
+import pino from 'pino';
+import { createWriteStream } from 'fs';
+import { mkdir } from 'fs/promises';
+import path from 'path';
+
+const LOG_DIR = path.join(process.env.HOME || '', '.myapp', 'logs');
+
+// Ensure log directory exists
+await mkdir(LOG_DIR, { recursive: true });
+
+// Log file per day: logs/2026-02-05.jsonl
+const logFile = path.join(LOG_DIR, `${new Date().toISOString().split('T')[0]}.jsonl`);
+
+export const logger = pino(
+  {
+    level: process.env.LOG_LEVEL || 'info',
+  },
+  createWriteStream(logFile, { flags: 'a' })
+);
+```
+
+### Production: CloudWatch Logs
+
+```typescript
+// CDK infrastructure
+import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
+
+new LogGroup(this, 'ApiLogs', {
+  logGroupName: '/aws/lambda/api',
+  retention: RetentionDays.SEVEN_DAYS,  // Dev: 7 days
+  // retention: RetentionDays.THIRTY_DAYS,  // Prod: 30 days
+  removalPolicy: RemovalPolicy.DESTROY,  // Dev
+  // removalPolicy: RemovalPolicy.RETAIN,  // Prod
+});
+```
+
+---
+
+## Querying Logs
+
+### Local: jq Queries
+
+```bash
+# Get all logs for a traceId
+cat ~/.myapp/logs/2026-02-05.jsonl | \
+  jq 'select(.traceId == "trace-abc123")' | \
+  jq -s 'sort_by(.timestamp)'
+
+# Get all error events
+cat ~/.myapp/logs/2026-02-05.jsonl | \
+  jq 'select(.level == "error")'
+
+# Get all events for specific domain
+cat ~/.myapp/logs/2026-02-05.jsonl | \
+  jq 'select(.event | startswith("order:"))'
+
+# Follow a flow from start to finish
+cat ~/.myapp/logs/2026-02-05.jsonl | \
+  jq 'select(.traceId == "trace-abc123") | {time: .timestamp, event, level}' | \
+  jq -s 'sort_by(.time)'
+```
+
+### CloudWatch Logs Insights
+
+```sql
+-- Find all errors for a traceId
+fields @timestamp, event, error
+| filter traceId = "trace-abc123"
+| filter level = "error"
+| sort @timestamp desc
+
+-- Find all events in a flow
+fields @timestamp, event, level
+| filter traceId = "trace-abc123"
+| sort @timestamp asc
+
+-- Count events by type
+stats count() by event
+| sort count desc
+
+-- Find slow operations
+fields @timestamp, event, duration
+| filter event = "order:processing:complete"
+| filter duration > 1000
+| sort duration desc
+```
+
+---
+
+## Log Levels
+
+| Level | When to Use | Example Event |
+|-------|-------------|---------------|
+| **debug** | Detailed flow tracking, FSM state transitions | `order:fsm:transition`, `cache:hit` |
+| **info** | Milestones, successful operations | `order:created`, `payment:success` |
+| **warn** | Non-fatal issues, degraded performance | `cache:miss`, `api:retry` |
+| **error** | Failures requiring attention | `payment:failed`, `database:timeout` |
+
+---
+
+## Diagnostic Export Pattern
+
+**Use Case**: Allow users to download diagnostic reports with logs, system info, and state.
+
+```typescript
+// Service: Collect diagnostic data
+export class DiagnosticService {
+  async generateReport(traceId: string): Promise<DiagnosticReport> {
+    logger.info({
+      event: 'diagnostic:generate:start',
+      traceId,
+    });
+
+    // Collect system info
+    const systemInfo = {
+      platform: process.platform,
+      nodeVersion: process.version,
+      memory: process.memoryUsage(),
+    };
+
+    // Collect recent logs (last 100 lines)
+    const logs = await this.getRecentLogs(100);
+
+    // Collect app state
+    const state = await this.collectState();
+
+    const report = {
+      id: `diag-${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      systemInfo,
+      logs,
+      state,
+    };
+
+    logger.info({
+      event: 'diagnostic:generate:complete',
+      traceId,
+      reportId: report.id,
+      logCount: logs.length,
+    });
+
+    return report;
+  }
+
+  private async getRecentLogs(limit: number): Promise<LogEntry[]> {
+    const logFile = path.join(LOG_DIR, `${new Date().toISOString().split('T')[0]}.jsonl`);
+    const content = await fs.readFile(logFile, 'utf-8');
+    const lines = content.trim().split('\n');
+    return lines.slice(-limit).map(line => JSON.parse(line));
+  }
+}
+```
+
+---
+
+## Related Rules
+
+- **[debugging.md](../core/debugging.md)** - Systematic debugging with semantic logging
+- **[lambda-quick-reference.md](./lambda-quick-reference.md)** - CloudWatch Logs in Lambda
+- **[aws-services.md](./aws-services.md)** - CloudWatch integration
+
+## Related Pillars
+
+- **Pillar R**: Observability (complete JSON logging guide)
+- **Pillar N**: Context (traceId propagation patterns)
+
+---
+
+**Version**: 1.1
+**Last Updated**: 2026-02-05
+**Changes**: Refactored from project-specific to generic framework rule

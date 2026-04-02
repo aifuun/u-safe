@@ -1,0 +1,35 @@
+# Button Components
+
+## Button Variants
+### Primary Button
+```jsx
+<button className="btn-primary">{LABEL}</button>
+```
+- **Use for**: Main actions (Save, Submit, Confirm)
+- **Color**: `--bg-primary`
+- **States**: Default, Hover, Active, Disabled, Loading
+
+### Secondary Button
+```jsx
+<button className="btn-secondary">{LABEL}</button>
+```
+- **Use for**: Secondary actions (Cancel, Back)
+- **Color**: `--bg-subtle`
+
+### Danger Button
+```jsx
+<button className="btn-danger">{LABEL}</button>
+```
+- **Use for**: Destructive actions (Delete, Remove)
+- **Color**: `--bg-error`
+
+## Button Sizes
+- **Small**: `padding: var(--space-2) var(--space-3); font-size: var(--text-sm)`
+- **Medium** (default): `padding: var(--space-3) var(--space-4); font-size: var(--text-base)`
+- **Large**: `padding: var(--space-4) var(--space-6); font-size: var(--text-lg)`
+
+## Accessibility
+- Always include meaningful text (not "Click here")
+- Use `aria-label` for icon-only buttons
+- Ensure keyboard navigation (`Tab`, `Enter`, `Space`)
+- Minimum touch target: 44x44px

@@ -1,0 +1,50 @@
+# Accessibility Standards (WCAG 2.1)
+
+## Color Contrast
+### Level AA (Minimum)
+- Normal text: 4.5:1 contrast ratio
+- Large text (18px+): 3:1 contrast ratio
+- UI components: 3:1 contrast ratio
+
+### Testing
+- Use [WebAIM Contrast Checker](https://webaim.org/resources/contrastchecker/)
+- Browser DevTools > Lighthouse > Accessibility
+
+## Keyboard Navigation
+### Required Keys
+- **Tab**: Move to next focusable element
+- **Shift+Tab**: Move to previous focusable element
+- **Enter/Space**: Activate buttons
+- **Escape**: Close modals/dropdowns
+- **Arrow keys**: Navigate lists/menus
+
+### Focus Indicators
+```css
+:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+```
+
+## ARIA Labels
+### When to Use
+- Icon-only buttons: `<button aria-label="Delete item">`
+- Form inputs: `<input aria-describedby="error-message">`
+- Dynamic content: `<div role="alert" aria-live="polite">`
+
+### Common Roles
+- `role="button"` - Interactive element
+- `role="alert"` - Important message
+- `role="dialog"` - Modal window
+- `role="navigation"` - Nav menu
+
+## Screen Reader Support
+- Use semantic HTML (`<button>`, `<nav>`, `<main>`)
+- Provide alt text for images
+- Use `aria-label` for icon-only elements
+- Announce dynamic changes with `aria-live`
+
+## Touch Targets
+- Minimum size: 44x44px
+- Spacing: 8px between targets
+- Avoid tiny clickable areas

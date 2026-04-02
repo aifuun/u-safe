@@ -1,0 +1,484 @@
+# Data Schema Documentation
+
+**Project**: {{projectName}}
+**Database**: {{databaseType}}
+**ORM**: {{ormTool}}
+**Last Updated**: {{currentDate}}
+
+## Overview
+
+This document describes the data models, database schema, and data management strategy for {{projectName}}.
+
+<!-- TODO: Add overview of data architecture -->
+<!-- Example: The data layer uses [ORM] with [database] to manage [N] primary entities. The schema is designed for [goals] and supports [use cases]. -->
+
+## Entity Relationship Diagram
+
+<!-- TODO: Add ER diagram using Mermaid.js -->
+<!-- Example diagram structure -->
+
+```mermaid
+erDiagram
+    USER ||--o{ POST : creates
+    USER ||--o{ COMMENT : writes
+    POST ||--o{ COMMENT : has
+
+    USER {
+        uuid id PK
+        string email UK
+        string name
+        datetime created_at
+        datetime updated_at
+    }
+
+    POST {
+        uuid id PK
+        uuid user_id FK
+        string title
+        text content
+        datetime published_at
+        datetime created_at
+        datetime updated_at
+    }
+
+    COMMENT {
+        uuid id PK
+        uuid user_id FK
+        uuid post_id FK
+        text content
+        datetime created_at
+        datetime updated_at
+    }
+```
+
+## Data Models
+
+### User Entity
+
+**Purpose**: Represents system users
+
+**Schema**:
+```typescript
+// TypeScript type definition
+type User = {
+  id: UserId;                    // Nominal type (Pillar A)
+  email: string;
+  name: string;
+  passwordHash: string;          // Never returned in API
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+// Zod validation schema (Pillar B - Airlock)
+const UserSchema = z.object({
+  id: z.string().uuid(),
+  email: z.string().email(),
+  name: z.string().min(1).max(100),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+```
+
+**Database Table**:
+```sql
+CREATE TABLE users (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email VARCHAR(255) UNIQUE NOT NULL,
+  name VARCHAR(100) NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+-- Indexes
+CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX idx_users_created_at ON users(created_at DESC);
+```
+
+**Validation Rules**:
+- Email must be valid format
+- Name must be 1-100 characters
+- Password must be hashed (bcrypt, 10 rounds)
+
+<!-- TODO: Add more entity documentation -->
+<!-- Repeat the above structure for each entity -->
+
+## Nominal Types (Pillar A)
+
+**Why**: Prevent ID confusion at compile time
+
+```typescript
+// Branded types for type safety
+type UserId = string & { readonly __brand: 'UserId' };
+type PostId = string & { readonly __brand: 'PostId' };
+type CommentId = string & { readonly __brand: 'CommentId' };
+
+// Constructor functions
+const UserId = (id: string): UserId => id as UserId;
+const PostId = (id: string): PostId => id as PostId;
+const CommentId = (id: string): CommentId => id as CommentId;
+
+// Usage - prevents mixing IDs
+function getUser(id: UserId): Promise<User> { ... }
+function getPost(id: PostId): Promise<Post> { ... }
+
+const userId = UserId('123');
+const postId = PostId('456');
+
+getUser(userId);      // ✅ Correct
+getUser(postId);      // ❌ Compile error - type mismatch
+```
+
+## Schema Validation (Pillar B - Airlock)
+
+**Principle**: Validate at system boundaries
+
+```typescript
+// Input validation at API boundary
+app.post('/api/users', async (req, res) => {
+  // Validate with Zod
+  const result = UserCreateSchema.safeParse(req.body);
+
+  if (!result.success) {
+    return res.status(400).json({
+      error: 'Invalid input',
+      details: result.error.flatten()
+    });
+  }
+
+  const user = await createUser(result.data);
+  res.json(user);
+});
+```
+
+## Database Configuration
+
+<!-- {{#if tauri}} -->
+### SQLite (Local Database)
+
+**File Location**: `~/.{{projectName}}/data.db`
+
+**Configuration**:
+```rust
+// src-tauri/src/db/mod.rs
+use sqlx::SqlitePool;
+
+pub async fn init_db() -> Result<SqlitePool, sqlx::Error> {
+    let db_url = format!("sqlite:{}/data.db", app_data_dir());
+    let pool = SqlitePool::connect(&db_url).await?;
+
+    // Run migrations
+    sqlx::migrate!("./migrations")
+        .run(&pool)
+        .await?;
+
+    Ok(pool)
+}
+```
+
+**Constraints**:
+- Single-user database (no concurrent access)
+- File-based (portable, backup-friendly)
+- ACID compliance with WAL mode
+<!-- {{/if}} -->
+
+<!-- {{#if nextjs-aws}} -->
+### {{databaseType}} (Cloud Database)
+
+**Service**: AWS RDS / Aurora
+
+**Configuration**:
+```typescript
+// lib/db/connection.ts
+import { Pool } from 'pg';
+
+const pool = new Pool({
+  host: process.env.DB_HOST,
+  port: parseInt(process.env.DB_PORT || '5432'),
+  database: process.env.DB_NAME,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  max: 20,                    // Connection pool size
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 2000,
+});
+```
+
+**Infrastructure** (AWS CDK):
+```typescript
+const db = new rds.DatabaseInstance(this, 'Database', {
+  engine: rds.DatabaseInstanceEngine.postgres({
+    version: rds.PostgresEngineVersion.VER_15_2,
+  }),
+  instanceType: ec2.InstanceType.of(
+    ec2.InstanceClass.T4G,
+    ec2.InstanceSize.MICRO
+  ),
+  vpc,
+  multiAz: true,              // High availability
+  backupRetention: Duration.days(7),
+});
+```
+<!-- {{/if}} -->
+
+<!-- {{#if tauri-aws}} -->
+### Hybrid Database Strategy
+
+**Local Database**: SQLite for offline data
+**Cloud Database**: {{databaseType}} for synchronized data
+
+**Sync Strategy**:
+```typescript
+// Sync pending local changes to cloud
+async function syncToCloud() {
+  const pendingChanges = await db.query(
+    'SELECT * FROM sync_queue WHERE synced = 0'
+  );
+
+  for (const change of pendingChanges) {
+    await api.post('/sync', change);
+    await db.query(
+      'UPDATE sync_queue SET synced = 1 WHERE id = ?',
+      [change.id]
+    );
+  }
+}
+```
+
+**Conflict Resolution**: Last-write-wins with timestamp
+<!-- {{/if}} -->
+
+## Data Migration Strategy
+
+### Migration Tools
+
+<!-- {{#if tauri}} -->
+**Tool**: SQLx migrations (Rust)
+
+```bash
+# Create new migration
+sqlx migrate add create_users_table
+
+# Run migrations
+sqlx migrate run
+```
+<!-- {{/if}} -->
+
+<!-- {{#if nextjs-aws}} -->
+**Tool**: {{ormTool}} migrations
+
+```bash
+# Create migration
+npx prisma migrate dev --name create_users_table
+
+# Deploy to production
+npx prisma migrate deploy
+```
+<!-- {{/if}} -->
+
+### Migration Best Practices
+
+1. **Always reversible**: Include both up and down migrations
+2. **Test locally**: Verify migrations on copy of production data
+3. **Backward compatible**: Don't break existing code
+4. **Small changes**: One logical change per migration
+5. **Data preservation**: Never delete data without backup
+
+### Example Migration
+
+```sql
+-- Migration: 001_create_users_table.up.sql
+CREATE TABLE users (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email VARCHAR(255) UNIQUE NOT NULL,
+  name VARCHAR(100) NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_users_email ON users(email);
+
+-- Migration: 001_create_users_table.down.sql
+DROP INDEX idx_users_email;
+DROP TABLE users;
+```
+
+## Data Access Patterns
+
+### Repository Pattern
+
+```typescript
+// repositories/UserRepository.ts
+export class UserRepository {
+  async findById(id: UserId): Promise<User | null> {
+    const result = await db.query(
+      'SELECT * FROM users WHERE id = $1',
+      [id]
+    );
+    return result.rows[0] ? mapToUser(result.rows[0]) : null;
+  }
+
+  async create(data: CreateUserInput): Promise<User> {
+    // Validate input (Pillar B)
+    const validated = UserCreateSchema.parse(data);
+
+    const result = await db.query(
+      'INSERT INTO users (email, name, password_hash) VALUES ($1, $2, $3) RETURNING *',
+      [validated.email, validated.name, validated.passwordHash]
+    );
+
+    return mapToUser(result.rows[0]);
+  }
+}
+```
+
+### Query Optimization
+
+<!-- TODO: Document common query patterns and optimizations -->
+<!-- Example:
+**Pattern**: Paginated list with filters
+```sql
+SELECT * FROM posts
+WHERE user_id = $1
+  AND published_at IS NOT NULL
+ORDER BY published_at DESC
+LIMIT 20 OFFSET $2;
+```
+
+**Optimization**: Composite index on (user_id, published_at DESC)
+-->
+
+## Caching Strategy
+
+<!-- TODO: Define caching approach -->
+<!-- Example:
+- **User sessions**: In-memory cache (Redis), 30min TTL
+- **Post lists**: Edge cache (CloudFront), 5min TTL
+- **User profiles**: Application cache, invalidate on update
+-->
+
+<!-- {{#if tauri}} -->
+### Desktop Caching
+
+- **In-memory**: Frequently accessed entities
+- **SQLite**: All persistent data
+- **File system**: Large files (uploads, images)
+<!-- {{/if}} -->
+
+<!-- {{#if nextjs-aws}} -->
+### Cloud Caching
+
+- **ElastiCache**: Session data, hot queries
+- **CloudFront**: Static content, API responses
+- **Application**: In-process LRU cache
+<!-- {{/if}} -->
+
+## Data Retention & Archival
+
+<!-- TODO: Define retention policies -->
+<!-- Example:
+| Data Type | Retention | Archive After | Delete After |
+|-----------|-----------|---------------|--------------|
+| User data | Forever | N/A | On account deletion |
+| Logs | 90 days | 30 days | 90 days |
+| Analytics | 2 years | 1 year | 2 years |
+-->
+
+## Backup & Recovery
+
+<!-- {{#if tauri}} -->
+### Desktop Backup
+
+**Strategy**: User-managed backups
+
+```rust
+// Backup database to user-selected location
+pub fn backup_database(dest_path: &str) -> Result<()> {
+    let src = app_data_dir().join("data.db");
+    std::fs::copy(src, dest_path)?;
+    Ok(())
+}
+```
+
+**Recommendations**:
+- Export functionality in app
+- Auto-backup on major updates
+- Cloud sync option (if tauri-aws)
+<!-- {{/if}} -->
+
+<!-- {{#if nextjs-aws}} -->
+### Cloud Backup
+
+**Automated Backups**: RDS automatic backups
+
+```typescript
+// infrastructure/lib/db-stack.ts
+backupRetention: Duration.days(7),
+preferredBackupWindow: '03:00-04:00',  // UTC
+deleteAutomatedBackups: false,
+```
+
+**Point-in-Time Recovery**: Enabled for 7 days
+
+**Disaster Recovery**:
+- RTO: < 4 hours
+- RPO: < 5 minutes
+<!-- {{/if}} -->
+
+## Security Considerations
+
+### Data Encryption
+
+<!-- {{#if tauri}} -->
+- **At Rest**: SQLCipher for encrypted database
+- **In Memory**: Secure memory handling in Rust
+- **Secrets**: OS keychain for API keys
+<!-- {{/if}} -->
+
+<!-- {{#if nextjs-aws}} -->
+- **At Rest**: RDS encryption with KMS
+- **In Transit**: TLS 1.3 for all connections
+- **Secrets**: AWS Secrets Manager
+<!-- {{/if}} -->
+
+### Access Control
+
+<!-- TODO: Define data access policies -->
+<!-- Example:
+- Row-Level Security (RLS) for multi-tenant data
+- Column-Level permissions for sensitive fields
+- Audit logging for PII access
+-->
+
+### PII Handling
+
+<!-- TODO: Document PII data and compliance -->
+<!-- Example:
+**PII Fields**: email, name, phone, address
+**Compliance**: GDPR, CCPA
+**Retention**: Delete within 30 days of account deletion
+**Access Logging**: All PII access logged for audit
+-->
+
+## Performance Benchmarks
+
+<!-- TODO: Document expected performance metrics -->
+<!-- Example:
+| Operation | Target | Actual |
+|-----------|--------|--------|
+| User lookup by ID | < 10ms | 5ms (p95) |
+| Post list (20 items) | < 50ms | 35ms (p95) |
+| User creation | < 100ms | 80ms (p95) |
+| Full-text search | < 200ms | 150ms (p95) |
+-->
+
+## Related Documents
+
+- [Architecture](ARCHITECTURE.md) - System architecture
+- [API Documentation](API.md) - API endpoints using this schema
+- [Test Plan](TEST_PLAN.md) - Data validation tests
+
+---
+
+**Document Owner**: {{technicalLead}}
+**Last Review**: {{currentDate}}
+**Next Review**: [TODO: Schedule schema review]

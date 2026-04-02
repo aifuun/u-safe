@@ -1,0 +1,397 @@
+# Setup Guide
+
+**Project**: {{projectName}}
+**Last Updated**: {{currentDate}}
+
+## Prerequisites
+
+### Required Software
+
+<!-- {{#if tauri}} -->
+**For Desktop Development**:
+- **Node.js**: {{nodeVersion}} or higher
+- **Rust**: 1.70+ ([Install Rust](https://rustup.rs/))
+- **Package Manager**: {{packageManager}}
+- **System Dependencies**:
+  - macOS: Xcode Command Line Tools
+  - Windows: Microsoft Visual Studio C++ Build Tools
+  - Linux: `build-essential`, `libgtk-3-dev`, `libwebkit2gtk-4.0-dev`
+<!-- {{/if}} -->
+
+<!-- {{#if nextjs-aws}} -->
+**For Web Development**:
+- **Node.js**: {{nodeVersion}} or higher
+- **Package Manager**: {{packageManager}}
+- **AWS CLI**: For infrastructure deployment
+- **AWS CDK**: For infrastructure as code
+
+<!-- {{/if}} -->
+
+<!-- {{#if tauri-aws}} -->
+**For Hybrid Development**:
+- **Node.js**: {{nodeVersion}} or higher
+- **Rust**: 1.70+ (for desktop app)
+- **Package Manager**: {{packageManager}}
+- **AWS CLI**: For cloud backend
+- **System Dependencies**: See Tauri requirements above
+<!-- {{/if}} -->
+
+### Account Setup
+
+<!-- {{#if nextjs-aws}} -->
+- **AWS Account**: Create at [aws.amazon.com](https://aws.amazon.com)
+- **AWS CLI Configured**: Run `aws configure`
+<!-- {{/if}} -->
+
+<!-- TODO: Add additional account requirements -->
+<!-- Example: GitHub account, third-party API keys, etc. -->
+
+## Installation
+
+### 1. Clone Repository
+
+```bash
+git clone {{repositoryUrl}}
+cd {{projectName}}
+```
+
+### 2. Install Dependencies
+
+```bash
+{{packageManager}} install
+```
+
+<!-- {{#if tauri}} -->
+### 3. Setup Tauri
+
+```bash
+# Install Tauri CLI
+{{packageManager}} install -D @tauri-apps/cli
+
+# Verify Tauri setup
+{{packageManager}} run tauri info
+```
+
+**Common Issues**:
+- **Missing system dependencies**: See [Tauri Prerequisites](https://tauri.app/v1/guides/getting-started/prerequisites)
+- **Rust not found**: Ensure Rust is in your PATH after installation
+<!-- {{/if}} -->
+
+<!-- {{#if nextjs-aws}} -->
+### 3. Setup AWS
+
+```bash
+# Install AWS CDK
+npm install -g aws-cdk
+
+# Bootstrap CDK (first time only)
+cd infrastructure
+cdk bootstrap
+```
+<!-- {{/if}} -->
+
+### 4. Environment Configuration
+
+Create `.env.local` file:
+
+```bash
+cp .env.example .env.local
+```
+
+Edit `.env.local`:
+
+```bash
+# Application
+{{#if nextjs-aws}}
+NEXT_PUBLIC_API_URL=http://localhost:3000/api
+{{/if}}
+
+{{#if tauri}}
+# Tauri app identifier
+TAURI_APP_ID=com.{{projectName}}.app
+{{/if}}
+
+{{#if nextjs-aws}}
+# Database
+DATABASE_URL=postgresql://user:password@localhost:5432/{{projectName}}
+
+# Authentication
+JWT_SECRET=your-secret-key-here
+JWT_EXPIRES_IN=7d
+
+# AWS (for production)
+AWS_REGION=us-east-1
+{{/if}}
+
+# TODO: Add environment variables
+```
+
+<!-- {{#if nextjs-aws}} -->
+### 5. Database Setup
+
+```bash
+# Start database (Docker)
+docker-compose up -d postgres
+
+# Run migrations
+{{packageManager}} run db:migrate
+
+# Seed data (optional)
+{{packageManager}} run db:seed
+```
+<!-- {{/if}} -->
+
+## Development
+
+### Running the App
+
+<!-- {{#if tauri}} -->
+```bash
+# Start desktop app in development mode
+{{packageManager}} run tauri dev
+
+# Opens app window with hot-reload enabled
+```
+<!-- {{/if}} -->
+
+<!-- {{#if nextjs-aws}} -->
+```bash
+# Start web app development server
+{{packageManager}} run dev
+
+# Open browser: http://localhost:3000
+```
+<!-- {{/if}} -->
+
+<!-- {{#if tauri-aws}} -->
+**Desktop App**:
+```bash
+{{packageManager}} run tauri dev
+```
+
+**Cloud Backend** (separate terminal):
+```bash
+cd backend
+{{packageManager}} run dev
+```
+<!-- {{/if}} -->
+
+### Development Scripts
+
+```bash
+# Run tests
+{{packageManager}} test
+
+# Run linter
+{{packageManager}} run lint
+
+# Type checking
+{{packageManager}} run type-check
+
+# Format code
+{{packageManager}} run format
+```
+
+## Building for Production
+
+<!-- {{#if tauri}} -->
+### Desktop App
+
+```bash
+# Build production app
+{{packageManager}} run tauri build
+
+# Output locations:
+# macOS: src-tauri/target/release/bundle/dmg/
+# Windows: src-tauri/target/release/bundle/msi/
+# Linux: src-tauri/target/release/bundle/deb/
+#        src-tauri/target/release/bundle/appimage/
+```
+
+**Build Configuration**:
+- Edit `src-tauri/tauri.conf.json`
+- Set app name, version, identifier
+- Configure bundle settings
+<!-- {{/if}} -->
+
+<!-- {{#if nextjs-aws}} -->
+### Web App
+
+```bash
+# Build Next.js app
+{{packageManager}} run build
+
+# Test production build locally
+{{packageManager}} run start
+```
+
+### Deploy to AWS
+
+```bash
+cd infrastructure
+
+# Deploy all stacks
+cdk deploy --all
+
+# Or deploy specific stack
+cdk deploy FrontendStack
+cdk deploy ApiStack
+```
+
+**Deployment outputs**:
+- Frontend URL: CloudFront distribution URL
+- API URL: API Gateway endpoint
+- Database endpoint: RDS instance
+<!-- {{/if}} -->
+
+<!-- {{#if tauri-aws}} -->
+### Hybrid Deployment
+
+**Desktop App**:
+```bash
+{{packageManager}} run tauri build
+```
+
+**Cloud Backend**:
+```bash
+cd infrastructure
+cdk deploy --all
+```
+
+Update desktop app with cloud API URL:
+```bash
+# Edit .env.production
+VITE_API_URL=https://api.production.example.com
+```
+<!-- {{/if}} -->
+
+## Configuration
+
+### Project Structure
+
+```
+{{projectName}}/
+├── src/                    # Source code
+<!-- {{#if tauri}} -->
+├── src-tauri/              # Tauri backend (Rust)
+│   ├── src/                # Rust source
+│   ├── icons/              # App icons
+│   └── tauri.conf.json     # Tauri configuration
+<!-- {{/if}} -->
+├── docs/                   # Documentation
+├── tests/                  # Test suites
+<!-- {{#if nextjs-aws}} -->
+├── infrastructure/         # AWS CDK code
+│   ├── lib/                # Stack definitions
+│   └── bin/                # CDK app entry
+<!-- {{/if}} -->
+├── .env.example            # Environment variables template
+└── package.json            # Dependencies
+```
+
+### Configuration Files
+
+<!-- TODO: Document key configuration files -->
+<!-- Example:
+- **package.json**: Scripts, dependencies
+- **tsconfig.json**: TypeScript configuration
+- **tailwind.config.js**: Styling configuration
+- **next.config.js**: Next.js configuration (if nextjs-aws)
+- **tauri.conf.json**: Tauri configuration (if tauri)
+-->
+
+## Troubleshooting
+
+### Common Issues
+
+<!-- {{#if tauri}} -->
+#### Tauri build fails
+
+**Error**: `cargo build failed`
+
+**Solution**:
+1. Ensure Rust is installed: `rustc --version`
+2. Check system dependencies: `npm run tauri info`
+3. Clean and rebuild: `cd src-tauri && cargo clean && cd .. && npm run tauri build`
+
+#### App doesn't start
+
+**Error**: `Failed to load main process`
+
+**Solution**:
+1. Check `src-tauri/tauri.conf.json` paths
+2. Verify `distDir` points to correct build output
+3. Rebuild frontend: `npm run build`
+<!-- {{/if}} -->
+
+<!-- {{#if nextjs-aws}} -->
+#### Database connection fails
+
+**Error**: `ECONNREFUSED`
+
+**Solution**:
+1. Ensure database is running: `docker-compose ps`
+2. Check `DATABASE_URL` in `.env.local`
+3. Verify network connectivity
+
+#### CDK deploy fails
+
+**Error**: `Stack does not exist`
+
+**Solution**:
+1. Bootstrap CDK: `cdk bootstrap`
+2. Check AWS credentials: `aws sts get-caller-identity`
+3. Verify region in `.env`
+<!-- {{/if}} -->
+
+### Getting Help
+
+- **Documentation**: See other docs in `docs/` folder
+- **GitHub Issues**: [Report bugs]({{repositoryUrl}}/issues)
+- **Logs**: Check console output for errors
+
+## IDE Setup
+
+### VS Code (Recommended)
+
+**Extensions**:
+- ESLint
+- Prettier
+- TypeScript and JavaScript Language Features
+<!-- {{#if tauri}} -->
+- rust-analyzer
+- Tauri
+<!-- {{/if}} -->
+
+**Settings** (`.vscode/settings.json`):
+```json
+{
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": true
+  }
+}
+```
+
+## Next Steps
+
+After setup is complete:
+
+1. **Review Documentation**: Read [README](README.md), [Architecture](ARCHITECTURE.md)
+2. **Run Tests**: `{{packageManager}} test` to verify setup
+3. **Start Development**: Pick an issue from [GitHub Issues]({{repositoryUrl}}/issues)
+4. **Follow Workflow**: Use `/start-issue`, `/execute-plan`, `/review`, `/finish-issue`
+
+## Related Documents
+
+- [README](README.md) - Project overview
+- [Architecture](ARCHITECTURE.md) - System design
+- [Deployment](DEPLOYMENT.md) - Production deployment
+- [Test Plan](TEST_PLAN.md) - Testing guide
+
+---
+
+**Document Owner**: {{technicalLead}}
+**Last Review**: {{currentDate}}
+**Setup Time**: ~20 minutes (first time)

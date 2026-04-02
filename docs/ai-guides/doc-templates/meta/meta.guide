@@ -1,0 +1,147 @@
+# Meta Module Guide
+
+> Module for project meta-documentation (standards, guidelines, processes)
+
+## Overview
+
+The **meta module** contains foundational project documentation that defines standards, guidelines, and organizational processes. This module is profile-agnostic and should be included in all projects.
+
+## Purpose
+
+- Provide documentation standards and structure guidelines
+- Establish consistent practices across all projects
+- Serve as reference for documentation organization
+- Support new team members with clear structure guidelines
+
+## Templates
+
+### DOCUMENTATION_MANUAL.md.template
+
+**Output**: `docs/DOCUMENTATION_MANUAL.md`
+
+**Description**: Comprehensive 912-line project documentation standards manual based on Divio Documentation System.
+
+**Content includes**:
+- Standard directory structure (docs/, adr/, product/, design/, arch/, dev/, qa/, ops/)
+- Naming conventions (directory naming, file naming, ADR numbering)
+- Required files checklist (by project profile)
+- Documentation template index
+- Best practices (writing guidelines, diagram management, version control)
+- Quality checklist (manual and automated checks)
+- FAQ (common documentation questions)
+
+**Variable substitution**: None required (static content)
+
+**Profile handling**: Universal - applies to all profiles
+
+## Output Path
+
+**Special handling**: Meta module outputs to docs/ root (not a subdirectory).
+
+Path mapping: `'meta': ''` in path_resolver.py
+
+Result: `docs/DOCUMENTATION_MANUAL.md` (not `docs/meta/DOCUMENTATION_MANUAL.md`)
+
+## Module Position
+
+Meta module should be **first** in base_modules list:
+
+```python
+base_modules = ['meta', 'prd', 'architecture', 'design', 'dev', 'qa']
+```
+
+**Rationale**: DOCUMENTATION_MANUAL.md is a foundational document that explains the structure for all other documents.
+
+## Profile Usage
+
+| Profile | Included | Notes |
+|---------|----------|-------|
+| tauri | ✅ Yes | Baseline meta documentation |
+| nextjs-aws | ✅ Yes | Same as tauri |
+| tauri-aws | ✅ Yes | Same as tauri |
+| minimal | ✅ Yes | Core meta doc |
+
+**All profiles include meta module** - it's a universal requirement.
+
+## File Counts
+
+After including meta module:
+- tauri: 20 → 21 files (+1 for DOCUMENTATION_MANUAL.md)
+- nextjs-aws: 21 → 22 files
+- tauri-aws: 21 → 22 files
+- minimal: 13 → 14 files
+
+## Usage Examples
+
+### Full documentation generation (includes meta)
+
+```bash
+/manage-docs --instant --dry-run
+# Output includes: docs/DOCUMENTATION_MANUAL.md (21 files for tauri)
+```
+
+### Meta module only
+
+```bash
+/manage-docs --instant --module meta
+# Generates only: docs/DOCUMENTATION_MANUAL.md
+```
+
+### Update meta documentation
+
+```bash
+/manage-docs --instant --module meta
+# Updates DOCUMENTATION_MANUAL.md with latest version from template
+```
+
+## Processing Notes
+
+1. **No variable substitution**: DOCUMENTATION_MANUAL.md is static content
+2. **Direct copy**: Template can be copied as-is to target location
+3. **Overwrite safe**: File can be regenerated without losing custom content (users shouldn't edit this file)
+4. **Version tracking**: Template includes version metadata (v1.0.0, last updated date)
+
+## Error Handling
+
+**Missing template**:
+```python
+if not template_file.exists():
+    log.error(f"Meta template not found: {template_file}")
+    raise FileNotFoundError(f"Missing DOCUMENTATION_MANUAL.md.template")
+```
+
+**Output path resolution**:
+```python
+# meta module outputs to docs/ root
+output_path = base_docs_dir / "DOCUMENTATION_MANUAL.md"
+# NOT: base_docs_dir / "meta" / "DOCUMENTATION_MANUAL.md"
+```
+
+## Related Modules
+
+- **prd**: Product documentation (references meta standards)
+- **architecture**: Technical architecture (references meta structure)
+- **dev**: Development docs (follows meta naming conventions)
+
+All modules should reference DOCUMENTATION_MANUAL.md for structure guidelines.
+
+## Maintenance
+
+**When to update**:
+- Documentation standards change
+- New directory structure introduced
+- Profile-specific requirements added
+- Best practices evolve
+
+**Update process**:
+1. Edit source: `docs/DOCUMENTATION_MANUAL.md`
+2. Copy to template: `docs/ai-guides/doc-templates/meta/templates/DOCUMENTATION_MANUAL.md.template`
+3. Update version number and last_updated date
+4. Regenerate in projects: `/manage-docs --instant --module meta`
+
+---
+
+**Version**: 1.0.0
+**Last Updated**: 2026-03-26
+**Module Type**: Foundational meta-documentation
+**Profile Support**: Universal (all profiles)

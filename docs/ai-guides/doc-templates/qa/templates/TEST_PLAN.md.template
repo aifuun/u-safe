@@ -1,0 +1,549 @@
+# Test Plan
+
+**Project**: {{projectName}}
+**Testing Framework**: {{testingFramework}}
+**Coverage Target**: {{coverageTarget}}%
+**Last Updated**: {{currentDate}}
+
+## Overview
+
+This document outlines the testing strategy and test cases for {{projectName}}.
+
+<!-- TODO: Add testing overview -->
+<!-- Example: We follow a test pyramid approach with emphasis on unit tests (70%), integration tests (20%), and E2E tests (10%). All code changes require tests before merge. -->
+
+## Test Strategy
+
+### Test Pyramid
+
+```
+           /\
+          /  \
+         / E2E \        10% - End-to-End Tests
+        /______\
+       /        \
+      /Integration\    20% - Integration Tests
+     /____________\
+    /              \
+   /   Unit Tests   \  70% - Unit Tests
+  /__________________\
+```
+
+**Distribution**:
+- **Unit Tests (70%)**: Fast, isolated, test individual functions
+- **Integration Tests (20%)**: Test component interactions
+- **E2E Tests (10%)**: Test complete user workflows
+
+### Testing Tools
+
+<!-- {{#if tauri}} -->
+**Frontend**:
+- **Unit**: Vitest + Testing Library
+- **Component**: Vitest + Testing Library
+- **E2E**: WebdriverIO (desktop automation)
+
+**Backend (Rust)**:
+- **Unit**: Built-in Rust tests
+- **Integration**: Cargo test with fixtures
+<!-- {{/if}} -->
+
+<!-- {{#if nextjs-aws}} -->
+**Frontend**:
+- **Unit**: Jest + Testing Library
+- **Component**: Jest + Testing Library
+- **E2E**: Playwright
+
+**Backend**:
+- **Unit**: Jest
+- **Integration**: Supertest + Test Containers
+- **Load**: Artillery or k6
+<!-- {{/if}} -->
+
+## Test Coverage Requirements
+
+### Minimum Coverage
+
+- **Overall**: {{coverageTarget}}%
+- **Statements**: 80%
+- **Branches**: 75%
+- **Functions**: 85%
+- **Lines**: 80%
+
+### Critical Paths
+
+**100% coverage required**:
+- Authentication logic
+- Data validation (Pillar B - Airlock)
+- Payment processing (if applicable)
+- Security-sensitive code
+
+### Exemptions
+
+**Coverage not required**:
+- Type definitions
+- Configuration files
+- Auto-generated code
+- Mock data
+
+## Test Cases
+
+### Unit Tests
+
+#### TC-U001: User Validation
+
+**Module**: `validators/UserValidator.ts`
+
+**Test Cases**:
+```typescript
+describe('UserValidator', () => {
+  test('valid user passes validation', () => {
+    const user = {
+      email: 'test@example.com',
+      name: 'Test User',
+      password: 'SecurePass123!'
+    };
+    expect(() => UserSchema.parse(user)).not.toThrow();
+  });
+
+  test('invalid email fails validation', () => {
+    const user = {
+      email: 'invalid-email',
+      name: 'Test User',
+      password: 'SecurePass123!'
+    };
+    expect(() => UserSchema.parse(user)).toThrow();
+  });
+
+  test('short password fails validation', () => {
+    const user = {
+      email: 'test@example.com',
+      name: 'Test User',
+      password: '123'
+    };
+    expect(() => UserSchema.parse(user)).toThrow();
+  });
+});
+```
+
+**Expected**: Pillar B validation catches invalid inputs
+
+<!-- TODO: Add more unit test cases -->
+<!-- Example:
+#### TC-U002: Nominal Type Safety
+#### TC-U003: Business Logic Functions
+#### TC-U004: Utility Functions
+-->
+
+### Integration Tests
+
+#### TC-I001: User Registration Flow
+
+**Scenario**: New user signs up
+
+**Setup**:
+```typescript
+beforeEach(async () => {
+  await clearDatabase();
+  await seedTestData();
+});
+```
+
+**Test**:
+```typescript
+test('user can register with valid data', async () => {
+  const response = await request(app)
+    .post('/api/auth/register')
+    .send({
+      email: 'newuser@example.com',
+      name: 'New User',
+      password: 'SecurePass123!'
+    });
+
+  expect(response.status).toBe(201);
+  expect(response.body).toHaveProperty('id');
+  expect(response.body.email).toBe('newuser@example.com');
+
+  // Verify in database
+  const user = await db.users.findByEmail('newuser@example.com');
+  expect(user).toBeDefined();
+});
+```
+
+**Expected**: User created in database, password hashed
+
+<!-- TODO: Add more integration test cases -->
+<!-- Example:
+#### TC-I002: Authentication Flow
+#### TC-I003: Data Persistence
+#### TC-I004: API Error Handling
+-->
+
+### End-to-End Tests
+
+<!-- {{#if tauri}} -->
+#### TC-E001: Desktop App Launch
+
+**Scenario**: User opens desktop app
+
+**Test**:
+```typescript
+test('app launches and shows main window', async () => {
+  const app = await startApp();
+
+  // Wait for window
+  await app.client.waitForExist('#main-window', { timeout: 5000 });
+
+  // Verify UI elements
+  const title = await app.client.getText('#app-title');
+  expect(title).toBe('{{projectName}}');
+
+  await app.stop();
+});
+```
+
+#### TC-E002: Create and Save Data
+
+**Scenario**: User creates and saves data offline
+
+**Test**:
+```typescript
+test('user can create data offline', async () => {
+  const app = await startApp();
+
+  // Navigate to create form
+  await app.client.click('#new-post-button');
+
+  // Fill form
+  await app.client.setValue('#title-input', 'Test Post');
+  await app.client.setValue('#content-input', 'Test content...');
+
+  // Save
+  await app.client.click('#save-button');
+
+  // Verify saved
+  await app.client.waitForText('Saved successfully', { timeout: 2000 });
+
+  // Verify in database
+  const posts = await app.getLocalData('posts');
+  expect(posts).toHaveLength(1);
+  expect(posts[0].title).toBe('Test Post');
+
+  await app.stop();
+});
+```
+<!-- {{/if}} -->
+
+<!-- {{#if nextjs-aws}} -->
+#### TC-E001: User Registration and Login
+
+**Scenario**: Complete user journey from signup to login
+
+**Test**:
+```typescript
+test('user can register and login', async ({ page }) => {
+  // Navigate to signup
+  await page.goto('/signup');
+
+  // Fill registration form
+  await page.fill('#email', 'test@example.com');
+  await page.fill('#name', 'Test User');
+  await page.fill('#password', 'SecurePass123!');
+  await page.click('#submit-button');
+
+  // Verify redirect to dashboard
+  await page.waitForURL('/dashboard');
+  await expect(page.locator('#welcome-message')).toContainText('Welcome, Test User');
+
+  // Logout
+  await page.click('#logout-button');
+
+  // Login again
+  await page.goto('/login');
+  await page.fill('#email', 'test@example.com');
+  await page.fill('#password', 'SecurePass123!');
+  await page.click('#login-button');
+
+  // Verify logged in
+  await page.waitForURL('/dashboard');
+});
+```
+
+#### TC-E002: Create and View Resource
+
+**Scenario**: User creates a post and views it
+
+**Test**:
+```typescript
+test('user can create and view post', async ({ page }) => {
+  // Login first
+  await loginAs(page, 'test@example.com', 'password');
+
+  // Create post
+  await page.goto('/posts/new');
+  await page.fill('#title', 'My First Post');
+  await page.fill('#content', 'Post content here...');
+  await page.click('#publish-button');
+
+  // Verify redirect to post page
+  await page.waitForURL(/\/posts\/\d+/);
+
+  // Verify post content
+  await expect(page.locator('h1')).toContainText('My First Post');
+  await expect(page.locator('.content')).toContainText('Post content here...');
+});
+```
+<!-- {{/if}} -->
+
+<!-- TODO: Add more E2E test cases -->
+<!-- Example:
+#### TC-E003: Error Scenarios
+#### TC-E004: Edge Cases
+#### TC-E005: Performance Tests
+-->
+
+## Test Data Management
+
+### Test Fixtures
+
+```typescript
+// tests/fixtures/users.ts
+export const testUsers = {
+  validUser: {
+    email: 'valid@example.com',
+    name: 'Valid User',
+    password: 'SecurePass123!'
+  },
+  adminUser: {
+    email: 'admin@example.com',
+    name: 'Admin User',
+    password: 'AdminPass123!',
+    role: 'admin'
+  },
+};
+```
+
+### Database Seeding
+
+```typescript
+// tests/helpers/seed.ts
+export async function seedDatabase() {
+  await db.users.create(testUsers.validUser);
+  await db.users.create(testUsers.adminUser);
+  // ... seed more data
+}
+
+export async function clearDatabase() {
+  await db.users.deleteAll();
+  await db.posts.deleteAll();
+  // ... clear all tables
+}
+```
+
+## CI/CD Integration
+
+### GitHub Actions
+
+```yaml
+# .github/workflows/test.yml
+name: Tests
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: {{nodeVersion}}
+
+      - name: Install dependencies
+        run: {{packageManager}} install
+
+      - name: Run linter
+        run: {{packageManager}} run lint
+
+      - name: Run unit tests
+        run: {{packageManager}} test
+
+      - name: Run integration tests
+        run: {{packageManager}} run test:integration
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+```
+
+### Test Commands
+
+```json
+{
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:e2e": "playwright test"
+  }
+}
+```
+
+## Performance Testing
+
+<!-- {{#if nextjs-aws}} -->
+### Load Testing
+
+**Tool**: Artillery
+
+**Scenario**: API load test
+
+```yaml
+# load-test.yml
+config:
+  target: "https://api.example.com"
+  phases:
+    - duration: 60
+      arrivalRate: 10
+      name: "Warm up"
+    - duration: 120
+      arrivalRate: 50
+      name: "Load test"
+
+scenarios:
+  - name: "User flow"
+    flow:
+      - post:
+          url: "/api/auth/login"
+          json:
+            email: "test@example.com"
+            password: "password"
+      - get:
+          url: "/api/users/me"
+```
+
+**Run**:
+```bash
+artillery run load-test.yml
+```
+
+**Acceptance Criteria**:
+- p95 response time < 200ms
+- Error rate < 1%
+- Can handle 1000 concurrent users
+<!-- {{/if}} -->
+
+<!-- {{#if tauri}} -->
+### Desktop Performance
+
+**Metrics**:
+- App launch time: < 1 second
+- Memory usage (idle): < 200MB
+- CPU usage (idle): < 5%
+- UI responsiveness: 60 FPS
+
+**Profiling**:
+```bash
+# Rust backend profiling
+cargo flamegraph --bin {{projectName}}
+
+# Memory profiling
+cargo instruments -t Allocations
+```
+<!-- {{/if}} -->
+
+## Test Execution
+
+### Running Tests Locally
+
+```bash
+# Run all tests
+{{packageManager}} test
+
+# Run with coverage
+{{packageManager}} run test:coverage
+
+# Run specific test file
+{{packageManager}} test -- UserValidator.test.ts
+
+# Run in watch mode
+{{packageManager}} run test:watch
+```
+
+### Running Tests in CI
+
+All tests run automatically on:
+- Every push to any branch
+- Every pull request
+- Before deployment to production
+
+**Required to pass**:
+- All tests passing
+- Coverage ≥ {{coverageTarget}}%
+- No linting errors
+
+## Test Reporting
+
+### Coverage Reports
+
+Generated by: `{{packageManager}} run test:coverage`
+
+**Output**:
+- HTML report: `coverage/index.html`
+- LCOV format: `coverage/lcov.info`
+- Console summary
+
+**Example**:
+```
+----------------------|---------|----------|---------|---------|-------------------
+File                  | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s
+----------------------|---------|----------|---------|---------|-------------------
+All files             |   85.32 |    78.45 |   90.12 |   84.87 |
+ validators/          |   92.45 |    88.32 |   95.00 |   91.78 |
+  UserValidator.ts    |   95.12 |    90.00 |   100   |   94.87 | 45-47
+```
+
+### Test Results Dashboard
+
+**Tools**:
+- **Local**: Terminal output
+- **CI**: GitHub Actions summary
+- **Coverage**: Codecov dashboard
+
+## Best Practices
+
+### Writing Tests
+
+1. **Follow AAA Pattern**: Arrange, Act, Assert
+2. **One assertion per test**: Focus tests on single behavior
+3. **Use descriptive names**: Test name explains what's being tested
+4. **Test behavior, not implementation**: Don't test internal details
+5. **Keep tests fast**: Unit tests should run in milliseconds
+
+### Test Organization
+
+```
+tests/
+├── unit/              # Unit tests (mirrors src/)
+│   ├── validators/
+│   └── services/
+├── integration/       # Integration tests
+│   ├── api/
+│   └── database/
+├── e2e/               # End-to-end tests
+│   ├── user-flows/
+│   └── critical-paths/
+├── fixtures/          # Test data
+└── helpers/           # Test utilities
+```
+
+## Related Documents
+
+- [Architecture](ARCHITECTURE.md) - System design
+- [API Documentation](API.md) - API contracts to test
+- [Setup Guide](SETUP.md) - Running tests locally
+
+---
+
+**Document Owner**: {{qaLead}}
+**Last Review**: {{currentDate}}
+**Test Suite Size**: [TODO: Update with test count]

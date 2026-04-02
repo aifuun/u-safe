@@ -1,0 +1,550 @@
+# Deployment Guide
+
+**Project**: {{projectName}}
+**Deployment Platform**: {{deploymentPlatform}}
+**CI/CD Tool**: {{cicdTool}}
+**Last Updated**: {{currentDate}}
+
+## Overview
+
+This document describes deployment procedures, infrastructure, and operational processes for {{projectName}}.
+
+<!-- TODO: Add deployment overview -->
+<!-- Example: We use [platform] for deployment with [strategy]. Deployments are automated via [CI/CD tool]. Average deployment time: [X minutes]. -->
+
+<!-- {{#if tauri}} -->
+## Desktop App Deployment
+
+### Build Process
+
+**Platforms Supported**:
+- macOS: .dmg, .app
+- Windows: .msi, .exe
+- Linux: .deb, .AppImage
+
+**Build Command**:
+```bash
+{{packageManager}} run tauri build
+```
+
+**Output Locations**:
+```
+src-tauri/target/release/bundle/
+├── dmg/           # macOS installer
+├── macos/         # macOS app bundle
+├── msi/           # Windows installer
+├── nsis/          # Windows installer (alternative)
+├── deb/           # Debian/Ubuntu package
+└── appimage/      # Universal Linux binary
+```
+
+### Code Signing
+
+**macOS**:
+```bash
+# Sign app
+codesign --deep --force --verify --verbose \
+  --sign "Developer ID Application: Your Name" \
+  "MyApp.app"
+
+# Notarize
+xcrun notarytool submit "MyApp.dmg" \
+  --apple-id "your@email.com" \
+  --password "app-specific-password" \
+  --team-id "TEAM_ID"
+```
+
+**Windows**:
+```powershell
+# Sign with certificate
+signtool sign /f certificate.pfx /p password /tr http://timestamp.digicert.com MyApp.exe
+```
+
+### Distribution
+
+**GitHub Releases** (Recommended):
+```bash
+# Create release
+gh release create v1.0.0 \
+  src-tauri/target/release/bundle/dmg/*.dmg \
+  src-tauri/target/release/bundle/msi/*.msi \
+  src-tauri/target/release/bundle/deb/*.deb \
+  src-tauri/target/release/bundle/appimage/*.AppImage
+```
+
+**Auto-Update Configuration**:
+```json
+// tauri.conf.json
+{
+  "tauri": {
+    "updater": {
+      "active": true,
+      "endpoints": [
+        "https://github.com/{{organization}}/{{projectName}}/releases/latest/download/latest.json"
+      ],
+      "dialog": true,
+      "pubkey": "YOUR_PUBLIC_KEY_HERE"
+    }
+  }
+}
+```
+
+### CI/CD Pipeline
+
+```yaml
+# .github/workflows/release.yml
+name: Release Desktop App
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    strategy:
+      matrix:
+        platform: [macos-latest, windows-latest, ubuntu-latest]
+
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: {{nodeVersion}}
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Install dependencies
+        run: {{packageManager}} install
+
+      - name: Build app
+        run: {{packageManager}} run tauri build
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.platform }}-build
+          path: src-tauri/target/release/bundle/
+
+      - name: Create release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: src-tauri/target/release/bundle/**/*
+```
+<!-- {{/if}} -->
+
+<!-- {{#if nextjs-aws}} -->
+## Web App Deployment
+
+### Infrastructure Overview
+
+**AWS Services Used**:
+- **Frontend**: S3 + CloudFront (CDN)
+- **API**: Lambda + API Gateway
+- **Database**: RDS ({{databaseType}})
+- **Storage**: S3
+- **Auth**: Cognito (if applicable)
+- **Monitoring**: CloudWatch
+
+### Infrastructure as Code
+
+**Tool**: AWS CDK (TypeScript)
+
+**Stacks**:
+```typescript
+// infrastructure/bin/app.ts
+import * as cdk from 'aws-cdk-lib';
+import { FrontendStack } from '../lib/frontend-stack';
+import { ApiStack } from '../lib/api-stack';
+import { DatabaseStack } from '../lib/database-stack';
+
+const app = new cdk.App();
+
+const dbStack = new DatabaseStack(app, 'DatabaseStack', {
+  env: { region: 'us-east-1' }
+});
+
+const apiStack = new ApiStack(app, 'ApiStack', {
+  database: dbStack.database,
+  env: { region: 'us-east-1' }
+});
+
+const frontendStack = new FrontendStack(app, 'FrontendStack', {
+  apiEndpoint: apiStack.apiEndpoint,
+  env: { region: 'us-east-1' }
+});
+```
+
+### Deployment Steps
+
+**1. Build Application**:
+```bash
+{{packageManager}} run build
+```
+
+**2. Deploy Infrastructure**:
+```bash
+cd infrastructure
+
+# Deploy all stacks
+cdk deploy --all
+
+# Or deploy individually
+cdk deploy DatabaseStack
+cdk deploy ApiStack
+cdk deploy FrontendStack
+```
+
+**3. Run Database Migrations**:
+```bash
+# Connect to RDS
+DATABASE_URL=<rds-endpoint> {{packageManager}} run db:migrate
+```
+
+**4. Verify Deployment**:
+```bash
+# Test endpoints
+curl https://api.example.com/health
+
+# Check frontend
+open https://www.example.com
+```
+
+### CI/CD Pipeline
+
+```yaml
+# .github/workflows/deploy.yml
+name: Deploy to AWS
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: {{nodeVersion}}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Install dependencies
+        run: {{packageManager}} install
+
+      - name: Run tests
+        run: {{packageManager}} test
+
+      - name: Build application
+        run: {{packageManager}} run build
+
+      - name: Deploy infrastructure
+        run: |
+          cd infrastructure
+          npm install
+          npx cdk deploy --all --require-approval never
+
+      - name: Run database migrations
+        run: {{packageManager}} run db:migrate
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Smoke tests
+        run: {{packageManager}} run test:smoke
+```
+
+### Environment Configuration
+
+**Environments**:
+- **Development**: dev.example.com
+- **Staging**: staging.example.com
+- **Production**: www.example.com
+
+**Environment Variables** (stored in AWS Secrets Manager):
+```typescript
+// Access in Lambda
+import { SecretsManager } from 'aws-sdk';
+
+const secrets = new SecretsManager();
+const secret = await secrets.getSecretValue({
+  SecretId: 'prod/{{projectName}}/api'
+}).promise();
+
+const config = JSON.parse(secret.SecretString);
+```
+<!-- {{/if}} -->
+
+<!-- {{#if tauri-aws}} -->
+## Hybrid Deployment
+
+### Desktop Client
+
+See "Desktop App Deployment" section above.
+
+### Cloud Backend
+
+See "Web App Deployment" section above.
+
+### Synchronization
+
+**Update desktop app with backend URL**:
+```bash
+# .env.production (desktop app)
+VITE_API_URL=https://api.production.example.com
+
+# Rebuild desktop app with production API
+{{packageManager}} run tauri build
+```
+
+**Deploy sequence**:
+1. Deploy cloud backend first
+2. Test backend endpoints
+3. Update desktop app config with backend URL
+4. Build desktop app
+5. Release desktop app
+
+**Version Compatibility**:
+- Desktop app v1.x.x compatible with API v1.x.x
+- Breaking changes require major version bump
+- Auto-updater notifies users of new versions
+<!-- {{/if}} -->
+
+## Monitoring & Logging
+
+### Application Monitoring
+
+<!-- {{#if tauri}} -->
+**Desktop App Logs**:
+- Location: `~/.{{projectName}}/logs/`
+- Rotation: Daily, keep 7 days
+- Level: Info in production, Debug in development
+
+**Crash Reporting**:
+```rust
+// Setup crash reporter
+use tauri::plugin::sentry;
+
+tauri::Builder::default()
+    .plugin(sentry::init())
+    .run(tauri::generate_context!())
+    .expect("error while running tauri application");
+```
+<!-- {{/if}} -->
+
+<!-- {{#if nextjs-aws}} -->
+**CloudWatch Dashboards**:
+- API response times
+- Lambda error rates
+- Database connections
+- CloudFront cache hit ratio
+
+**Logs**:
+- Lambda logs: CloudWatch Logs
+- Application logs: CloudWatch Logs Insights
+- Access logs: S3 (CloudFront)
+
+**Alerting**:
+```typescript
+// infrastructure/lib/monitoring-stack.ts
+const alarm = new cloudwatch.Alarm(this, 'ApiErrorAlarm', {
+  metric: apiFunction.metricErrors(),
+  threshold: 10,
+  evaluationPeriods: 2,
+  alarmDescription: 'Alert when API errors exceed 10 in 10 minutes',
+});
+
+alarm.addAlarmAction(new sns_actions.SnsAction(alertTopic));
+```
+<!-- {{/if}} -->
+
+### Performance Monitoring
+
+<!-- {{#if nextjs-aws}} -->
+**Real User Monitoring (RUM)**:
+```typescript
+// Add AWS CloudWatch RUM
+import { AwsRum } from 'aws-rum-web';
+
+const awsRum = new AwsRum(
+  'app-{{projectName}}',
+  '1.0.0',
+  'us-east-1',
+  {
+    sessionSampleRate: 1,
+    guestRoleArn: 'arn:aws:iam::ACCOUNT:role/RUM-Monitor',
+    identityPoolId: 'IDENTITY_POOL_ID',
+    endpoint: 'https://dataplane.rum.us-east-1.amazonaws.com',
+    telemetries: ['errors', 'performance', 'http'],
+  }
+);
+```
+<!-- {{/if}} -->
+
+## Rollback Procedures
+
+### Quick Rollback
+
+<!-- {{#if tauri}} -->
+**Desktop App**:
+Users can download previous version from GitHub Releases:
+```
+https://github.com/{{organization}}/{{projectName}}/releases/tag/v1.0.0
+```
+
+**Auto-updater** prevents forced updates - users can skip.
+<!-- {{/if}} -->
+
+<!-- {{#if nextjs-aws}} -->
+**Web App** (CDK):
+```bash
+# Revert to previous stack version
+cdk deploy --rollback
+
+# Or deploy specific version
+git checkout v1.0.0
+cd infrastructure
+cdk deploy --all
+```
+
+**Database Rollback**:
+```bash
+# Run down migration
+{{packageManager}} run db:migrate:down
+```
+
+**Emergency**: Route traffic to previous CloudFront distribution
+<!-- {{/if}} -->
+
+### Rollback Decision Tree
+
+```
+Issue detected
+    ├─ Affects < 1% users → Monitor, fix in next release
+    ├─ Affects 1-10% users → Hotfix and deploy
+    └─ Affects > 10% users → Immediate rollback
+```
+
+## Health Checks
+
+<!-- {{#if nextjs-aws}} -->
+### Endpoints
+
+**API Health**:
+```http
+GET /health
+
+Response:
+{
+  "status": "healthy",
+  "version": "1.0.0",
+  "uptime": 3600,
+  "database": "connected",
+  "timestamp": "2026-03-15T10:00:00Z"
+}
+```
+
+**Database Health**:
+```typescript
+export async function checkDatabase(): Promise<boolean> {
+  try {
+    await db.raw('SELECT 1');
+    return true;
+  } catch {
+    return false;
+  }
+}
+```
+<!-- {{/if}} -->
+
+## Deployment Checklist
+
+### Pre-Deployment
+
+```
+- [ ] All tests passing
+- [ ] Code review approved
+- [ ] Security scan clean
+- [ ] Performance benchmarks met
+- [ ] Database migrations tested
+- [ ] Environment variables configured
+- [ ] Monitoring alerts configured
+```
+
+### Deployment
+
+```
+- [ ] Create deployment tag/release
+- [ ] Run deployment command
+- [ ] Monitor deployment progress
+- [ ] Verify health checks pass
+- [ ] Run smoke tests
+- [ ] Check error rates in monitoring
+```
+
+### Post-Deployment
+
+```
+- [ ] Verify key user flows work
+- [ ] Check performance metrics
+- [ ] Monitor error rates for 30 minutes
+- [ ] Update status page
+- [ ] Notify team of successful deployment
+- [ ] Document any issues encountered
+```
+
+## Disaster Recovery
+
+### Backup Strategy
+
+<!-- {{#if nextjs-aws}} -->
+**Database**:
+- Automated daily snapshots (7-day retention)
+- Manual snapshots before major changes
+- Point-in-time recovery (PITR) enabled
+
+**Application Data**:
+- S3 versioning enabled
+- Cross-region replication for critical data
+<!-- {{/if}} -->
+
+### Recovery Procedures
+
+**RTO (Recovery Time Objective)**: < 4 hours
+**RPO (Recovery Point Objective)**: < 5 minutes
+
+**Steps**:
+1. Assess impact and data loss
+2. Restore from latest backup
+3. Replay transaction logs if needed
+4. Verify data integrity
+5. Test application functionality
+6. Resume normal operations
+
+## Related Documents
+
+- [Architecture](ARCHITECTURE.md) - System design
+- [Setup Guide](SETUP.md) - Local development setup
+- [Test Plan](TEST_PLAN.md) - Testing procedures
+
+---
+
+**Document Owner**: {{devOpsLead}}
+**Last Review**: {{currentDate}}
+**Deployment Frequency**: [TODO: Update with actual cadence]

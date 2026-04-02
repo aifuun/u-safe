@@ -1,0 +1,54 @@
+# User Flows
+
+> Flow diagrams and decision points for key workflows in {PROJECT_NAME}
+
+## Flow Template
+
+### Flow: {FLOW_NAME}
+**Entry Point**: {WHERE_USER_STARTS}
+**End Goal**: {DESIRED_OUTCOME}
+**User Type**: {PERSONA}
+
+```mermaid
+graph TD
+    A[Start: {ENTRY}] --> B{Decision Point}
+    B -->|Yes| C[Action 1]
+    B -->|No| D[Action 2]
+    C --> E[End: {SUCCESS}]
+    D --> F[End: {ALTERNATIVE}]
+```
+
+**Decision Points**:
+1. **{DECISION_1}**: What happens if...
+   - Yes: {PATH_YES}
+   - No: {PATH_NO}
+
+**Error States**:
+- {ERROR_SCENARIO}: Show {ERROR_MESSAGE}
+- {ERROR_SCENARIO_2}: Redirect to {RECOVERY_PATH}
+
+---
+
+## Example Flows
+
+### Flow 1: {EXAMPLE_FLOW}
+{DESCRIPTION}
+
+**Steps**:
+1. User {ACTION_1}
+2. System {RESPONSE_1}
+3. User {ACTION_2}
+4. System {RESPONSE_2}
+
+**Happy Path**: {STEPS}
+**Alternative Paths**:
+- {ALT_SCENARIO_1}: {ALT_PATH_1}
+- {ALT_SCENARIO_2}: {ALT_PATH_2}
+
+**Edge Cases**:
+- {EDGE_CASE_1}: {HANDLING}
+- {EDGE_CASE_2}: {HANDLING}
+
+---
+
+**Last Updated**: {DATE}

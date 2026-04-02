@@ -1,0 +1,912 @@
+# 项目文档结构标准手册 (Project Documentation Standards Manual)
+
+> **Version**: 1.0.0
+> **Last Updated**: 2026-03-15
+> **Maintainer**: AI Dev Framework Team
+> **Status**: Active
+
+---
+
+## 目录 (Table of Contents)
+
+1. [概述 (Overview)](#1-概述-overview)
+2. [标准目录结构 (Standard Directory Structure)](#2-标准目录结构-standard-directory-structure)
+3. [命名规范 (Naming Conventions)](#3-命名规范-naming-conventions)
+4. [必需文件清单 (Required Files)](#4-必需文件清单-required-files)
+5. [文档模板索引 (Template Index)](#5-文档模板索引-template-index)
+6. [最佳实践 (Best Practices)](#6-最佳实践-best-practices)
+7. [质量检查清单 (Quality Checklist)](#7-质量检查清单-quality-checklist)
+8. [常见问题 (FAQ)](#8-常见问题-faq)
+
+---
+
+## 1. 概述 (Overview)
+
+### 为什么需要统一文档结构 (Why Unified Documentation Structure?)
+
+**问题现状 (Current Problems)**:
+- 每个项目重新设计文档结构,浪费时间
+- 不同项目文档组织方式不一致,团队切换成本高
+- 缺少强制性标准,导致文档缺失或混乱
+- 难以自动化文档检查和生成
+
+**统一结构的价值 (Benefits of Standardization)**:
+1. **降低认知负担** - 团队成员在不同项目间快速切换
+2. **提高效率** - 自动化工具(文档生成、检查)可复用
+3. **保证质量** - 强制要求关键文档存在
+4. **知识传承** - 新成员只需学习一次文档结构
+
+### Divio Documentation System
+
+本手册基于 [Divio Documentation System](https://documentation.divio.com/) 的四象限理论:
+
+| 象限 | 目的 | 受众 | 示例 |
+|------|------|------|------|
+| **Tutorials** (学习导向) | 帮助新人上手 | 初学者 | `dev/SETUP.md`, `dev/CONTRIBUTING.md` |
+| **How-to Guides** (任务导向) | 解决具体问题 | 实践者 | `ops/DEPLOYMENT.md`, `dev/WORKFLOW.md` |
+| **Reference** (信息导向) | 查阅具体细节 | 实现者 | `arch/API.md`, `arch/SCHEMA.md` |
+| **Explanation** (理解导向) | 理解设计决策 | 架构师 | `adr/`, `arch/ARCHITECTURE.md` |
+
+### 适用范围 (Scope)
+
+本标准适用于所有使用 **ai-dev 框架** 的项目,包括但不限于:
+
+- ✅ 桌面应用 (Tauri profile)
+- ✅ Web 应用 (Next.js + AWS profile)
+- ✅ 混合应用 (Tauri + AWS profile)
+- ✅ CLI 工具
+- ✅ 库和框架
+
+不同项目类型的差异在 [第4节:必需文件清单](#4-必需文件清单-required-files) 中详细说明。
+
+### 迁移现有项目 (Migrating Existing Projects)
+
+如果您的项目已有文档结构,需要迁移到 ai-dev 标准,请参考:
+
+📘 **[文档结构迁移指南 (DOCUMENTATION_MIGRATION_GUIDE.md)](DOCUMENTATION_MIGRATION_GUIDE.md)**
+
+迁移指南提供:
+- 安全的迁移策略(重命名 + 重建)
+- 7 个详细迁移步骤
+- 常见迁移模式和示例
+- Profile 特定检查清单
+- 完整的 buffer 项目迁移案例
+
+---
+
+## 2. 标准目录结构 (Standard Directory Structure)
+
+### 完整目录树 (Complete Directory Tree)
+
+```
+docs/
+├── README.md                 # 文档导航(必需)
+│
+├── adr/                      # 架构决策记录 (Architecture Decision Records)
+│   ├── README.md             # ADR 索引
+│   ├── TEMPLATE.md           # ADR 模板
+│   └── NNN-title.md          # 具体决策记录
+│
+├── product/                  # 产品文档 (Product Documentation)
+│   ├── PRD.md                # 产品需求文档
+│   ├── roadmap.md            # 产品路线图
+│   ├── user-stories.md       # 用户故事
+│   ├── research/             # 用户研究
+│   └── archive/              # 历史版本
+│
+├── design/                   # 设计规格 (Design Specifications)
+│   ├── UI_UX_DESIGN.md       # UI/UX 设计系统
+│   ├── FLOWS.md              # 用户流程
+│   ├── diagrams/             # Mermaid/PlantUML 图表
+│   └── mockups/              # 原型图
+│
+├── arch/                     # 技术架构 (Technical Architecture)
+│   ├── ARCHITECTURE.md       # 系统架构总览
+│   ├── LAYERS.md             # 分层架构
+│   ├── SCHEMA.md             # 数据模型
+│   ├── API.md                # API 设计
+│   ├── PATTERNS.md           # 设计模式
+│   └── INTERFACES.md         # 接口定义
+│
+├── dev/                      # 开发文档 (Development Documentation)
+│   ├── SETUP.md              # 环境搭建(必需)
+│   ├── CONTRIBUTING.md       # 贡献指南
+│   ├── WORKFLOW.md           # 开发工作流
+│   ├── CODING_STANDARDS.md   # 编码规范
+│   └── TROUBLESHOOTING.md    # 常见问题
+│
+├── qa/                       # 质量保证 (Quality Assurance)
+│   ├── TEST_PLAN.md          # 测试计划
+│   ├── TEST_CASES.md         # 测试用例
+│   ├── SECURITY_AUDIT.md     # 安全审计
+│   └── COMPATIBILITY.md      # 兼容性测试
+│
+└── ops/                      # 运维文档 (Operations Documentation)
+    ├── DEPLOYMENT.md         # 部署指南
+    ├── MONITORING.md         # 监控配置
+    ├── BACKUP.md             # 备份策略
+    └── RUNBOOK.md            # 运维手册
+```
+
+### 各目录职责说明 (Directory Responsibilities)
+
+#### `docs/` - 根目录
+- **职责**: 所有项目文档的顶层目录
+- **必需文件**: `README.md`(文档导航和使用指南)
+
+#### `adr/` - 架构决策记录
+- **职责**: 记录重大技术决策及其背景、权衡、后果
+- **受众**: 架构师、高级开发者
+- **何时使用**: 选型决策、架构变更、设计模式选择
+- **必需文件**: `TEMPLATE.md`
+
+#### `product/` - 产品文档
+- **职责**: 产品需求、路线图、用户研究
+- **受众**: 产品经理、设计师、业务团队
+- **何时使用**: 功能规划、需求变更、用户反馈
+- **必需文件**: `PRD.md`
+
+#### `design/` - 设计规格
+- **职责**: UI/UX 详细设计、交互流程、视觉设计
+- **受众**: 设计师、前端开发者
+- **何时使用**: 界面设计、交互设计、设计系统
+- **必需文件**: 无(可选目录)
+
+#### `arch/` - 技术架构
+- **职责**: 系统架构、数据模型、API 设计
+- **受众**: 架构师、后端开发者
+- **何时使用**: 系统设计、接口定义、架构演进
+- **必需文件**: `ARCHITECTURE.md`
+
+#### `dev/` - 开发文档
+- **职责**: 环境搭建、工作流程、编码规范
+- **受众**: 开发者(新成员和老成员)
+- **何时使用**: 项目入职、工作流变更、工具升级
+- **必需文件**: `SETUP.md`
+
+#### `qa/` - 质量保证
+- **职责**: 测试计划、安全审计、兼容性测试
+- **受众**: 测试工程师、QA 团队
+- **何时使用**: 测试规划、安全审查、质量验证
+- **必需文件**: 无(桌面应用可选,Web 应用推荐)
+
+#### `ops/` - 运维文档
+- **职责**: 部署、监控、备份、故障处理
+- **受众**: 运维工程师、DevOps 团队
+- **何时使用**: 部署配置、生产监控、灾难恢复
+- **必需文件**: 无(纯本地应用不需要,云应用必需)
+
+### 目录间的关系 (Directory Relationships)
+
+```
+产品需求 (product/)
+    ↓ 驱动
+设计规格 (design/)
+    ↓ 指导
+技术架构 (arch/)
+    ↓ 实现
+开发文档 (dev/)
+    ↓ 验证
+质量保证 (qa/)
+    ↓ 部署
+运维文档 (ops/)
+```
+
+**关键原则**:
+- **单向依赖**: 下游文档依赖上游文档,不反向依赖
+- **清晰边界**: 每个目录职责明确,避免重复内容
+- **关注点分离**: 产品、设计、技术、运维各司其职
+
+---
+
+## 3. 命名规范 (Naming Conventions)
+
+### 目录命名规则 (Directory Naming)
+
+**规则**: 全小写,单数形式,使用简短英文单词
+
+✅ **正确示例**:
+```
+docs/adr/          # 不是 ADRs/(大写)或 adrs/(复数)
+docs/product/      # 不是 Product/(大写)
+docs/arch/         # 不是 architecture/(太长)
+```
+
+❌ **错误示例**:
+```
+docs/ADRs/         # 错误:大写
+docs/products/     # 错误:复数
+docs/Architecture/ # 错误:大写 + 太长
+```
+
+**例外情况**:
+- `README.md` - 约定俗成的大写(仅文件名,不是目录)
+
+### 文件命名规则 (File Naming)
+
+**规则**: 大写字母 + 下划线分隔
+
+✅ **正确示例**:
+```
+ARCHITECTURE.md
+TEST_PLAN.md
+CODING_STANDARDS.md
+UI_UX_DESIGN.md
+```
+
+❌ **错误示例**:
+```
+architecture.md        # 错误:小写
+test-plan.md          # 错误:连字符
+CodingStandards.md    # 错误:驼峰命名
+ui-ux-design.md       # 错误:小写 + 连字符
+```
+
+**例外情况**:
+- `README.md` - 约定俗成
+- `roadmap.md` - 单词文件可小写(可选,推荐大写 `ROADMAP.md`)
+
+### ADR 编号规则 (ADR Numbering)
+
+**格式**: `NNN-kebab-case-title.md`
+
+- **NNN**: 三位数字(001, 002, 010, 123)
+- **title**: 小写连字符命名(kebab-case)
+
+✅ **正确示例**:
+```
+001-record-architecture-decisions.md
+002-use-tauri-framework.md
+010-implement-saga-pattern.md
+123-migrate-to-typescript.md
+```
+
+❌ **错误示例**:
+```
+1-record-decisions.md           # 错误:单数字
+ADR-001-use-tauri.md           # 错误:ADR 前缀多余
+001_use_tauri_framework.md     # 错误:下划线
+001-Use-Tauri-Framework.md     # 错误:大写
+```
+
+### 图表文件命名 (Diagram Naming)
+
+**位置**: `design/diagrams/` 或 `arch/diagrams/`
+
+**格式**: `kebab-case.mmd` (Mermaid) 或 `kebab-case.puml` (PlantUML)
+
+✅ **正确示例**:
+```
+design/diagrams/user-authentication-flow.mmd
+arch/diagrams/system-architecture.mmd
+arch/diagrams/database-schema.puml
+```
+
+---
+
+## 4. 必需文件清单 (Required Files)
+
+### 所有项目必需 (Universal Requirements)
+
+以下文件**所有项目**必须包含:
+
+| 文件 | 位置 | 用途 |
+|------|------|------|
+| **README.md** | `docs/README.md` | 文档导航,快速链接 |
+| **ADR TEMPLATE** | `docs/adr/TEMPLATE.md` | ADR 编写模板 |
+| **PRD** | `docs/product/PRD.md` | 产品需求文档 |
+| **ARCHITECTURE** | `docs/arch/ARCHITECTURE.md` | 系统架构总览 |
+| **SETUP** | `docs/dev/SETUP.md` | 开发环境搭建 |
+
+### 按项目类型区分 (Project-Type Specific)
+
+#### 桌面应用 (Tauri Profile)
+
+**必需文件** (5个):
+- `docs/README.md`
+- `docs/adr/TEMPLATE.md`
+- `docs/product/PRD.md`
+- `docs/arch/ARCHITECTURE.md`
+- `docs/dev/SETUP.md`
+
+**可选目录**:
+- `qa/` - 测试计划(推荐但非必需)
+- `ops/` - 不需要(纯本地应用)
+
+#### Web 应用 (Next.js + AWS Profile)
+
+**必需文件** (5个基础 + 1个部署):
+- `docs/README.md`
+- `docs/adr/TEMPLATE.md`
+- `docs/product/PRD.md`
+- `docs/arch/ARCHITECTURE.md`
+- `docs/dev/SETUP.md`
+- `docs/ops/DEPLOYMENT.md` ← 额外要求
+
+**推荐目录**:
+- `qa/` - 测试计划(强烈推荐)
+- `arch/API.md` - API 文档(前后端分离项目)
+
+#### 混合应用 (Tauri + AWS Profile)
+
+**必需文件** (6个):
+- 所有桌面应用文件 (5个)
+- `docs/ops/DEPLOYMENT.md` ← 云服务部署
+
+### 文件内容要求 (Content Requirements)
+
+#### `docs/README.md`
+```markdown
+# 项目文档
+
+## 快速导航
+- [产品需求](./product/PRD.md)
+- [系统架构](./arch/ARCHITECTURE.md)
+- [开发指南](./dev/SETUP.md)
+- [架构决策](./adr/)
+
+## 文档结构
+本项目遵循 [ai-dev 文档标准](https://github.com/aifuun/ai-dev/blob/main/docs/DOCUMENTATION_MANUAL.md)
+
+## 检查文档完整性
+```bash
+/check-docs
+```
+```
+
+#### `docs/adr/TEMPLATE.md`
+```markdown
+# ADR-NNN: [标题]
+
+**状态**: [Proposed | Accepted | Deprecated | Superseded]
+**日期**: YYYY-MM-DD
+**决策者**: [Name]
+
+## 背景 (Context)
+[为什么需要做决策?当前面临什么问题?]
+
+## 决策 (Decision)
+[我们决定做什么?]
+
+## 后果 (Consequences)
+**正面影响**:
+- [好处1]
+
+**负面影响**:
+- [代价1]
+
+## 替代方案 (Alternatives)
+[考虑过但未选择的方案]
+```
+
+#### `docs/product/PRD.md`
+必须包含:
+- 产品概述
+- 目标用户
+- 核心功能列表
+- 成功指标
+
+#### `docs/arch/ARCHITECTURE.md`
+必须包含:
+- 系统架构图
+- 技术栈说明
+- 分层设计
+- 关键设计决策引用
+
+#### `docs/dev/SETUP.md`
+必须包含:
+- 环境依赖
+- 安装步骤
+- 配置说明
+- 常见问题
+
+---
+
+## 5. 文档模板索引 (Template Index)
+
+### 可用模板列表 (Available Templates)
+
+模板位置: `ai-dev/docs/ai-guides/doc-templates/`
+
+| 模板文件 | 生成位置 | 用途 |
+|---------|---------|------|
+| `README.md.template` | `docs/README.md` | 文档导航 |
+| `PRD.md.template` | `docs/product/PRD.md` | 产品需求 |
+| `ARCHITECTURE.md.template` | `docs/arch/ARCHITECTURE.md` | 架构总览 |
+| `SCHEMA.md.template` | `docs/arch/SCHEMA.md` | 数据模型 |
+| `API.md.template` | `docs/arch/API.md` | API 文档 |
+| `SETUP.md.template` | `docs/dev/SETUP.md` | 环境搭建 |
+| `TEST_PLAN.md.template` | `docs/qa/TEST_PLAN.md` | 测试计划 |
+| `DEPLOYMENT.md.template` | `docs/ops/DEPLOYMENT.md` | 部署指南 |
+
+### 模板使用方法 (Template Usage)
+
+#### 方法 1: 项目初始化时自动生成
+
+```bash
+# 初始化项目时自动使用模板
+python3 scripts/init-project.py --profile=tauri --name=my-app
+
+# 生成的文档已填充项目信息(名称、技术栈等)
+```
+
+#### 方法 2: 手动从模板创建
+
+```bash
+# 复制模板
+cp docs/ai-guides/doc-templates/PRD.md.template docs/product/PRD.md
+
+# 替换变量
+# {{projectName}} → 你的项目名
+# {{projectDescription}} → 项目描述
+```
+
+#### 方法 3: 使用 /init-docs Skill
+
+```bash
+# 自动检测缺失文档并生成
+/init-docs
+
+# 仅创建缺失文件
+/init-docs --missing-only
+```
+
+### 模板变量说明 (Template Variables)
+
+常用变量:
+- `{{projectName}}` - 项目名称
+- `{{projectDescription}}` - 项目描述
+- `{{frontendStack}}` - 前端技术栈
+- `{{backendStack}}` - 后端技术栈
+- `{{architecture}}` - 架构模式
+- `{{author}}` - 项目作者
+
+---
+
+## 6. 最佳实践 (Best Practices)
+
+### 文档写作建议 (Writing Guidelines)
+
+#### 6.1 使用主动语态 (Active Voice)
+
+✅ **推荐**:
+```markdown
+The system validates user input before processing.
+```
+
+❌ **避免**:
+```markdown
+User input is validated by the system before being processed.
+```
+
+#### 6.2 保持简洁 (Be Concise)
+
+✅ **推荐**:
+```markdown
+Run `npm install` to install dependencies.
+```
+
+❌ **避免**:
+```markdown
+In order to install the project dependencies, you should run the command `npm install` in your terminal.
+```
+
+#### 6.3 使用代码块 (Use Code Blocks)
+
+✅ **推荐**:
+````markdown
+```bash
+npm run dev
+```
+````
+
+❌ **避免**:
+```markdown
+Type npm run dev in terminal
+```
+
+#### 6.4 提供示例 (Include Examples)
+
+每个重要概念都应配有示例:
+
+```markdown
+## 配置环境变量
+
+创建 `.env` 文件:
+
+```env
+DATABASE_URL=postgresql://localhost:5432/mydb
+API_KEY=your-api-key-here
+```
+
+**注意**: 不要提交 `.env` 到版本控制。
+```
+
+### 图表管理 (Diagram Management)
+
+#### 6.5 使用 Mermaid 优先 (Prefer Mermaid)
+
+**优点**:
+- 纯文本,易于版本控制
+- GitHub 原生支持渲染
+- 与文档集成无缝
+
+**示例**:
+````markdown
+```mermaid
+graph TD
+    A[User] --> B[Frontend]
+    B --> C[Backend]
+    C --> D[Database]
+```
+````
+
+#### 6.6 图表文件组织 (Diagram Organization)
+
+```
+design/diagrams/
+├── README.md              # 图表索引
+├── user-flow.mmd          # 用户流程
+└── component-diagram.mmd  # 组件图
+
+arch/diagrams/
+├── system-architecture.mmd
+├── database-schema.mmd
+└── api-sequence.mmd
+```
+
+#### 6.7 图表引用 (Diagram References)
+
+在文档中引用图表:
+
+```markdown
+## 系统架构
+
+![System Architecture](./diagrams/system-architecture.mmd)
+
+详细说明见 [架构图表目录](./diagrams/README.md)。
+```
+
+### 版本控制策略 (Version Control)
+
+#### 6.8 文档版本化 (Document Versioning)
+
+重要文档添加版本信息:
+
+```markdown
+---
+version: 1.2.0
+last_updated: 2026-03-15
+status: Active
+---
+```
+
+#### 6.9 历史文档归档 (Archive Old Versions)
+
+```
+product/
+├── PRD.md              # 当前版本
+└── archive/
+    ├── PRD-v1.0.md
+    └── PRD-v1.1.md
+```
+
+#### 6.10 ADR 状态管理 (ADR Status)
+
+- `Proposed` → 提议中
+- `Accepted` → 已接受(当前有效)
+- `Deprecated` → 已废弃(不再推荐)
+- `Superseded by ADR-XXX` → 被新决策替代
+
+### 多语言项目处理 (Multi-language Projects)
+
+#### 6.11 双语文档结构 (Bilingual Structure)
+
+**方式1**: 单文件双语
+```markdown
+# 系统架构 (System Architecture)
+
+## 概述 (Overview)
+
+中文内容...
+
+English content...
+```
+
+**方式2**: 分离文件
+```
+docs/
+├── README.md          # 英文
+├── README.zh-CN.md    # 中文
+```
+
+#### 6.12 语言选择原则 (Language Selection)
+
+- **代码注释**: 英文(国际化考虑)
+- **用户文档**: 根据目标用户
+- **技术文档**: 英文优先(技术社区通用)
+- **产品文档**: 目标市场语言
+
+---
+
+## 7. 质量检查清单 (Quality Checklist)
+
+### 文档完整性检查 (Completeness Check)
+
+使用 `/check-docs` Skill 自动检查:
+
+```bash
+/check-docs
+```
+
+**输出示例**:
+```
+📊 Documentation Structure Report
+
+Compliance Score: 95/100
+
+✅ PASSED (12)
+  ✓ docs/README.md exists
+  ✓ docs/adr/TEMPLATE.md exists
+  ✓ docs/product/PRD.md exists
+  ✓ docs/arch/ARCHITECTURE.md exists
+  ✓ docs/dev/SETUP.md exists
+  ✓ Directory naming: all lowercase
+  ✓ File naming: correct casing
+
+❌ FAILED (1)
+  ✗ Missing file: docs/adr/README.md
+
+💡 SUGGESTIONS
+  • Run /init-docs to create missing files
+  • See DOCUMENTATION_MANUAL.md for standards
+```
+
+### 手动检查清单 (Manual Checklist)
+
+#### 基础检查 (Basic Checks)
+
+- [ ] `docs/README.md` 存在且包含导航
+- [ ] `docs/adr/` 目录存在(小写)
+- [ ] 至少有一个 ADR 或 TEMPLATE.md
+- [ ] `docs/product/PRD.md` 存在且非空
+- [ ] `docs/arch/ARCHITECTURE.md` 存在且包含架构图
+- [ ] `docs/dev/SETUP.md` 存在且可按步骤执行
+
+#### 命名规范检查 (Naming Checks)
+
+- [ ] 所有目录名小写(adr 不是 ADRs)
+- [ ] 文件名使用大写+下划线(TEST_PLAN.md)
+- [ ] ADR 编号格式正确(001-title.md)
+
+#### 内容质量检查 (Content Quality)
+
+- [ ] 无损坏的链接(内部引用正确)
+- [ ] 代码块有语法高亮标记
+- [ ] 图表可正常渲染
+- [ ] 无拼写错误(使用 linter)
+
+### 质量标准 (Quality Standards)
+
+| 等级 | 分数 | 标准 |
+|------|------|------|
+| **优秀** | 95-100 | 所有必需文件存在,内容完整,无命名违规 |
+| **良好** | 85-94 | 必需文件存在,少量可选文件缺失 |
+| **合格** | 70-84 | 核心文件存在,有改进空间 |
+| **不合格** | <70 | 缺失关键文档或严重命名违规 |
+
+### 自动化检查工具 (Automation Tools)
+
+#### `/check-docs` Skill
+- 检查目录结构
+- 验证命名规范
+- 生成合规报告
+
+#### `/init-docs` Skill
+- 创建缺失的标准目录
+- 生成必需文件
+- 从模板填充内容
+
+#### CI/CD 集成
+```yaml
+# .github/workflows/check-docs.yml
+name: Documentation Validation
+on: [pull_request]
+jobs:
+  check-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Validate docs structure
+        run: python scripts/check-docs-structure.py --ci
+```
+
+---
+
+## 8. 常见问题 (FAQ)
+
+### Q1: roadmap.md 应该放在 product/ 还是 dev/ ?
+
+**回答**: `product/roadmap.md`
+
+**原因**:
+- Roadmap 描述产品功能演进,属于产品文档
+- `dev/` 应仅包含开发者工具和流程文档
+- 如有开发流程的路线图,可创建 `dev/DEVELOPMENT_ROADMAP.md`
+
+### Q2: 我的项目既不是 tauri 也不是 nextjs,怎么办?
+
+**回答**: 遵循通用规则,按需调整
+
+**步骤**:
+1. 包含所有 5 个必需文件(README, ADR TEMPLATE, PRD, ARCHITECTURE, SETUP)
+2. 根据项目特点决定是否需要 `qa/` 和 `ops/`
+3. 创建自定义 profile(参考 `framework/profiles/README.md`)
+
+### Q3: 可以用中文目录名吗?
+
+**回答**: 不推荐,使用英文
+
+**原因**:
+- 命令行工具兼容性更好
+- 国际化项目易于协作
+- 自动化脚本无需处理编码问题
+
+**如需中文**:
+- 在 README.md 中提供中文说明
+- 文件内容可以是中文
+
+### Q4: ADR 编号从几开始?
+
+**回答**: 从 `001` 开始
+
+**示例**:
+```
+adr/
+├── TEMPLATE.md
+├── 001-record-architecture-decisions.md  # 第一个 ADR
+├── 002-use-tauri-framework.md
+└── 003-implement-clean-architecture.md
+```
+
+**注意**: 不要重新编号已有 ADR,保持历史记录
+
+### Q5: 图表应该放在哪里?
+
+**回答**: 根据内容决定
+
+| 图表类型 | 位置 | 示例 |
+|---------|------|------|
+| 用户流程、UI mockup | `design/diagrams/` | user-flow.mmd |
+| 系统架构、API 设计 | `arch/diagrams/` | system-architecture.mmd |
+| 测试用例、流程图 | `qa/diagrams/` | test-coverage.mmd |
+| 部署拓扑 | `ops/diagrams/` | deployment-topology.mmd |
+
+### Q6: 是否需要在每个目录放 README.md?
+
+**回答**: 推荐但非强制
+
+**推荐包含 README 的目录**:
+- `adr/README.md` - ADR 索引
+- `design/diagrams/README.md` - 图表索引
+- `arch/diagrams/README.md` - 架构图索引
+
+**内容示例**:
+```markdown
+# ADR 目录
+
+## 决策记录索引
+- [ADR-001: 记录架构决策](./001-record-architecture-decisions.md)
+- [ADR-002: 使用 Tauri 框架](./002-use-tauri-framework.md)
+
+## 如何创建 ADR
+参考 [TEMPLATE.md](./TEMPLATE.md)
+```
+
+### Q7: 多语言项目怎么处理文档?
+
+**回答**: 三种方式
+
+**方式 1**: 单文件双语(推荐简单项目)
+```markdown
+# 系统架构 (System Architecture)
+中文内容...
+English content...
+```
+
+**方式 2**: 分离文件(推荐复杂项目)
+```
+docs/
+├── README.md          # 英文
+├── README.zh-CN.md    # 中文
+├── README.ja.md       # 日文
+```
+
+**方式 3**: 子目录分离(推荐大型国际化项目)
+```
+docs/
+├── en/
+│   ├── README.md
+│   └── product/PRD.md
+├── zh-CN/
+│   ├── README.md
+│   └── product/PRD.md
+└── ja/
+    ├── README.md
+    └── product/PRD.md
+```
+
+### Q8: 历史文档如何归档?
+
+**回答**: 使用 `archive/` 子目录
+
+**示例**:
+```
+product/
+├── PRD.md              # 当前版本
+├── roadmap.md          # 当前路线图
+└── archive/
+    ├── PRD-v1.0.md     # 历史版本(带版本号)
+    ├── PRD-v1.1.md
+    └── roadmap-2025.md  # 带时间戳
+```
+
+**注意**:
+- 归档文件名添加版本号或日期
+- 在当前文档顶部注明版本信息
+- 使用 Git 标签标记重要版本
+
+### Q9: 是否每个项目都需要 ops/ 目录?
+
+**回答**: 取决于部署方式
+
+| 项目类型 | 需要 ops/ | 原因 |
+|---------|----------|------|
+| 纯本地桌面应用 | ❌ 不需要 | 无服务器运维 |
+| 云服务(API、Web) | ✅ 必需 | 需部署、监控 |
+| 混合应用(桌面+云) | ✅ 必需 | 云端部分需运维 |
+| 开源库 | ❌ 不需要 | 无部署需求 |
+
+### Q10: `/check-docs` 报告分数低怎么办?
+
+**回答**: 根据报告逐项修复
+
+**步骤**:
+1. 查看报告中的 `❌ FAILED` 项目
+2. 使用 `/init-docs` 创建缺失文件
+3. 手动修复命名违规(重命名目录/文件)
+4. 重新运行 `/check-docs` 验证
+
+**自动修复**:
+```bash
+# 自动修复可修复的问题
+/check-docs --fix
+
+# 创建缺失的文件
+/init-docs --missing-only
+```
+
+---
+
+## 附录 (Appendix)
+
+### 相关资源 (Related Resources)
+
+- **框架文档**: [ai-dev GitHub](https://github.com/aifuun/ai-dev)
+- **Divio 系统**: [https://documentation.divio.com/](https://documentation.divio.com/)
+- **ADR 标准**: [https://adr.github.io/](https://adr.github.io/)
+- **Mermaid 文档**: [https://mermaid.js.org/](https://mermaid.js.org/)
+
+### 变更日志 (Changelog)
+
+#### v1.0.0 (2026-03-15)
+- 初始版本发布
+- 定义 8 节标准内容
+- 建立命名规范
+- 提供 3 种 profile 支持(tauri, tauri-aws, nextjs-aws)
+
+---
+
+**文档结束** | **End of Document**
+
+如有疑问或建议,请提交 [GitHub Issue](https://github.com/aifuun/ai-dev/issues)。

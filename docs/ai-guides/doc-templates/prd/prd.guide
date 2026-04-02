@@ -1,0 +1,54 @@
+# PRD (Product Requirements Document) Guide
+
+> How to create and update Product Requirements Documents
+
+## When to Create
+
+- Starting a new project or feature
+- Defining product scope before development
+- Communicating product vision to stakeholders
+
+## Structure
+
+### 1. Product Overview
+- **Purpose**: What problem does this solve?
+- **Target Users**: Who will use this?
+- **Value Proposition**: Why should users care?
+
+### 2. Features and Requirements
+```markdown
+## Core Features
+### Feature 1: {NAME}
+**Description**: {WHAT_IT_DOES}
+**User Story**: As a {USER}, I want to {ACTION} so that {BENEFIT}
+**Acceptance Criteria**:
+- [ ] {CRITERION_1}
+- [ ] {CRITERION_2}
+**Priority**: High/Medium/Low
+```
+
+### 3. Success Metrics
+- Define measurable goals
+- KPIs and metrics to track
+- Success criteria
+
+### 4. Out of Scope
+- What's explicitly not included
+- Future considerations
+
+## Quality Standards
+
+- ✅ **Clear user stories** with acceptance criteria
+- ✅ **Prioritized features** (High/Medium/Low or MoSCoW)
+- ✅ **Measurable success criteria**
+- ✅ **Scope boundaries** (what's in, what's out)
+- ❌ **No technical implementation details** (that's for ARCHITECTURE.md)
+
+## Template Location
+
+Use template: `framework/guides/prd/templates/PRD.md.template`
+
+## Related Guides
+
+- [ARCHITECTURE](../architecture/arch.guide) - Technical design follows PRD
+- [TEST_PLAN](../qa/qa.guide) - Test cases validate PRD requirements
