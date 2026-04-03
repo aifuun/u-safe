@@ -1,4 +1,5 @@
 ---
+profile: tauri
 name: tauri
 description: Desktop application (Tauri + React, local-first)
 category: desktop

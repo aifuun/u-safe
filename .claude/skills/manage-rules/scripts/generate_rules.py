@@ -207,8 +207,8 @@ class RuleGenerator:
         if not template_dir:
             raise ProfileError("Template directory not found")
 
-        # 扫描所有模板文件
-        all_templates = list(template_dir.glob("**/*.md"))
+        # 扫描所有模板文件（支持 .md 和 .md.template 两种扩展名）
+        all_templates = list(template_dir.glob("**/*.md")) + list(template_dir.glob("**/*.md.template"))
 
         # 提取 include 和 exclude 规则
         include_rules = config['rules']['include']
@@ -223,9 +223,17 @@ class RuleGenerator:
             rel_path_str = str(rel_path)
 
             # 检查是否匹配任何 include 规则
+            # 对于简单规则名（如 "workflow"），转换为通配符模式 "*/workflow.md*"
             matched = False
             for rule in include_rules:
-                if fnmatch.fnmatch(rel_path_str, rule):
+                # 如果规则不包含路径分隔符和通配符，视为简单文件名
+                if '/' not in rule and '*' not in rule:
+                    # 将 "workflow" 转换为 "*/workflow.md*" 以匹配 core/workflow.md 或 core/workflow.md.template
+                    pattern = f"*/{rule}.md*"
+                else:
+                    pattern = rule
+
+                if fnmatch.fnmatch(rel_path_str, pattern):
                     matched = True
                     break
 
@@ -334,10 +342,10 @@ class RuleGenerator:
                 category = template_dir.name
 
                 # 移除 .template 后缀（如果有）
-                rule_name = template.stem
-                if rule_name.endswith('.template'):
-                    rule_name = rule_name[:-9]  # 移除 '.template'
-                rule_name += '.md'
+                if template.name.endswith('.md.template'):
+                    rule_name = template.stem  # workflow.md from workflow.md.template
+                else:
+                    rule_name = template.name  # workflow.md from workflow.md
 
                 target_path = rules_dir / category / rule_name
                 print(f"  - {template.relative_to(self.project_root)} → {target_path.relative_to(self.project_root)}")
@@ -368,10 +376,10 @@ class RuleGenerator:
             category_dir.mkdir(exist_ok=True)
 
             # 移除 .template 后缀（如果有）
-            rule_name = template.stem
-            if rule_name.endswith('.template'):
-                rule_name = rule_name[:-9]  # 移除 '.template'
-            rule_name += '.md'
+            if template.name.endswith('.md.template'):
+                rule_name = template.stem  # workflow.md from workflow.md.template
+            else:
+                rule_name = template.name  # workflow.md from workflow.md
 
             target_path = category_dir / rule_name
 

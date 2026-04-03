@@ -1,0 +1,75 @@
+---
+category: "core"
+title: "Docs"
+description: "Documentation standards"
+tags: [typescript, react, rust]
+profiles: [tauri, nextjs-aws, minimal]
+paths: ['**/*.{ts,tsx}']
+version: "1.0.0"
+last_updated: "2026-03-27"
+---
+
+---
+paths: docs/**
+---
+# Documentation Rules
+
+Files in `docs/` are **Source of Truth**. Read before coding.
+
+## Directory Structure
+
+| Directory | Contents |
+|-----------|----------|
+| `product/` | REQUIREMENTS, ROADMAP, CHANGELOG |
+| `architecture/` | Index, LAYERS, PATTERNS, SCHEMA, MODELS, STORES, STORAGE |
+| `design/` | COLOR, TYPOGRAPHY, 00-04 view specs |
+| `operations/` | OPERATIONS, QUOTA, LOGGING, ADMIN_PANEL |
+| `dev/` | MVP_PLAN, MVPX_*.md, paths/ |
+| `tests/` | frontend/, BACKEND, MOCKING |
+| `archive/` | Historical docs |
+
+## Core Documents (Required)
+
+| Document | Purpose | Content |
+|----------|---------|---------|
+| `product/REQUIREMENTS.md` | What to build | Features, specs, acceptance criteria |
+| `architecture/README.md` | How to organize | Architecture Index, Layers, Patterns |
+| `architecture/SCHEMA.md` | Data model | Database tables and cloud schemas |
+| `architecture/STORES.md` | Runtime state | Zustand store definitions |
+
+## Tauri Desktop App
+
+| Document | Purpose |
+|----------|---------|
+| `design/COLOR.md` | 25-color palette with semantic tokens |
+| `design/TYPOGRAPHY.md` | Font scales and text styles |
+| `design/0-4 *.md` | View-specific UI specs |
+| `architecture/INTERFACES.md` | IPC commands + Cloud API |
+
+## By Product Type (Reference)
+
+| Product Type | Additional Docs | Purpose |
+|--------------|-----------------|---------|
+| Desktop (Tauri) | `DESIGN.md` + `INTERFACES.md` | UI + IPC/API |
+| Web Frontend | `DESIGN.md` | Components, layout, interactions |
+| Backend API | `INTERFACES.md` | Endpoints, request/response, auth |
+| CLI Tool | `COMMANDS.md` | Commands, arguments, output format |
+| Complex Business | `DOMAIN.md` | Domain model, business rules, glossary |
+
+## Quick Reference
+
+| Type | REQ | ARCH | SCHEMA | DESIGN | INTERFACES | DOMAIN |
+|------|:---:|:----:|:------:|:------:|:----------:|:------:|
+| Desktop (Tauri) | ✅ | ✅ | ✅ | ✅ | ✅ | - |
+| Web Frontend | ✅ | ✅ | ✅ | ✅ | - | - |
+| Backend API | ✅ | ✅ | ✅ | - | ✅ | - |
+| CLI Tool | ✅ | ✅ | △ | - | - | - |
+| Enterprise | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+
+✅ Required | △ Optional | - Not needed
+
+## Guidelines
+
+- **Read docs/ first** before implementing features
+- **Update docs/** when requirements change
+- **Conflicts**: docs/ wins over code comments
