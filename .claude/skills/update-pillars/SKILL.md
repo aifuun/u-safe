@@ -36,6 +36,31 @@ Framework upgrades require updating Pillar documentation across projects. Manual
 - Cross-project learning (adopting Pillar practices)
 - Promoting innovations back to framework
 
+## Directory Structure
+
+**AI-dev framework has two Pillars directories:**
+
+| Directory | Purpose | Used By |
+|-----------|---------|---------|
+| `.claude/pillars/` | **Source of Truth** (18 Pillars) | Claude Code, sync operations |
+| `docs/pillars/` | Legacy human-readable docs | Documentation reference only |
+
+**Key points:**
+- ✅ **Sync source**: This skill syncs FROM/TO `.claude/pillars/` (not `docs/pillars/`)
+- ✅ **Claude Code**: Reads Pillars from `.claude/pillars/` during development
+- ℹ️ **docs/pillars/**: Legacy location, kept for historical reference
+
+**Sync operations:**
+```bash
+# Pull from framework (uses .claude/pillars/)
+/update-pillars --from ~/dev/ai-dev
+
+# Push to target (uses .claude/pillars/)
+/update-pillars --to ~/projects/my-app
+```
+
+**File count:** 18 Pillars (A-R) in `.claude/pillars/` subdirectories
+
 ## Workflow
 
 ### Step 1: Create Todo List
@@ -122,6 +147,27 @@ Sync only specific Pillars:
 - Comma-separated list (A-R)
 - Only syncs specified Pillars
 - Ignores others
+
+### 5. Skip Validation Mode (--skip-validation)
+
+Skip path validation when called by meta-skill (update-framework):
+
+```bash
+# Called by update-framework (validation already done)
+/update-pillars --from ~/dev/ai-dev --skip-validation
+/update-pillars --to ~/projects/my-app --skip-validation
+```
+
+**When to use:**
+- ✅ When update-framework calls this skill (paths already validated)
+- ✅ Reduces redundant validation (saves ~0.5 seconds)
+- ❌ NOT for direct user invocation (safety check needed)
+
+**Behavior:**
+- Skips source/target path existence checks
+- Skips .claude/pillars/ directory validation
+- Assumes caller has validated paths
+- Still performs Pillar-level validation
 
 ## Comparison Logic
 
@@ -392,6 +438,9 @@ This is a **workflow skill** and must follow the standard pattern:
 1. **TaskCreate** at start - Create todo list for progress tracking
 2. **TaskUpdate** during execution - Mark tasks in_progress → completed
 3. **Verification checklist** - Final validation before completion
+4. **Output mode detection** - Check CALLED_BY_UPDATE_FRAMEWORK environment variable:
+   - If set: Output 1-2 lines summary only (e.g., "✅ Pillars 同步完成: 18 个文件")
+   - If not set: Output full detailed report (current behavior)
 
 **See**: [WORKFLOW_PATTERNS.md](../WORKFLOW_PATTERNS.md) for complete implementation guide
 

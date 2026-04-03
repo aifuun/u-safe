@@ -1,12 +1,21 @@
 #!/usr/bin/env python3
+# /// script
+# dependencies = [
+#   "PyYAML>=6.0"
+# ]
+# ///
 """
-Rule Generator Script for manage-rules v3.0.0
+Rule Generator Script for manage-rules v3.0.0 (UV-enabled)
 
 Generates project-specific rules from templates based on profile configuration.
 Implements ADR-014 compliant script-based pattern.
 
+Now uses PEP 723 inline dependencies for automatic dependency management via uv.
+
 Usage:
-    python generate_rules.py [--profile PROFILE] [--instant] [--dry-run]
+    uv run scripts/generate_rules.py [--profile PROFILE] [--instant] [--dry-run]
+    # Or with python (if dependencies already installed):
+    python scripts/generate_rules.py [--profile PROFILE] [--instant] [--dry-run]
 """
 
 import sys
@@ -198,9 +207,8 @@ class RuleGenerator:
         if not template_dir:
             raise ProfileError("Template directory not found")
 
-        # 扫描所有模板文件 (支持 .md 和 .md.template)
+        # 扫描所有模板文件
         all_templates = list(template_dir.glob("**/*.md"))
-        all_templates.extend(template_dir.glob("**/*.template"))
 
         # 提取 include 和 exclude 规则
         include_rules = config['rules']['include']

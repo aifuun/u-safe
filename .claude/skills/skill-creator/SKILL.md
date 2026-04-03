@@ -6,8 +6,8 @@ description: |
   TRIGGER when: User wants to create a skill from scratch, update or optimize an existing skill, run evals to test a skill, benchmark skill performance with variance analysis, or optimize a skill's description for better triggering accuracy.
 
   DO NOT TRIGGER when: User is just asking about skills conceptually, wants to use an existing skill, or is discussing skill documentation without creating/modifying anything.
-version: "2.1.0"
-last-updated: "2026-03-24"
+version: "2.2.0"
+last-updated: "2026-04-02"
 ---
 
 # Skill Creator
@@ -274,7 +274,7 @@ Once all runs are done:
 
 2. **Aggregate into benchmark** — run the aggregation script from the skill-creator directory:
    ```bash
-   python -m scripts.aggregate_benchmark <workspace>/iteration-N --skill-name <name>
+   uv run scripts/aggregate_benchmark.py <workspace>/iteration-N --skill-name <name>
    ```
    This produces `benchmark.json` and `benchmark.md` with pass_rate, time, and tokens for each configuration, with mean ± stddev and the delta. If generating benchmark.json manually, see `references/schemas.md` for the exact schema the viewer expects.
 Put each with_skill version before its baseline counterpart.
@@ -283,7 +283,7 @@ Put each with_skill version before its baseline counterpart.
 
 4. **Launch the viewer** with both qualitative outputs and quantitative data:
    ```bash
-   nohup python <skill-creator-path>/eval-viewer/generate_review.py \
+   nohup uv run <skill-creator-path>/eval-viewer/generate_review.py \
      <workspace>/iteration-N \
      --skill-name "my-skill" \
      --benchmark <workspace>/iteration-N/benchmark.json \
@@ -427,7 +427,7 @@ Tell the user: "This will take some time — I'll run the optimization loop in t
 Save the eval set to the workspace, then run in the background:
 
 ```bash
-python -m scripts.run_loop \
+uv run scripts/run_loop.py \
   --eval-set <path-to-trigger-eval.json> \
   --skill-path <path-to-skill> \
   --model <model-id-powering-this-session> \
@@ -458,7 +458,7 @@ Take `best_description` from the JSON output and update the skill's SKILL.md fro
 Check whether you have access to the `present_files` tool. If you don't, skip this step. If you do, package the skill and present the .skill file to the user:
 
 ```bash
-python -m scripts.package_skill <path/to/skill-folder>
+uv run scripts/package_skill.py <path/to/skill-folder>
 ```
 
 After packaging, direct the user to the resulting `.skill` file path so they can install it.
@@ -567,6 +567,45 @@ feat: add auto-fix mode to eval-plan (Issue #177)
 
 Version bump: minor (new feature - auto-fix)
 ```
+
+---
+
+## Dependency Management
+
+This skill uses **UV** (modern Python package manager) with **PEP 723** inline script metadata for automatic dependency management.
+
+**What this means:**
+- No manual `pip install` or venv setup required
+- Dependencies declared in script headers
+- UV automatically installs and caches packages on first run
+- Subsequent runs are instant (cached)
+
+**Example:**
+```bash
+# First run: UV auto-installs anthropic (10ms)
+uv run scripts/run_loop.py --help
+
+# Subsequent runs: instant (cached)
+uv run scripts/run_loop.py --help
+```
+
+**Installing UV:**
+```bash
+# macOS/Linux
+brew install uv
+# OR
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Windows
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+**Why UV?**
+- ⚡ **72.5x faster** than pip+venv (evaluation install)
+- 💾 **Zero disk overhead** (global cache shared across projects)
+- 🚀 **Zero config** (dependencies in script headers via PEP 723)
+
+See [ADR-017](../../docs/ADRs/017-uv-dependency-management.md) for migration rationale.
 
 ---
 

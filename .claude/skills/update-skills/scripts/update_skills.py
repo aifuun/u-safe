@@ -16,6 +16,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
+# Add utils path for framework-only filtering
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / '_scripts'))
+from utils.sync import filter_framework_only_skills
+
 
 def parse_arguments():
     """Parse command line arguments with mutual exclusion checks."""
@@ -108,14 +112,24 @@ def clean_sync(source_skills_dir: Path, target_skills_dir: Path, dry_run: bool =
     lost_skills = target_skill_names - source_skill_names
     results["lost_skills"] = list(lost_skills)
 
+    # Filter framework-only skills from source
+    skills_to_sync, framework_only_skills = filter_framework_only_skills(source_skills)
+
     if dry_run:
         # Dry run - just preview
         print(f"\n📊 Clean Sync Preview (--dry-run)\n")
         print(f"Target: {target_skills_dir}")
+        print(f"\nSource Skills Analysis:")
+        print(f"- Total source skills: {len(source_skills)}")
+        print(f"- Framework-only (excluded): {len(framework_only_skills)}")
+        if framework_only_skills:
+            # framework_only_skills is already List[str], not List[Path]
+            print(f"  ({', '.join(sorted(framework_only_skills))})")
+        print(f"- Skills to sync: {len(skills_to_sync)}")
         print(f"\nWill DELETE:")
         print(f"- {len(target_skills)} existing skills")
         print(f"\nWill COPY:")
-        print(f"- {len(source_skills)} skills from source")
+        print(f"- {len(skills_to_sync)} skills from source")
 
         if lost_skills:
             print(f"\n⚠️  Skills in target but not in source will be LOST:")
@@ -129,9 +143,16 @@ def clean_sync(source_skills_dir: Path, target_skills_dir: Path, dry_run: bool =
     print(f"\n⚠️  WARNING: Clean mode will DELETE entire .claude/skills directory")
     print(f"   Target: {target_skills_dir}")
     print(f"   Source: {source_skills_dir}")
+    print(f"\nSource Skills Analysis:")
+    print(f"- Total source skills: {len(source_skills)}")
+    print(f"- Framework-only (excluded): {len(framework_only_skills)}")
+    if framework_only_skills:
+        # framework_only_skills is already List[str], not List[Path]
+        print(f"  ({', '.join(sorted(framework_only_skills))})")
+    print(f"- Skills to sync: {len(skills_to_sync)}")
     print(f"\nThis will:")
     print(f"- Delete all existing skills in target ({len(target_skills)} skills)")
-    print(f"- Copy all skills from source ({len(source_skills)} skills)")
+    print(f"- Copy {len(skills_to_sync)} skills from source (excluding {len(framework_only_skills)} framework-only)")
 
     if lost_skills:
         print(f"\n⚠️  Skills that will be LOST (in target only):")
@@ -154,8 +175,10 @@ def clean_sync(source_skills_dir: Path, target_skills_dir: Path, dry_run: bool =
 
     # Report
     print(f"\n✅ Clean sync complete!")
-    print(f"   - Skills synced: {len(source_skills)}")
-    print(f"\n⚠️  All skills replaced. Target is now identical to source.")
+    print(f"   - Source skills: {len(source_skills)} total")
+    print(f"   - Framework-only excluded: {len(framework_only_skills)}")
+    print(f"   - Skills synced: {len(skills_to_sync)}")
+    print(f"\n⚠️  All skills replaced. Target now has {len(skills_to_sync)} skills (excluding framework-only).")
 
     return results
 

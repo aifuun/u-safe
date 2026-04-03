@@ -56,7 +56,7 @@ AI skills read these guides and profiles to get development standards and workfl
 
 ## Synced Content
 
-**Directory structure**: `.claude/guides/` with 4 subdirectories, **18 files total**
+**Directory structure**: `.claude/guides/` with 4 subdirectories, **20 files total**
 
 ### Workflow Guides (workflow/ - 6 files)
 
@@ -107,6 +107,7 @@ AI skills read these guides and profiles to get development standards and workfl
 **Parameters:**
 - `--from FRAMEWORK_DIR` - Path to framework directory (required)
 - `TARGET_PROJECT` - Path to target project (default: current directory)
+- `--skip-validation` - Skip path validation (used when called by update-framework)
 
 **Common usage:**
 ```bash
@@ -118,6 +119,9 @@ AI skills read these guides and profiles to get development standards and workfl
 
 # Absolute paths
 /update-guides --from /Users/woo/dev/ai-dev /Users/woo/dev/my-project
+
+# Skip validation (when called by meta-skill)
+/update-guides --from ~/dev/ai-dev ../u-safe --skip-validation
 ```
 
 ## Workflow Steps
@@ -126,7 +130,7 @@ AI skills read these guides and profiles to get development standards and workfl
 
 ```bash
 # Check framework has .claude/guides/
-if [ ! -d "$FRAMEWORK_DIR/docs/ai-guides" ]; then
+if [ ! -d "$FRAMEWORK_DIR/.claude/guides" ]; then
     echo "❌ 错误：框架目录不存在 .claude/guides/"
     exit 1
 fi
@@ -140,7 +144,7 @@ for subdir in workflow doc-templates rules profiles; do
 done
 
 # Count total .md files (should be 18)
-TOTAL_FILES=$(find "$FRAMEWORK_DIR/docs/ai-guides" -name "*.md" -type f | wc -l)
+TOTAL_FILES=$(find "$FRAMEWORK_DIR/.claude/guides" -name "*.md" -type f | wc -l)
 if [ $TOTAL_FILES -lt 18 ]; then
     echo "⚠️ 警告：仅找到 $TOTAL_FILES 个文件（期望 18 个）"
 fi
@@ -150,9 +154,9 @@ fi
 
 ```bash
 # Remove old guides if present
-if [ -d "$TARGET_DIR/docs/ai-guides" ]; then
+if [ -d "$TARGET_DIR/.claude/guides" ]; then
     echo "🗑️ 删除现有 ai-guides 目录..."
-    rm -rf "$TARGET_DIR/docs/ai-guides"
+    rm -rf "$TARGET_DIR/.claude/guides"
 fi
 ```
 
@@ -168,10 +172,10 @@ fi
 mkdir -p "$TARGET_DIR/docs"
 
 # Copy all guides
-cp -r "$FRAMEWORK_DIR/docs/ai-guides" "$TARGET_DIR/docs/ai-guides"
+cp -r "$FRAMEWORK_DIR/.claude/guides" "$TARGET_DIR/.claude/guides"
 
 # Verify copy succeeded
-if [ ! -d "$TARGET_DIR/docs/ai-guides" ]; then
+if [ ! -d "$TARGET_DIR/.claude/guides" ]; then
     echo "❌ 错误：拷贝失败"
     exit 1
 fi
@@ -186,7 +190,7 @@ framework_path: $FRAMEWORK_DIR
 framework_commit: $(cd "$FRAMEWORK_DIR" && git rev-parse HEAD)
 synced_at: $(date -Iseconds)
 synced_by: update-guides.sh v1.3.0
-file_count: 18
+file_count: 20
 subdirs: workflow,doc-templates,rules,profiles
 EOF
 ```
@@ -199,7 +203,7 @@ EOF
 ### 5. Generate Sync Report
 
 ```bash
-echo "✅ 同步完成 - 18 个文件已同步"
+echo "✅ 同步完成 - 20 个文件已同步"
 echo ""
 echo "📁 workflow/ (6 files)"
 echo "  ✅ README.md"
@@ -227,7 +231,7 @@ echo "  ✅ tauri.md - Desktop app profile"
 echo "  ✅ nextjs-aws.md - Full-stack profile"
 echo "  ✅ tauri-aws.md - Hybrid profile"
 echo ""
-echo "AI 现在可以使用最新的开发参考标准（18 个文件，4 个子目录）"
+echo "AI 现在可以使用最新的开发参考标准（20 个文件，4 个子目录）"
 ```
 
 ## Examples
@@ -245,14 +249,14 @@ echo "AI 现在可以使用最新的开发参考标准（18 个文件，4 个子
 **Output:**
 ```
 📋 同步 AI 开发指南
-   框架: /Users/woo/dev/ai-dev/docs/ai-guides
-   目标: /Users/woo/dev/u-safe/docs/ai-guides
+   框架: /Users/woo/dev/ai-dev/.claude/guides
+   目标: /Users/woo/dev/u-safe/.claude/guides
 
 🗑️ 删除现有 ai-guides 目录...
 📋 拷贝 AI 开发指南...
 📝 创建版本标记...
 
-✅ 同步完成 - 18 个文件已同步
+✅ 同步完成 - 20 个文件已同步
 
 📁 workflow/ (6 files)
   ✅ README.md
@@ -280,7 +284,7 @@ echo "AI 现在可以使用最新的开发参考标准（18 个文件，4 个子
   ✅ nextjs-aws.md - Full-stack profile
   ✅ tauri-aws.md - Hybrid profile
 
-AI 现在可以使用最新的开发参考标准（18 个文件，4 个子目录）
+AI 现在可以使用最新的开发参考标准（20 个文件，4 个子目录）
 ```
 
 ### Example 2: Error Handling - Framework Missing
@@ -293,14 +297,14 @@ AI 现在可以使用最新的开发参考标准（18 个文件，4 个子目录
 **Output:**
 ```
 ❌ 错误：框架目录不存在 AI guides
-   期望路径: /invalid/path/docs/ai-guides
+   期望路径: /invalid/path/.claude/guides
 
 请确保框架目录包含 .claude/guides/ 并且包含 4 个子目录（workflow, doc-templates, rules, profiles）。
 ```
 
 ### Example 3: Warning - Incomplete Guides
 
-**Scenario:** Framework only has 12 out of 18 files
+**Scenario:** Framework only has 12 out of 20 files
 
 **Output:**
 ```
@@ -365,7 +369,7 @@ if args.sync_guides:
 | Missing subdirectory | One of 4 subdirectories missing | Check framework has workflow, doc-templates, rules, profiles |
 | Target not writable | Permission denied | Check directory permissions |
 | Copy failed | Disk full, permissions | Check disk space and permissions |
-| Incomplete guides | <18 files found | Warning shown, continues anyway |
+| Incomplete guides | <20 files found | Warning shown, continues anyway |
 
 ## Best Practices
 
@@ -399,7 +403,7 @@ framework_path: /Users/woo/dev/ai-dev
 framework_commit: a1b2c3d4e5f6...
 synced_at: 2026-03-28T10:00:00+08:00
 synced_by: update-guides.sh v1.3.0
-file_count: 18
+file_count: 20
 subdirs: workflow,doc-templates,rules,profiles
 ```
 
@@ -412,13 +416,22 @@ subdirs: workflow,doc-templates,rules,profiles
 ## Performance
 
 - **Execution time:** <3 seconds (18 markdown files across 4 subdirectories)
-- **Disk space:** ~100KB (all 18 files)
+- **Disk space:** ~100KB (all 20 files)
 - **Network:** None (local file copy)
 
 Fast because:
 - Simple file copy operation
 - No network requests
 - No complex processing
+
+## Output Mode Detection
+
+**When called by update-framework:**
+- Check environment variable: `CALLED_BY_UPDATE_FRAMEWORK`
+- If set: Output simplified 1-2 line summary (e.g., "✅ Guides 同步完成: 20 个文件")
+- If not set: Output full detailed report (current behavior)
+
+This reduces total output length when update-framework orchestrates multiple sync operations.
 
 ## Related Skills
 
@@ -464,6 +477,6 @@ Fast because:
 **Compliance:** ADR-001 ✅
 **Last Updated:** 2026-03-28
 **Changelog:**
-- v1.3.0 (2026-03-28): Update ai-guides structure documentation - 4 subdirectories, 18 files total
+- v1.3.0 (2026-03-28): Update ai-guides structure documentation - 4 subdirectories, 20 files total
 - v1.2.0 (2026-03-27): Added profiles support
 - v1.0.0 (2026-03-24): Initial release - sync 6 AI guides between projects

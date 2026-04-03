@@ -32,13 +32,12 @@ Examples:
     update-guides.sh --from ~/dev/ai-dev .
     update-guides.sh --from /path/to/ai-dev /path/to/target
 
-AI Guides synced (7 guides):
-    1. ADR_GUIDE.md              - AI 创建 ADR 的参考标准
-    2. CLAUDE_MD_GUIDE.md        - AI 维护 CLAUDE.md 的参考标准
-    3. ISSUE_LIFECYCLE_GUIDE.md  - AI 执行 issue 工作流的参考标准
-    4. DOCS_GUIDE.md             - AI 组织文档的参考标准
-    5. PROJECT_PLANNING_GUIDE.md - AI 规划项目的参考标准
-    6. SKILL_GUIDE.md            - AI 创建技能的参考标准
+AI Guides synced (20 files across 4 subdirectories):
+    - workflow/ (6 files): ADR_GUIDE.md, CLAUDE_MD_GUIDE.md, ISSUE_LIFECYCLE_GUIDE.md, PROJECT_PLANNING_GUIDE.md, SKILL_GUIDE.md, README.md
+    - doc-templates/ (3 files): MANAGE_DOCS_GUIDE.md, STACK_TAGS.md, README.md
+    - rules/ (5 files): RULES_GUIDE.md, RULES_MAPPING.md, PROFILE_CONSISTENCY.md, MIGRATION_REPORT.md, README.md
+    - profiles/ (4 files): tauri.md, nextjs-aws.md, tauri-aws.md, README.md
+    - Root files (2): README.md, HARDCODING_POLICY.md
 EOF
 }
 
@@ -90,17 +89,17 @@ FRAMEWORK_DIR="$(cd "$FRAMEWORK_DIR" && pwd)"
 TARGET_DIR="$(cd "$TARGET_DIR" && pwd)"
 
 # Check if framework source directory exists
-FRAMEWORK_GUIDES="$FRAMEWORK_DIR/docs/ai-guides"
+FRAMEWORK_GUIDES="$FRAMEWORK_DIR/.claude/guides"
 if [[ ! -d "$FRAMEWORK_GUIDES" ]]; then
     echo -e "${RED}❌ 错误：框架目录不存在 AI guides${NC}"
     echo "   期望路径: $FRAMEWORK_GUIDES"
     echo ""
-    echo "请确保框架目录包含 docs/ai-guides/ 并且已创建所有 7 大 guides。"
+    echo "请确保框架目录包含 .claude/guides/ 并且包含 4 个子目录（workflow, doc-templates, rules, profiles）。"
     exit 1
 fi
 
 # Check if target directory is writable
-TARGET_GUIDES="$TARGET_DIR/docs/ai-guides"
+TARGET_GUIDES="$TARGET_DIR/.claude/guides"
 if [[ ! -w "$TARGET_DIR" ]]; then
     echo -e "${RED}❌ 错误：目标目录无写入权限${NC}"
     echo "   目标路径: $TARGET_DIR"
@@ -114,8 +113,8 @@ echo ""
 
 # Count source guides
 GUIDE_COUNT=$(find "$FRAMEWORK_GUIDES" -name "*.md" -type f | wc -l | tr -d ' ')
-if [[ $GUIDE_COUNT -lt 7 ]]; then
-    echo -e "${YELLOW}⚠️  警告：框架中仅找到 $GUIDE_COUNT 个 guide 文件（期望 7 个）${NC}"
+if [[ $GUIDE_COUNT -lt 20 ]]; then
+    echo -e "${YELLOW}⚠️  警告：框架中仅找到 $GUIDE_COUNT 个 guide 文件（期望 20 个）${NC}"
 fi
 
 # Delete existing target directory if present

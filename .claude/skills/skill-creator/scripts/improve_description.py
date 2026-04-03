@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+# /// script
+# dependencies = [
+#   "anthropic>=0.39.0"
+# ]
+# ///
 """Improve a skill description based on eval results.
 
 Takes eval results (from run_eval.py) and generates an improved description
@@ -13,7 +18,7 @@ from pathlib import Path
 
 import anthropic
 
-from scripts.utils import parse_skill_md
+from utils import parse_skill_md
 
 
 def improve_description(

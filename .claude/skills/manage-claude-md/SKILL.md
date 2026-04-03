@@ -617,8 +617,10 @@ When user invokes `/manage-claude-md`:
 
 ---
 
-**Version:** 1.0.0
-**Pattern:** Profile-Aware Management Skill
-**Last Updated:** 2026-03-27
+**Version:** 1.2.0
+**Pattern:** Profile-Aware Management Skill (ADR-014 compliant)
+**Compliance:** ADR-014 ✅
+**Last Updated:** 2026-04-02
 **Changelog:**
+- v1.2.0 (2026-04-02): Added Python script implementation (sync_claude_md.py, cleanup_plans.py, health_report.py) - ADR-014 compliant (Issue #446)
 - v1.0.0 (2026-03-27): Extracted from /maintain-project v1.1.0, added profile integration

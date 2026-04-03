@@ -94,6 +94,7 @@ framework-only: true  # Auto-excluded from target projects
 ### Options (work with both modes)
 
 - `--dry-run` - Preview changes without applying
+- `--skip-validation` - Skip path validation (used when called by update-framework)
 
 ### Options (only with --incremental)
 
@@ -426,6 +427,15 @@ Task #4: Verify and report (blocked by #3)
   - Minimal filesystem operations
   - Parallel copy operations
   - Efficient framework-only filtering
+
+## Output Mode Detection
+
+**When called by update-framework:**
+- Check environment variable: `CALLED_BY_UPDATE_FRAMEWORK`
+- If set: Output simplified 1-2 line summary (e.g., "✅ Skills 同步完成: 28 个技能")
+- If not set: Output full detailed report (current behavior)
+
+This reduces total output length when update-framework orchestrates multiple sync operations.
 
 ## Related Skills
 

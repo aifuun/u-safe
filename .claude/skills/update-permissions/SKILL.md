@@ -48,6 +48,7 @@ python3 scripts/init-project.py --profile=tauri --name=my-app  # 初始化项目
 
 **选项**：
 - `<target-project-path>` - 必需，目标项目路径（相对或绝对）
+- `--skip-validation` - 跳过路径验证（被 update-framework 调用时使用）
 
 ## AI 执行指令
 
@@ -398,6 +399,15 @@ cd ../my-app
 ```
 
 如果任何项失败，在完成前解决。
+
+## 输出模式检测
+
+**当被 update-framework 调用时：**
+- 检查环境变量：`CALLED_BY_UPDATE_FRAMEWORK`
+- 如果设置：输出简化的 1-2 行摘要（例如："✅ Permissions 同步完成: settings.json"）
+- 如果未设置：输出完整详细报告（当前行为）
+
+这减少了 update-framework 编排多个同步操作时的总输出长度。
 
 ## 相关 Skills
 

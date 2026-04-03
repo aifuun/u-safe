@@ -10,10 +10,14 @@ Issue #401: Framework-only filtering logic extracted from update-skills SKILL.md
 
 import re
 import yaml
+import logging
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional
 from dataclasses import dataclass
 from enum import Enum
+
+# Configure logger
+logger = logging.getLogger(__name__)
 
 
 class SyncMode(Enum):
@@ -94,7 +98,8 @@ def parse_skill_metadata(content: str) -> Optional[SkillMetadata]:
         return SkillMetadata.from_dict(data)
 
     except yaml.YAMLError as e:
-        print(f"⚠️ YAML parsing error: {e}")
+        # Silent handling - only log to debug, don't pollute console output
+        logger.debug(f"YAML parsing error: {e}")
         return None
 
 
