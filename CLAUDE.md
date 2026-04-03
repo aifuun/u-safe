@@ -27,6 +27,32 @@ Tauri 2.0 + Rust (后端) + React 18 + TailwindCSS (前端) + SQLite
 - MVP 语言: 仅中文界面
 - 不包含: 云同步、多语言、批量操作、自动更新
 
+## ⚡ Skills System
+
+当前已安装 29 个技能，按功能分类：
+
+| Category | Key Skills | Purpose |
+|----------|------------|---------|
+| **Issue Lifecycle** | auto-solve-issue, execute-plan, finish-issue, solve-issues, start-issue | Complete workflow from planning to merge |
+| **Quality** | eval-plan, review | Code review and plan validation |
+| **Management** | check-docs, init-docs, manage-adrs, manage-claude-md, manage-docs, manage-project | Profile and content management (unified manage-* naming) |
+| **Utilities** | common, create-issue, overview, preflight-check, refers, skill-creator, solve-issue, status, test-version-207 | Status checks, issue creation, skill development |
+| **Internal** | migrate-docs, next, plan, sync, worktree | Framework development utilities |
+| **Maintenance** | cleanup-project, configure-permissions | Project upkeep and config |
+
+**使用方式**:
+```bash
+# 完整 issue 生命周期
+/start-issue #42          # 生成计划
+/execute-plan #42         # 执行计划
+/review                   # 代码审查
+/finish-issue #42         # 完成 issue
+
+# 或使用自动化
+/auto-solve-issue #42     # 全自动解决 issue
+/solve-issues #40 #41 #42 # 批量处理多个 issues
+```
+
 ## 编码规范
 
 - **Rules**: `.claude/rules/` — 按文件路径自动触发，无需手动查找
