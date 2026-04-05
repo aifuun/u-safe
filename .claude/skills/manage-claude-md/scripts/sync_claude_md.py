@@ -148,10 +148,9 @@ def update_claude_md(claude_md_path: Path, skills_table: str) -> None:
 
     # 查找 Skills System 部分的开始和结束标记
     # 开始: ## ⚡ Skills System
-    # 结束: 下一个 ## 标题
+    # 结束: 下一个 ## 标题或 **Meta-skill example**
 
-    # 匹配从 "## ⚡ Skills System" 到下一个 "## " 之间的内容
-    pattern = r'(## ⚡ Skills System\s+当前已安装 \d+ 个技能，按功能分类：\s+)(.*?)(\n+## )'
+    pattern = r'(## ⚡ Skills System\s+.*?\n\n)(.*?)(\n\n\*\*Meta-skill example\*\*:)'
 
     def replace_table(match):
         before = match.group(1)

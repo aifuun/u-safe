@@ -8,41 +8,12 @@
 import os
 import sys
 from pathlib import Path
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Tuple
 import json
-import yaml
 
-
-class ProfileError(Exception):
-    """Profile 配置错误"""
-    pass
-
-
-def read_profile(project_root: Path) -> Optional[Dict]:
-    """
-    读取项目 profile 配置
-
-    Returns:
-        Dict 包含 profile 信息，或 None 如果不存在
-    """
-    profile_path = project_root / "docs" / "project-profile.md"
-
-    if not profile_path.exists():
-        return None
-
-    try:
-        content = profile_path.read_text(encoding='utf-8')
-
-        # 提取 YAML frontmatter
-        if content.startswith('---'):
-            parts = content.split('---', 2)
-            if len(parts) >= 3:
-                yaml_content = parts[1]
-                return yaml.safe_load(yaml_content)
-
-        return None
-    except Exception as e:
-        raise ProfileError(f"Failed to read profile: {e}")
+# Import shared config reader (Issue #481)
+sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
+from _scripts.utils.config import read_profile, ProfileError
 
 
 def find_project_root() -> Path:
@@ -190,15 +161,11 @@ def check_rules_health(project_root: Path) -> Tuple[int, Dict]:
 
     # 检查 profile (Issue #481: Use shared config reader)
     try:
-        profile_data = read_profile(project_root)
-        if profile_data:
-            score += 5
-            profile_name = profile_data.get('name', 'unknown')
-            details["profile"] = f"✅ 有 profile 配置 ({profile_name})"
-        else:
-            details["profile"] = "⚠️  缺少 profile 配置（project-profile.md）"
-    except ProfileError as e:
-        details["profile"] = f"⚠️  Profile 配置错误: {e}"
+        profile_obj = read_profile(project_root)
+        score += 5
+        details["profile"] = f"✅ 有 profile 配置 ({profile_obj.name} from {profile_obj.source})"
+    except ProfileError:
+        details["profile"] = "⚠️  缺少 profile 配置（CLAUDE.md 或 project-profile.md）"
 
     return score, details
 
@@ -231,7 +198,7 @@ def check_docs_health(project_root: Path) -> Tuple[int, Dict]:
         details["readme"] = "⚠️  不存在"
 
     # ADRs
-    adrs_dir = project_root / "docs" / "adr"
+    adrs_dir = project_root / "docs" / "ADRs"
     if adrs_dir.exists():
         score += 5
         details["adrs_dir"] = "✅ 存在"
