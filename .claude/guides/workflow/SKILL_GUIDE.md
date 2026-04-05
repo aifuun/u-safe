@@ -129,6 +129,69 @@ else:
 - 必须使用 Python 3.9+ (ADR-003)
 - 必须有类型标注
 - 遵循 shared utilities (.claude/skills/_scripts/)
+- **必须遵循 Python 执行标准（零例外）**（见下方）
+
+#### Python 执行标准（强制，零例外）
+
+**所有 Python 代码必须通过 `uv run` 执行，零例外。**
+
+详细标准请参考：[execution-standard.md](../../skills/_templates/execution-standard.md)
+
+**快速规则：**
+
+1. **正式脚本（推荐）：**
+   ```bash
+   uv run scripts/script_name.py [args]
+   ```
+
+2. **简单一行代码：**
+   ```bash
+   uv run -c "import module; module.function()"
+   ```
+
+3. **共享工具调用：**
+   ```python
+   # 在 scripts/xxx.py 中（已通过 uv run 启动）
+   import sys
+   sys.path.insert(0, '.claude/skills/_scripts')
+   from utils.sync import filter_framework_only_skills
+   ```
+
+**禁止使用（零例外）：**
+```bash
+❌ python3 scripts/...
+❌ python3 -c "..."
+❌ python scripts/...
+```
+
+**理由（ADR-017 完全统一方案）：**
+- ✅ 零认知负载：无需判断何时用什么
+- ✅ 环境一致性：所有代码同一环境
+- ✅ 长期收益：5 年节省 12 小时维护成本
+- ✅ 性能影响：+10ms 人类无感知
+
+**所有技能 SKILL.md 必须包含此引用：**
+
+```markdown
+## AI 执行指令
+
+**Python 执行标准：**
+
+本技能遵循 [Python 执行标准（零例外）](../_templates/execution-standard.md)。
+
+所有 Python 代码必须使用 `uv run`：
+- 正式脚本：`uv run scripts/xxx.py`
+- 简单代码：`uv run -c "..."`
+- 共享工具：脚本内直接 import（前提是脚本通过 uv run 启动）
+
+**禁止使用** `python3` 直接调用。
+```
+
+**相关 ADRs:**
+- [ADR-017](../../../docs/ADRs/017-uv-dependency-management.md) - UV-based Dependency Management（完全统一方案）
+- [ADR-018](../../../docs/ADRs/018-mandatory-uv-execution.md) - Mandatory UV Execution（强制执行标准）
+
+---
 
 ### 阶段 4: 选择设计模式
 

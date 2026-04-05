@@ -97,6 +97,73 @@ last-updated: "YYYY-MM-DD"
 - **Minor (0.x.0)**: New features (backward compatible)
 - **Patch (0.0.x)**: Bug fixes, documentation updates
 
+**Python 执行标准（强制，零例外）:**
+
+所有新技能必须遵循 [Python 执行标准（零例外）](../_templates/execution-standard.md)。
+
+**在 SKILL.md 中包含此标准引用：**
+
+```markdown
+## AI 执行指令
+
+**Python 执行标准：**
+
+本技能遵循 [Python 执行标准（零例外）](../_templates/execution-standard.md)。
+
+所有 Python 代码必须使用 `uv run`：
+- 正式脚本：`uv run scripts/xxx.py`
+- 简单代码：`uv run -c "..."`
+- 共享工具：脚本内直接 import（前提是脚本通过 uv run 启动）
+
+**禁止使用** `python3` 直接调用。
+```
+
+**如果技能需要 scripts/ 目录，生成标准结构：**
+
+```
+.claude/skills/new-skill/
+├── SKILL.md               # 技能文档
+├── scripts/
+│   ├── main.py           # 主入口（如需）
+│   └── utils.py          # 辅助函数（如需）
+└── evals/
+    └── evals.json        # 测试用例
+```
+
+**scripts/ 目录中的 Python 文件示例（带 PEP 723 依赖）：**
+
+```python
+#!/usr/bin/env python3
+# /// script
+# dependencies = [
+#   "pyyaml>=6.0"  # 仅在需要外部依赖时添加
+# ]
+# ///
+
+"""
+Skill main script.
+Execute with: uv run scripts/main.py [args]
+"""
+
+import sys
+from pathlib import Path
+
+# 如需使用共享工具
+sys.path.insert(0, '.claude/skills/_scripts')
+from utils.sync import filter_framework_only_skills
+
+def main():
+    # 实现逻辑
+    pass
+
+if __name__ == "__main__":
+    main()
+```
+
+**相关 ADRs:**
+- [ADR-017](../../../docs/ADRs/017-uv-dependency-management.md) - UV-based Dependency Management
+- [ADR-018](../../../docs/ADRs/018-mandatory-uv-execution.md) - Mandatory UV Execution
+
 When updating an existing skill:
 - Change description/triggers/tools → Bump minor version
 - Change workflow/breaking behavior → Bump major version

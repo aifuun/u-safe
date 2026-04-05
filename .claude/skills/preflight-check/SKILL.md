@@ -23,18 +23,19 @@ This skill performs comprehensive environment checks before work-issue begins, a
 2. **Framework configuration check** - Ensures .claude/, .claude/pillars/ directories exist
 3. **Git environment check** - Verifies Git repository, branch status, clean working directory
 4. **GitHub environment check** - Confirms gh CLI installation and authentication
-5. **Project structure check** - Validates package.json, src/, .gitignore
-6. **Dependency tools check** - Checks Node.js, npm, node_modules
-7. **Quality tools check** - Verifies test and lint scripts
-8. **Auto-fix mechanism** - Automatically resolves common issues
-9. **Parallel execution** - Optimized for 2-5 second completion
+5. **UV package manager check** - Ensures uv is installed (required for all skills)
+6. **Project structure check** - Validates package.json, src/, .gitignore
+7. **Dependency tools check** - Checks Node.js, npm, node_modules
+8. **Quality tools check** - Verifies test and lint scripts
+9. **Auto-fix mechanism** - Automatically resolves common issues
+10. **Parallel execution** - Optimized for 2-5 second completion
 
 **Why it's needed:**
 work-issue frequently fails mid-execution due to:
 - Missing permissions (git push, gh pr create)
 - Unconfigured framework directories
 - Dirty working directory
-- Missing dependencies (node_modules)
+- Missing dependencies (node_modules, uv)
 - Unauthenticated gh CLI
 
 This skill catches and fixes these issues BEFORE work-issue starts, preventing 30-60 minute workflow interruptions.
@@ -62,6 +63,7 @@ This skill catches and fixes these issues BEFORE work-issue starts, preventing 3
 - `framework` - Framework directories
 - `git` - Git environment
 - `github` - GitHub CLI
+- `uv` - UV package manager
 - `project` - Project structure
 - `dependencies` - Node.js and npm
 - `quality` - Test and lint tools
@@ -76,7 +78,7 @@ When executing `/preflight-check`, AI MUST follow this pattern:
 
 ```python
 categories = [
-    "permissions", "framework", "git", "github",
+    "permissions", "framework", "git", "github", "uv",
     "project", "dependencies", "quality"
 ]
 

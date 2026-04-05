@@ -330,5 +330,51 @@ framework-only: [unclosed
             self.assertEqual(len(list(rules_dir.rglob("*.md"))), 0)
 
 
+    # ===== Template Extension Tests (Issue #475) =====
+
+    def test_template_extension_handling(self):
+        """Test handling of .md.template extension"""
+        # 创建 .md.template 模板
+        self._create_template("core/naming.md.template", "# Naming conventions")
+
+        templates = [
+            self.test_root / ".claude" / "guides" / "rules" / "templates" / "core" / "naming.md.template"
+        ]
+
+        generator = RuleGenerator()
+        generator.project_root = self.test_root
+        count = generator.generate_rules(templates, dry_run=False)
+
+        # 验证文件数量
+        self.assertEqual(count, 1)
+
+        # 验证生成的文件名是 naming.md 而不是 naming.md.md
+        rules_dir = self.test_root / ".claude" / "rules"
+        self.assertTrue((rules_dir / "core" / "naming.md").exists())
+        self.assertFalse((rules_dir / "core" / "naming.md.md").exists())
+
+    def test_simple_rule_name_pattern_matching(self):
+        """Test pattern matching for simple names like 'workflow'"""
+        # 创建模板
+        self._create_template("core/workflow.md.template", "# Workflow guidelines")
+
+        # Profile 使用简单名称 "workflow" 而不是 "core/workflow.md"
+        config = {
+            "rules": {
+                "include": ["workflow"],  # 简单名称
+                "exclude": []
+            }
+        }
+
+        generator = RuleGenerator()
+        generator.project_root = self.test_root
+        filtered = generator.filter_templates(config)
+
+        # 应该匹配成功
+        rel_paths = [str(t.relative_to(self.test_root / ".claude" / "guides" / "rules" / "templates")) for t in filtered]
+        self.assertEqual(len(filtered), 1)
+        self.assertIn("core/workflow.md.template", rel_paths)
+
+
 if __name__ == "__main__":
     unittest.main()

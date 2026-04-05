@@ -753,7 +753,7 @@ Next: Manually create documentation files
 **Workflow integration:**
 ```
 Project Initialization:
-1. python3 scripts/init-project.py --profile=tauri --name=my-app
+1. uv run scripts/init-project.py --profile=tauri --name=my-app
 2. /init-docs           # Auto-detects profile from step 1
 3. /check-docs          # Validate structure
 4. Customize templates
