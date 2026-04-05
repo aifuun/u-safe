@@ -21,7 +21,8 @@ from typing import List, Dict, Tuple
 import fnmatch
 
 # Import shared config reader (Issue #481)
-sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
+# Path: .claude/skills/ (where _scripts is located)
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from _scripts.utils.config import read_profile, ProfileError
 
 

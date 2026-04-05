@@ -5,13 +5,32 @@ Provides common configuration loading functions used across multiple skills.
 """
 
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, Optional, Literal
+from dataclasses import dataclass
 import json
 
 
 class ConfigError(Exception):
     """Configuration-related errors"""
     pass
+
+
+class ProfileError(ConfigError):
+    """Profile-specific configuration errors"""
+    pass
+
+
+@dataclass
+class Profile:
+    """
+    Profile configuration object
+
+    Attributes:
+        name: Profile name (tauri, nextjs-aws, minimal, etc.)
+        source: Where the profile was detected from
+    """
+    name: str
+    source: Literal["CLAUDE.md", "project-profile.md"]
 
 
 def load_profile_config(profile: str, project_root: Optional[Path] = None) -> Dict:
@@ -67,3 +86,97 @@ def load_profile_config(profile: str, project_root: Optional[Path] = None) -> Di
         raise ConfigError(f"Invalid JSON in profile config: {e}")
     except Exception as e:
         raise ConfigError(f"Error loading profile config: {e}")
+
+
+def read_profile(project_root: Optional[Path] = None) -> Profile:
+    """
+    Read profile from CLAUDE.md (priority) or project-profile.md
+
+    Priority order (Issue #481):
+    1. CLAUDE.md frontmatter (field: profile)
+    2. docs/project-profile.md frontmatter (field: profile)
+
+    Args:
+        project_root: Optional project root path (default: current directory)
+
+    Returns:
+        Profile: Profile object with name and source
+
+    Raises:
+        ProfileError: If profile not found or invalid in both locations
+
+    Example:
+        >>> profile = read_profile()
+        >>> print(f"Detected {profile.name} from {profile.source}")
+        Detected tauri from CLAUDE.md
+    """
+    if project_root is None:
+        project_root = Path.cwd()
+
+    # Priority 1: Try CLAUDE.md first
+    claude_md = project_root / "CLAUDE.md"
+    if claude_md.exists():
+        profile_name = _extract_profile_from_frontmatter(claude_md)
+        if profile_name:
+            return Profile(name=profile_name, source="CLAUDE.md")
+
+    # Priority 2: Fallback to project-profile.md
+    profile_md = project_root / "docs" / "project-profile.md"
+    if profile_md.exists():
+        profile_name = _extract_profile_from_frontmatter(profile_md)
+        if profile_name:
+            return Profile(name=profile_name, source="project-profile.md")
+
+    # Neither location has valid profile
+    raise ProfileError(
+        "Profile not found. Expected 'profile' field in YAML frontmatter of:\n"
+        f"  1. {claude_md} (priority), or\n"
+        f"  2. {profile_md}"
+    )
+
+
+def _extract_profile_from_frontmatter(file_path: Path) -> Optional[str]:
+    """
+    Extract profile field from YAML frontmatter
+
+    YAML frontmatter format:
+    ---
+    profile: tauri
+    name: My Project
+    ---
+
+    Args:
+        file_path: Path to markdown file with frontmatter
+
+    Returns:
+        str: Profile name if found, None otherwise
+
+    Note:
+        Silently returns None on parsing errors to allow fallback logic
+    """
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+
+        # Check for YAML frontmatter delimiter
+        if not content.startswith('---\n'):
+            return None
+
+        # Extract frontmatter between first two '---'
+        parts = content.split('---', 2)
+        if len(parts) < 3:
+            return None
+
+        # Parse YAML frontmatter
+        import yaml
+        frontmatter = yaml.safe_load(parts[1])
+
+        # Return profile field (None if missing)
+        if isinstance(frontmatter, dict):
+            return frontmatter.get('profile')
+
+        return None
+
+    except Exception:
+        # Silently ignore parsing errors to allow fallback
+        return None

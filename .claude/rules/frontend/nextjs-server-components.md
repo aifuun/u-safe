@@ -1,0 +1,471 @@
+---
+category: frontend
+title: Nextjs Server Components
+description: React Server Components
+tags:
+- nextjs
+- react
+- typescript
+profiles:
+- nextjs-aws
+- tauri
+paths:
+- '**/*.{ts,tsx}'
+version: 1.0.0
+last_updated: '2026-03-27'
+---
+
+---
+paths:
+  - "app/**/*.tsx"
+  - "src/app/**/*.tsx"
+---
+# Next.js Server Components Rules
+
+> React Server Components (RSC) in Next.js. Server-first rendering with zero client JavaScript by default.
+
+## Quick Check
+
+### Server Component (Default)
+- [ ] No 'use client' directive (components are server by default)
+- [ ] Can be async functions
+- [ ] Can fetch data directly (no useEffect)
+- [ ] Cannot use hooks (useState, useEffect, etc.)
+- [ ] Cannot use browser APIs (window, localStorage, etc.)
+
+### Client Component (Opt-in)
+- [ ] Has 'use client' directive at top
+- [ ] Can use hooks and interactivity
+- [ ] Can access browser APIs
+- [ ] Receives serialized props only (no functions)
+- [ ] Placed as low in tree as possible
+
+### Data Fetching
+- [ ] Fetch in Server Components (not Client)
+- [ ] Use async/await directly
+- [ ] Leverage automatic deduplication
+- [ ] Pass data down as props
+
+### Composition
+- [ ] Server Components at top of tree
+- [ ] Client Components as leaves
+- [ ] Can pass Server Components as children to Client Components
+- [ ] Cannot import Server Components into Client Components
+
+## Core Patterns
+
+### 1. Server Component (Default)
+
+```tsx
+// ✅ Server Component - no directive needed
+// Renders on server, sends HTML to client
+
+export default async function UserProfile({ userId }: { userId: string }) {
+  // ✅ Fetch directly - no useEffect, no loading state
+  const user = await getUserFromDB(userId);
+  const posts = await getUserPosts(userId);
+
+  return (
+    <div>
+      <h1>{user.name}</h1>
+      <p>{user.bio}</p>
+
+      {/* ✅ Pass data to Client Component */}
+      <InteractivePostList posts={posts} />
+    </div>
+  );
+}
+```
+
+### 2. Client Component (Interactivity)
+
+```tsx
+'use client'; // ✅ Required for interactivity
+
+import { useState } from 'react';
+
+interface Post {
+  id: string;
+  title: string;
+  content: string;
+}
+
+export function InteractivePostList({ posts }: { posts: Post[] }) {
+  // ✅ Can use hooks
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  return (
+    <div>
+      {posts.map((post) => (
+        <button
+          key={post.id}
+          onClick={() => setSelectedId(post.id)}
+          className={selectedId === post.id ? 'selected' : ''}
+        >
+          {post.title}
+        </button>
+      ))}
+    </div>
+  );
+}
+```
+
+### 3. Composition Pattern (Server in Client)
+
+```tsx
+// ClientWrapper.tsx
+'use client';
+
+export function ClientWrapper({ children }: { children: React.ReactNode }) {
+  // ✅ Client Component can accept Server Components as children
+  const [isOpen, setIsOpen] = useState(true);
+
+  return (
+    <div>
+      <button onClick={() => setIsOpen(!isOpen)}>Toggle</button>
+      {isOpen && <div>{children}</div>}
+    </div>
+  );
+}
+
+// page.tsx (Server Component)
+export default async function Page() {
+  const data = await fetchData();
+
+  return (
+    <ClientWrapper>
+      {/* ✅ Server Component passed as children */}
+      <ServerDataDisplay data={data} />
+    </ClientWrapper>
+  );
+}
+```
+
+### 4. Shared Components (Server + Client)
+
+```tsx
+// components/UserCard.tsx (no directive - can be either)
+
+interface UserCardProps {
+  name: string;
+  email: string;
+  avatar: string;
+}
+
+export function UserCard({ name, email, avatar }: UserCardProps) {
+  // ✅ No hooks, no browser APIs - works in both contexts
+  return (
+    <div className="user-card">
+      <img src={avatar} alt={name} />
+      <h3>{name}</h3>
+      <p>{email}</p>
+    </div>
+  );
+}
+
+// Can be used in Server Components
+async function ServerPage() {
+  const user = await getUser();
+  return <UserCard {...user} />;
+}
+
+// Can be used in Client Components
+'use client';
+function ClientPage() {
+  const [user, setUser] = useState(null);
+  return user ? <UserCard {...user} /> : null;
+}
+```
+
+### 5. Server-Only Code
+
+```tsx
+// lib/db.ts
+import 'server-only'; // ✅ Ensures this never bundles to client
+
+export async function queryDatabase(sql: string) {
+  // Database logic - safe, never sent to client
+  return db.query(sql);
+}
+```
+
+### 6. Context in Server Components
+
+```tsx
+// ❌ Cannot use Context in Server Components
+// import { useContext } from 'react'; // Won't work
+
+// ✅ Instead: pass data as props
+export default async function Layout({ children }: any) {
+  const settings = await getSettings();
+
+  return (
+    <SettingsProvider settings={settings}>
+      {children}
+    </SettingsProvider>
+  );
+}
+
+// SettingsProvider.tsx
+'use client';
+import { createContext } from 'react';
+
+export function SettingsProvider({
+  settings,
+  children
+}: {
+  settings: Settings;
+  children: React.ReactNode
+}) {
+  return (
+    <SettingsContext.Provider value={settings}>
+      {children}
+    </SettingsContext.Provider>
+  );
+}
+```
+
+## Anti-Patterns
+
+### ❌ Using Hooks in Server Components
+
+```tsx
+// ❌ BAD - Server Components cannot use hooks
+export default async function ServerPage() {
+  const [count, setCount] = useState(0); // ERROR!
+  const data = await fetchData();
+  return <div>{data.title}</div>;
+}
+
+// ✅ GOOD - Move interactive parts to Client Component
+export default async function ServerPage() {
+  const data = await fetchData();
+  return (
+    <div>
+      <h1>{data.title}</h1>
+      <InteractiveCounter /> {/* Client Component */}
+    </div>
+  );
+}
+```
+
+### ❌ Importing Server Components into Client Components
+
+```tsx
+// ❌ BAD - Cannot import Server Component into Client
+'use client';
+import { ServerUserProfile } from './ServerUserProfile'; // ERROR!
+
+export function ClientDashboard() {
+  return <ServerUserProfile userId="123" />;
+}
+
+// ✅ GOOD - Pass as children or use Client Component
+'use client';
+export function ClientDashboard({
+  userProfile
+}: {
+  userProfile: React.ReactNode
+}) {
+  return <div>{userProfile}</div>;
+}
+
+// page.tsx (Server Component)
+export default async function Page() {
+  return (
+    <ClientDashboard userProfile={<ServerUserProfile userId="123" />} />
+  );
+}
+```
+
+### ❌ Passing Functions as Props
+
+```tsx
+// ❌ BAD - Cannot serialize functions
+export default async function ServerPage() {
+  const handleClick = () => console.log('clicked');
+
+  return <ClientButton onClick={handleClick} />; // ERROR!
+}
+
+// ✅ GOOD - Define handlers in Client Component
+'use client';
+export function ClientButton() {
+  const handleClick = () => console.log('clicked');
+  return <button onClick={handleClick}>Click</button>;
+}
+```
+
+### ❌ Using Browser APIs in Server Components
+
+```tsx
+// ❌ BAD - window is undefined on server
+export default async function ServerPage() {
+  const width = window.innerWidth; // ERROR!
+  return <div>Width: {width}</div>;
+}
+
+// ✅ GOOD - Use browser APIs in Client Components
+'use client';
+export function ClientPage() {
+  const [width, setWidth] = useState(window.innerWidth);
+
+  useEffect(() => {
+    const handleResize = () => setWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  return <div>Width: {width}</div>;
+}
+```
+
+## Data Fetching Patterns
+
+### Parallel Data Fetching
+
+```tsx
+// ✅ Fetch multiple requests in parallel
+export default async function Dashboard() {
+  // Runs in parallel automatically
+  const userPromise = getUser();
+  const postsPromise = getPosts();
+  const statsPromise = getStats();
+
+  // Wait for all
+  const [user, posts, stats] = await Promise.all([
+    userPromise,
+    postsPromise,
+    statsPromise,
+  ]);
+
+  return (
+    <div>
+      <UserProfile user={user} />
+      <PostList posts={posts} />
+      <Stats data={stats} />
+    </div>
+  );
+}
+```
+
+### Sequential Data Fetching
+
+```tsx
+// ✅ Fetch sequentially when data depends on previous result
+export default async function UserPosts({ userId }: { userId: string }) {
+  const user = await getUser(userId);
+  // Can only fetch posts after getting user
+  const posts = await getPostsByCategory(user.favoriteCategory);
+
+  return <PostList posts={posts} />;
+}
+```
+
+### Streaming with Suspense
+
+```tsx
+// ✅ Stream slow components independently
+export default function Page() {
+  return (
+    <div>
+      {/* Fast content renders immediately */}
+      <Header />
+
+      {/* Slow content streams when ready */}
+      <Suspense fallback={<RecommendationsSkeleton />}>
+        <Recommendations />
+      </Suspense>
+
+      <Suspense fallback={<CommentsSkeleton />}>
+        <Comments />
+      </Suspense>
+    </div>
+  );
+}
+
+async function Recommendations() {
+  const recs = await getRecommendations(); // Slow API
+  return <RecommendationList items={recs} />;
+}
+```
+
+## Performance Patterns
+
+### Move Client Components Down the Tree
+
+```tsx
+// ❌ BAD - Entire page is client-side
+'use client';
+export default function Page() {
+  const [tab, setTab] = useState('overview');
+
+  return (
+    <div>
+      <Header />
+      <TabNav tab={tab} onTabChange={setTab} />
+      <TabContent tab={tab} />
+    </div>
+  );
+}
+
+// ✅ GOOD - Only interactive parts are client
+export default function Page() {
+  return (
+    <div>
+      <Header /> {/* Server Component */}
+      <TabNavigation /> {/* Client Component - only this needs interactivity */}
+    </div>
+  );
+}
+```
+
+### Extract Client Islands
+
+```tsx
+// ✅ Create small interactive "islands" in server pages
+export default async function ProductPage({ id }: { id: string }) {
+  const product = await getProduct(id);
+  const reviews = await getReviews(id);
+
+  return (
+    <div>
+      {/* Server-rendered content */}
+      <h1>{product.name}</h1>
+      <p>{product.description}</p>
+
+      {/* Small interactive islands */}
+      <AddToCartButton productId={id} /> {/* Client */}
+      <ReviewList reviews={reviews} /> {/* Server */}
+      <ReviewForm productId={id} /> {/* Client */}
+    </div>
+  );
+}
+```
+
+## Decision Tree: Server vs Client Component
+
+```
+Start: Do you need interactivity or browser APIs?
+├─ No → Server Component ✅
+│  ├─ Can fetch data directly
+│  ├─ Zero client JavaScript
+│  └─ Renders on server
+│
+└─ Yes → Need hooks, event handlers, or browser APIs?
+   ├─ Yes → Client Component ('use client') ✅
+   │  ├─ Place as low in tree as possible
+   │  ├─ Extract only interactive parts
+   │  └─ Accept Server Components as children
+   │
+   └─ Maybe → Can you pass data from parent?
+      ├─ Yes → Keep parent as Server Component ✅
+      └─ No → Make this component Client ('use client')
+```
+
+---
+
+**Version**: 1.0.0
+**React Version**: 18.3+ (RSC support)
+**Next.js Version**: 13.4+ (App Router)
+**See Also**: nextjs-app-router.md, react-server-actions.md

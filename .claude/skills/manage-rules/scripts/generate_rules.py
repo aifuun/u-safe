@@ -29,7 +29,8 @@ import fnmatch
 import argparse
 
 # Import shared config reader (Issue #481)
-sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
+# Path: .claude/skills/ (where _scripts is located)
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from _scripts.utils.config import read_profile, Profile, ProfileError
 
 
@@ -309,16 +310,22 @@ class RuleGenerator:
             include_rules = config['rules']['include']
 
             # 应用 include whitelist
-            # include_rules 格式示例: ["core/*", "architecture/*", "languages/typescript.md"]
+            # include_rules 格式: ["workflow", "naming", ...] (简化格式 - 只有 rule 名称)
+            # 需要匹配模板文件名（不含扩展名）
             for template in all_templates:
-                # 计算相对于 template_dir 的路径
-                rel_path = template.relative_to(template_dir)
-                rel_path_str = str(rel_path)
+                # 提取模板文件名（不含扩展名）
+                # 例如: core/workflow.md -> workflow
+                template_name = template.stem
 
                 # 检查是否匹配任何 include 规则
+                # 简化格式：直接比较文件名
                 matched = False
                 for rule in include_rules:
-                    if fnmatch.fnmatch(rel_path_str, rule):
+                    # 支持两种格式：
+                    # 1. 简化格式: "workflow" 匹配 "workflow.md"
+                    # 2. 通配符格式: "core/*" 匹配 "core/workflow.md"
+                    rel_path = template.relative_to(template_dir)
+                    if template_name == rule or fnmatch.fnmatch(str(rel_path), rule):
                         matched = True
                         break
 
@@ -557,6 +564,7 @@ def main():
         # Step 1: Detect profile
         print("🔍 Detecting profile...")
         detected_profile = generator.detect_profile() if not args.profile else args.profile
+        generator.profile = detected_profile  # 设置到实例变量
         print(f"✅ Profile: {detected_profile}")
 
         # Step 2: Load config

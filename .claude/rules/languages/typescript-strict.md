@@ -1,12 +1,16 @@
 ---
-category: "languages"
-title: "Typescript Strict"
-description: "TypeScript strict mode"
-tags: [typescript]
-profiles: [tauri, nextjs-aws, minimal]
-paths: ['**/*.{ts,tsx}']
-version: "1.0.0"
-last_updated: "2026-03-27"
+category: languages
+title: Typescript Strict
+description: TypeScript strict mode
+tags:
+- typescript
+profiles:
+- tauri
+- nextjs-aws
+paths:
+- '**/*.{ts,tsx}'
+version: 1.0.0
+last_updated: '2026-03-27'
 ---
 
 ---

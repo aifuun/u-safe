@@ -1,0 +1,76 @@
+{
+  "name": "tauri-aws",
+  "description": "Desktop application with cloud backend (Tauri + AWS)",
+  "pillars": ["A", "B", "K", "L", "M", "Q", "R"],
+  "rules": {
+    "include": [
+      "workflow",
+      "naming",
+      "debugging",
+      "docs",
+      "memory-management",
+      "planning-context",
+      "clean-architecture",
+      "dependency-rule",
+      "service-layer",
+      "headless",
+      "adapters",
+      "identity",
+      "typescript-strict",
+      "typescript-nominal-types",
+      "typescript-esm",
+      "design-system",
+      "zustand-hooks",
+      "views",
+      "css",
+      "stores",
+      "debug-panel",
+      "tauri-stack",
+      "tauri-ipc",
+      "tauri-security",
+      "saga",
+      "lambda-typescript-esm",
+      "lambda-layer-deployment",
+      "lambda-local-first",
+      "external-api-integrations",
+      "query-transactions",
+      "cdk-deploy",
+      "cdk-watch-testing",
+      "aws-services",
+      "diagnostic-export-logging",
+      "secrets",
+      "time-handling",
+      "url-construction"
+    ],
+    "exclude": [
+      "infrastructure/nextjs-*.md",
+      "languages/python-*.md",
+      "languages/go-*.md"
+    ]
+  },
+  "ruleCategories": [
+    "core",
+    "architecture",
+    "languages",
+    "frontend",
+    "backend",
+    "infrastructure",
+    "desktop"
+  ],
+  "validation": {
+    "requirePillarForRule": true,
+    "allowUndeclaredRules": false,
+    "warnOnCategoryMismatch": true
+  },
+  "techStack": {
+    "frontend": ["Tauri", "React", "TypeScript", "Tailwind CSS"],
+    "backend": ["AWS Lambda", "TypeScript", "Node.js"],
+    "infrastructure": ["AWS CDK", "CloudWatch"],
+    "desktop": ["Rust", "Tauri APIs"]
+  },
+  "metadata": {
+    "created": "2026-03-13",
+    "version": "1.0.0",
+    "category": "hybrid"
+  }
+}

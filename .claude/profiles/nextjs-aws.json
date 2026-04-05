@@ -1,0 +1,107 @@
+{
+  "name": "Next.js + AWS",
+  "description": "Full-stack Next.js application with AWS backend. Optimized for server-side rendering, React Server Components, and serverless architecture with headless patterns (Pillar L), saga compensation (Pillar M), idempotency (Pillar Q), and observability (Pillar R). Ideal for modern full-stack applications.",
+  "pillars": ["A", "B", "C", "D", "E", "G", "H", "I", "J", "K", "L", "M", "N", "Q", "R"],
+  "rules": {
+    "include": [
+      "workflow",
+      "naming",
+      "debugging",
+      "docs",
+      "memory-management",
+      "planning-context",
+      "clean-architecture",
+      "dependency-rule",
+      "service-layer",
+      "headless",
+      "adapters",
+      "identity",
+      "typescript-strict",
+      "typescript-nominal-types",
+      "typescript-esm",
+      "design-system",
+      "zustand-hooks",
+      "views",
+      "css",
+      "stores",
+      "debug-panel",
+      "nextjs-app-router",
+      "nextjs-server-components",
+      "nextjs-api-routes",
+      "react-server-actions",
+      "saga",
+      "lambda-typescript-esm",
+      "lambda-layer-deployment",
+      "lambda-local-first",
+      "external-api-integrations",
+      "query-transactions",
+      "cdk-deploy",
+      "cdk-watch-testing",
+      "aws-services",
+      "diagnostic-export-logging",
+      "secrets",
+      "time-handling",
+      "url-construction"
+    ],
+    "exclude": [
+      "desktop/**",
+      "infrastructure/tauri-*.md",
+      "languages/python-*.md",
+      "languages/go-*.md"
+    ]
+  },
+  "commands": [
+    "plan",
+    "tier",
+    "next",
+    "sync",
+    "review",
+    "audit",
+    "deploy",
+    "status",
+    "resume",
+    "issue-pick",
+    "issue-create"
+  ],
+  "templates": [
+    "mvp",
+    "feature-plan",
+    "github-issue",
+    "issue-triage",
+    "todo"
+  ],
+  "docs": {
+    "include": ["CLAUDE.md", "PRD.md", "SCHEMA.md", "API.md", "ADR.md", "README.md"],
+    "variables": {
+      "architecture": "Next.js App Router",
+      "techStack": "Next.js 15 + TypeScript + AWS Lambda",
+      "deploymentPlatform": "AWS CDK + Vercel"
+    }
+  },
+  "estimatedSize": "680KB",
+  "techStack": {
+    "frontend": ["Next.js", "React", "TypeScript", "Zustand"],
+    "backend": ["Node.js", "AWS Lambda", "TypeScript", "Next.js API Routes"],
+    "infrastructure": ["AWS CDK", "CloudFormation", "Vercel"],
+    "database": ["DynamoDB"]
+  },
+  "metadata": {
+    "version": "1.0.0",
+    "author": "AI Dev Framework Team",
+    "tags": ["fullstack", "nextjs", "react", "aws", "serverless", "ssr", "production"],
+    "difficulty": "advanced"
+  },
+  "dependencies": {
+    "recommendedRules": {
+      "L": ["headless", "design-system"],
+      "M": ["saga"],
+      "Q": ["idempotency"],
+      "R": ["observability"]
+    },
+    "requiredPillars": {
+      "saga": ["M"],
+      "headless": ["L"],
+      "idempotency": ["Q"]
+    }
+  }
+}
