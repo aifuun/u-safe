@@ -29,14 +29,14 @@ Tauri 2.0 + Rust (后端) + React 18 + TailwindCSS (前端) + SQLite
 
 ## ⚡ Skills System
 
-当前已安装 29 个技能，按功能分类：
+当前已安装 28 个技能，按功能分类：
 
 | Category | Key Skills | Purpose |
 |----------|------------|---------|
 | **Issue Lifecycle** | auto-solve-issue, execute-plan, finish-issue, solve-issues, start-issue | Complete workflow from planning to merge |
 | **Quality** | eval-plan, review | Code review and plan validation |
-| **Management** | check-docs, init-docs, manage-adrs, manage-claude-md, manage-docs, manage-project | Profile and content management (unified manage-* naming) |
-| **Utilities** | common, create-issue, overview, preflight-check, refers, skill-creator, solve-issue, status, test-version-207 | Status checks, issue creation, skill development |
+| **Management** | check-docs, init-docs, manage-adrs, manage-claude-md, manage-docs, manage-project, manage-rules | Profile and content management (unified manage-* naming) |
+| **Utilities** | create-issue, overview, preflight-check, refers, skill-creator, status, test-version-207 | Status checks, issue creation, skill development |
 | **Internal** | migrate-docs, next, plan, sync, worktree | Framework development utilities |
 | **Maintenance** | cleanup-project, configure-permissions | Project upkeep and config |
 
