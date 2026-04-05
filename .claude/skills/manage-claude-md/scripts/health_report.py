@@ -231,7 +231,7 @@ def check_docs_health(project_root: Path) -> Tuple[int, Dict]:
         details["readme"] = "⚠️  不存在"
 
     # ADRs
-    adrs_dir = project_root / "docs" / "ADRs"
+    adrs_dir = project_root / "docs" / "adr"
     if adrs_dir.exists():
         score += 5
         details["adrs_dir"] = "✅ 存在"
