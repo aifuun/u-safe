@@ -78,7 +78,7 @@ All operations include graceful error handling:
 ```bash
 if [ ! -f "docs/project-profile.md" ]; then
   echo "⚠️  Warning: Project profile not configured"
-  echo "Run: /manage-project --select-profile"
+  echo "Run: /manage-claude-md --configure-profile --select-profile"
   echo "Using default documentation checks..."
   # Continue with minimal validation
 fi
@@ -387,7 +387,7 @@ Next steps:
 **Workflow integration**:
 ```bash
 # After profile change, regenerate docs
-/manage-project --select-profile → /manage-docs --check
+/manage-claude-md --configure-profile --select-profile → /manage-docs --check
 
 # After init-docs, validate structure
 /init-docs → /manage-docs --validate

@@ -1,12 +1,17 @@
 ---
-category: "frontend"
-title: "Nextjs Api Routes"
-description: "Next.js API routes"
-tags: [nextjs, typescript]
-profiles: [nextjs-aws]
-paths: ['**/*.{ts,tsx}']
-version: "1.0.0"
-last_updated: "2026-03-27"
+category: frontend
+title: Nextjs Api Routes
+description: Next.js API routes
+tags:
+- nextjs
+- typescript
+profiles:
+- nextjs-aws
+- tauri
+paths:
+- '**/*.{ts,tsx}'
+version: 1.0.0
+last_updated: '2026-03-27'
 ---
 
 ---

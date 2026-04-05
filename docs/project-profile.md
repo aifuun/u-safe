@@ -1,6 +1,7 @@
 ---
 profile: tauri
 name: tauri
+type: tauri
 description: Desktop application (Tauri + React, local-first)
 category: desktop
 version: 1.0.0

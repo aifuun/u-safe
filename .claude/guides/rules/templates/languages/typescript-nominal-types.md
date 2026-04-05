@@ -1,13 +1,18 @@
 ---
-category: "languages"
-title: "Typescript Nominal Types"
-description: "Branded types with Zod"
-tags: [typescript]
-profiles: [tauri, nextjs-aws, minimal]
-pillar_refs: [A]
-paths: ['**/*.{ts,tsx}']
-version: "1.0.0"
-last_updated: "2026-03-27"
+category: languages
+title: Typescript Nominal Types
+description: Branded types with Zod
+tags:
+- typescript
+profiles:
+- tauri
+- nextjs-aws
+pillar_refs:
+- A
+paths:
+- '**/*.{ts,tsx}'
+version: 1.0.0
+last_updated: '2026-03-27'
 ---
 
 ---

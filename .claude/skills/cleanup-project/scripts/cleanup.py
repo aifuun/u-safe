@@ -20,6 +20,10 @@ from pathlib import Path
 from typing import List, Dict, Tuple
 import fnmatch
 
+# Import shared config reader (Issue #481)
+sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
+from _scripts.utils.config import read_profile, ProfileError
+
 
 # ============================================================================
 # Safety Protection: Whitelist (MUST NOT DELETE)
@@ -392,19 +396,20 @@ class ProjectCleaner:
 
 def detect_profile() -> str:
     """
-    自动检测项目 profile
+    自动检测项目 profile (Issue #481: Use shared config reader)
+
+    Uses shared config reader with fallback detection.
 
     Returns:
         "tauri" | "nextjs-aws" | "common"
     """
-    # Method 1: Read from docs/project-profile.md
-    profile_file = Path('docs/project-profile.md')
-    if profile_file.exists():
-        content = profile_file.read_text()
-        if 'profile: tauri' in content.lower():
-            return 'tauri'
-        elif 'profile: nextjs-aws' in content.lower():
-            return 'nextjs-aws'
+    # Method 1: Use shared config reader (CLAUDE.md → project-profile.md)
+    try:
+        profile_obj = read_profile()
+        return profile_obj.name
+    except ProfileError:
+        # Fallback: No profile config found, detect from project structure
+        pass
 
     # Method 2: Detect feature files
     if Path('src-tauri/Cargo.toml').exists():

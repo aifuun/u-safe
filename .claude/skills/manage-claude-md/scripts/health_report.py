@@ -11,6 +11,10 @@ from pathlib import Path
 from typing import Dict, List, Tuple
 import json
 
+# Import shared config reader (Issue #481)
+sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
+from _scripts.utils.config import read_profile, ProfileError
+
 
 def find_project_root() -> Path:
     """查找项目根目录（包含 .claude/ 的目录）"""
@@ -155,13 +159,13 @@ def check_rules_health(project_root: Path) -> Tuple[int, Dict]:
     elif rule_count >= 5:
         score += 3
 
-    # 检查 profile
-    profile_file = project_root / "docs" / "project-profile.md"
-    if profile_file.exists():
+    # 检查 profile (Issue #481: Use shared config reader)
+    try:
+        profile_obj = read_profile(project_root)
         score += 5
-        details["profile"] = "✅ 有 profile 配置"
-    else:
-        details["profile"] = "⚠️  缺少 profile"
+        details["profile"] = f"✅ 有 profile 配置 ({profile_obj.name} from {profile_obj.source})"
+    except ProfileError:
+        details["profile"] = "⚠️  缺少 profile 配置（CLAUDE.md 或 project-profile.md）"
 
     return score, details
 

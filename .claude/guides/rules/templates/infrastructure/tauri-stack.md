@@ -1,12 +1,16 @@
 ---
-category: "infrastructure"
-title: "Tauri Stack"
-description: "Tauri stack setup"
-tags: [rust, tauri]
-profiles: [tauri]
-paths: ['**/*.rs']
-version: "1.0.0"
-last_updated: "2026-03-27"
+category: infrastructure
+title: Tauri Stack
+description: Tauri stack setup
+tags:
+- rust
+- tauri
+profiles:
+- nextjs-aws
+paths:
+- '**/*.rs'
+version: 1.0.0
+last_updated: '2026-03-27'
 ---
 
 ---

@@ -342,7 +342,7 @@ Fast because:
 
 ## Related Skills
 
-- **/manage-project** - Project profile management
+- **/manage-claude-md --configure-profile** - Project profile management
 - **/manage-claude-md** - Cleanup plans/ directory
 - **/update-framework** - Framework sync and cleanup
 

@@ -298,7 +298,7 @@ python3 .claude/skills/manage-rules/scripts/generate_rules.py --profile nextjs-a
 ```
 ❌ Profile Error: Profile file not found: docs/project-profile.md
 
-Fix: Run /manage-project --select-profile
+Fix: Run /manage-claude-md --configure-profile --select-profile
 ```
 
 **Invalid YAML:**
@@ -466,7 +466,7 @@ Fast because:
 
 ## Related Skills
 
-- **/manage-project** - Select and activate project profile
+- **/manage-claude-md --configure-profile** - Select and activate project profile
 - **/update-framework** - Sync framework content (calls this skill)
 - **/init-docs** - Initialize documentation (calls this skill)
 - **/manage-docs** - Document structure management

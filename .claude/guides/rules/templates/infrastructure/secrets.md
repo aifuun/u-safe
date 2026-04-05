@@ -1,12 +1,17 @@
 ---
-category: "infrastructure"
-title: "Secrets"
-description: "Secrets management"
-tags: [typescript, aws, secrets]
-profiles: [tauri, nextjs-aws]
-paths: ['**/*.{ts,tsx}']
-version: "1.0.0"
-last_updated: "2026-03-27"
+category: infrastructure
+title: Secrets
+description: Secrets management
+tags:
+- typescript
+- aws
+- secrets
+profiles:
+- nextjs-aws
+paths:
+- '**/*.{ts,tsx}'
+version: 1.0.0
+last_updated: '2026-03-27'
 ---
 
 # Secret Management Rules

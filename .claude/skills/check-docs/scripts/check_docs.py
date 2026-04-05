@@ -28,6 +28,10 @@ import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+
+# Import shared config reader (Issue #481)
+sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
+from _scripts.utils.config import read_profile, ProfileError
 from typing import Dict, List, Optional, Tuple
 
 
@@ -339,7 +343,9 @@ class DocsChecker:
 
 
 def detect_profile(root_path: str = '.') -> str:
-    """自动检测项目profile
+    """自动检测项目profile (Issue #481: Use shared config reader)
+
+    Uses shared config reader (CLAUDE.md → project-profile.md)
 
     Args:
         root_path: 项目根目录
@@ -347,17 +353,12 @@ def detect_profile(root_path: str = '.') -> str:
     Returns:
         检测到的profile名称
     """
-    profile_file = Path(root_path) / 'docs/project-profile.md'
-
-    if profile_file.exists():
-        try:
-            with open(profile_file, 'r') as f:
-                data = json.load(f)
-                return data.get('profile', 'minimal')
-        except (json.JSONDecodeError, KeyError):
-            pass
-
-    return 'minimal'
+    try:
+        profile_obj = read_profile(Path(root_path))
+        return profile_obj.name
+    except ProfileError:
+        # Fallback: No profile config found
+        return 'minimal'
 
 
 def output_human_readable(result: Dict, verbose: bool = False):

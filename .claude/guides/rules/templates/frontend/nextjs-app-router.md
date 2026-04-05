@@ -1,12 +1,18 @@
 ---
-category: "frontend"
-title: "Nextjs App Router"
-description: "Next.js 15 app router"
-tags: [nextjs, react, typescript]
-profiles: [nextjs-aws]
-paths: ['**/*.{ts,tsx}']
-version: "1.0.0"
-last_updated: "2026-03-27"
+category: frontend
+title: Nextjs App Router
+description: Next.js 15 app router
+tags:
+- nextjs
+- react
+- typescript
+profiles:
+- nextjs-aws
+- tauri
+paths:
+- '**/*.{ts,tsx}'
+version: 1.0.0
+last_updated: '2026-03-27'
 ---
 
 ---

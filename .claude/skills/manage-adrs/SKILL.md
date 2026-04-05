@@ -87,7 +87,7 @@ All operations include graceful error handling:
 ```bash
 if [ ! -f "docs/project-profile.md" ]; then
   echo "❌ Error: Project profile not configured"
-  echo "Please run: /manage-project --select-profile"
+  echo "Please run: /manage-claude-md --configure-profile --select-profile"
   exit 1
 fi
 ```
@@ -175,7 +175,7 @@ Next steps:
    ```bash
    if [ ! -f "docs/project-profile.md" ]; then
      echo "❌ Error: Project profile not configured"
-     echo "Run: /manage-project --select-profile"
+     echo "Run: /manage-claude-md --configure-profile --select-profile"
      exit 1
    fi
    ```

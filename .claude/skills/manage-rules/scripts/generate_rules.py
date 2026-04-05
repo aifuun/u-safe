@@ -28,10 +28,9 @@ from typing import List, Dict, Optional
 import fnmatch
 import argparse
 
-
-class ProfileError(Exception):
-    """Profile-related errors"""
-    pass
+# Import shared config reader (Issue #481)
+sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
+from _scripts.utils.config import read_profile, Profile, ProfileError
 
 
 class RuleGenerator:
@@ -39,7 +38,7 @@ class RuleGenerator:
     Orchestrates rule generation workflow
 
     Workflow:
-    1. Detect profile from docs/project-profile.md
+    1. Detect profile using shared config reader (CLAUDE.md → project-profile.md) (Issue #481)
     2. Load profile configuration with rules whitelist
     3. Filter templates by profile whitelist and exclude patterns
     4. Filter out framework-only templates (Issue #401)
@@ -60,7 +59,9 @@ class RuleGenerator:
 
     def _find_project_root(self) -> Path:
         """
-        查找项目根目录（包含 docs/project-profile.md 的目录）
+        查找项目根目录（包含 CLAUDE.md 或 docs/project-profile.md 的目录）
+
+        Uses shared config reader (Issue #481)
 
         Returns:
             Path: 项目根目录路径
@@ -70,75 +71,37 @@ class RuleGenerator:
         """
         current = Path.cwd()
 
-        # 向上查找直到找到 docs/project-profile.md
+        # 向上查找直到找到 CLAUDE.md 或 docs/project-profile.md
         while current != current.parent:
-            profile_file = current / "docs" / "project-profile.md"
-            if profile_file.exists():
+            if (current / "CLAUDE.md").exists():
+                return current
+            if (current / "docs" / "project-profile.md").exists():
                 return current
             current = current.parent
 
-        raise ProfileError("无法找到项目根目录（需要 docs/project-profile.md）")
+        raise ProfileError("无法找到项目根目录（需要 CLAUDE.md 或 docs/project-profile.md）")
 
     def detect_profile(self) -> str:
         """
-        Detect project profile from docs/project-profile.md
+        Detect project profile using shared config reader (Issue #481)
+
+        Reads from CLAUDE.md frontmatter first, falls back to docs/project-profile.md
 
         Returns:
             str: Profile name (tauri, nextjs-aws, minimal, etc.)
 
         Raises:
-            ProfileError: If profile file missing or invalid
+            ProfileError: If profile configuration missing or invalid
         """
-        profile_file = self.project_root / "docs" / "project-profile.md"
+        # Use shared config reader (priority: CLAUDE.md → project-profile.md)
+        profile_obj = read_profile(self.project_root)
 
-        if not profile_file.exists():
-            raise ProfileError(f"Profile file not found: {profile_file}")
+        # Optional: Validate schema if reading from legacy project-profile.md
+        if profile_obj.source == "project-profile.md":
+            profile_file = self.project_root / "docs" / "project-profile.md"
+            self.validate_profile_schema(profile_file)
 
-        # 验证 profile schema（Issue #475）
-        self.validate_profile_schema(profile_file)
-
-        try:
-            with open(profile_file, 'r', encoding='utf-8') as f:
-                content = f.read()
-
-            # 解析 YAML frontmatter
-            if not content.startswith('---'):
-                raise ProfileError("Profile file missing YAML frontmatter")
-
-            yaml_end = content.find('---', 3)
-            if yaml_end == -1:
-                raise ProfileError("Invalid YAML frontmatter format")
-
-            frontmatter = content[3:yaml_end].strip()
-            metadata = yaml.safe_load(frontmatter)
-
-            # 提取 profile 字段
-            profile = metadata.get('profile')
-            if not profile:
-                # 检查是否使用了错误的字段名
-                if 'name' in metadata:
-                    raise ProfileError(
-                        f"Profile field not found in YAML frontmatter.\n"
-                        f"Found 'name: {metadata['name']}' instead.\n"
-                        f"Did you mean to use 'profile: {metadata['name']}'?\n"
-                        f"Location: {profile_file}"
-                    )
-                else:
-                    raise ProfileError(
-                        f"Profile field not found in YAML frontmatter.\n"
-                        f"Expected format:\n"
-                        f"  ---\n"
-                        f"  profile: tauri\n"
-                        f"  ---\n"
-                        f"Location: {profile_file}"
-                    )
-
-            return profile
-
-        except yaml.YAMLError as e:
-            raise ProfileError(f"Invalid YAML syntax: {e}")
-        except Exception as e:
-            raise ProfileError(f"Error reading profile file: {e}")
+        return profile_obj.name
 
     def validate_profile_schema(self, profile_file: Path) -> None:
         """
@@ -247,9 +210,62 @@ class RuleGenerator:
         except Exception as e:
             raise ProfileError(f"Error loading profile config: {e}")
 
+    def _filter_by_profiles(self, profile_name: str, templates: List[Path]) -> List[Path]:
+        """
+        根据 profiles 字段过滤模板（新方法 - Issue #482）
+
+        Args:
+            profile_name: 当前 profile 名称
+            templates: 所有模板文件列表
+
+        Returns:
+            List[Path]: 匹配的模板列表
+
+        Logic:
+            1. 读取每个模板的 YAML frontmatter
+            2. 检查 profiles 字段
+            3. 如果 profile_name 在 profiles 列表中，包含该模板
+            4. 返回过滤后的列表
+        """
+        filtered = []
+
+        for template in templates:
+            try:
+                with open(template, 'r', encoding='utf-8') as f:
+                    content = f.read()
+
+                # 检查是否有 YAML frontmatter
+                if not content.startswith('---'):
+                    # 没有 frontmatter，跳过
+                    continue
+
+                # 解析 YAML frontmatter
+                yaml_end = content.find('---', 3)
+                if yaml_end == -1:
+                    # 无效的 frontmatter，跳过
+                    continue
+
+                frontmatter = content[3:yaml_end].strip()
+                metadata = yaml.safe_load(frontmatter)
+
+                # 检查 profiles 字段
+                applicable_profiles = metadata.get('profiles', [])
+
+                if profile_name in applicable_profiles:
+                    filtered.append(template)
+
+            except yaml.YAMLError:
+                # YAML 解析错误，跳过（不包含）
+                continue
+            except Exception:
+                # 其他错误，跳过（不包含）
+                continue
+
+        return filtered
+
     def filter_templates(self, config: Dict) -> List[Path]:
         """
-        Filter templates by profile whitelist and exclude patterns
+        Filter templates by profile (优先使用 profiles 字段，fallback 到 include 列表)
 
         Args:
             config: Profile configuration dict
@@ -257,11 +273,12 @@ class RuleGenerator:
         Returns:
             List[Path]: Filtered template paths
 
-        Logic:
+        Logic (Issue #482):
             1. Scan .claude/guides/rules/templates/
-            2. Apply include whitelist
-            3. Apply exclude patterns (fnmatch)
-            4. Return filtered list
+            2. 优先使用 profiles 字段过滤
+            3. Fallback 到 include whitelist（向后兼容）
+            4. Apply exclude patterns (fnmatch)
+            5. Return filtered list
         """
         # 查找模板目录
         template_paths = [
@@ -281,46 +298,56 @@ class RuleGenerator:
         # 扫描所有模板文件（使用缓存优化 - Issue #475 Task 6）
         all_templates = list(self._scan_all_templates(template_dir))
 
-        # 提取 include 和 exclude 规则
-        include_rules = config['rules']['include']
-        exclude_patterns = config['rules'].get('exclude', [])
+        # 优先使用 profiles 字段过滤（Issue #482）
+        filtered = self._filter_by_profiles(self.profile, all_templates)
 
-        # 应用 include whitelist
-        # include_rules 格式示例: ["core/*", "architecture/*", "languages/typescript.md"]
-        filtered = []
-        for template in all_templates:
-            # 计算相对于 template_dir 的路径
-            rel_path = template.relative_to(template_dir)
-            rel_path_str = str(rel_path)
+        # Fallback: 如果没有找到任何匹配（可能是旧格式模板），使用 include 列表
+        if len(filtered) == 0 and 'include' in config.get('rules', {}):
+            print(f"🔍 Filtering by profile '{self.profile}' (fallback: legacy include list)...")
 
-            # 检查是否匹配任何 include 规则
-            matched = False
-            for rule in include_rules:
-                if fnmatch.fnmatch(rel_path_str, rule):
-                    matched = True
-                    break
+            # 提取 include 和 exclude 规则
+            include_rules = config['rules']['include']
 
-            if matched:
-                filtered.append(template)
+            # 应用 include whitelist
+            # include_rules 格式示例: ["core/*", "architecture/*", "languages/typescript.md"]
+            for template in all_templates:
+                # 计算相对于 template_dir 的路径
+                rel_path = template.relative_to(template_dir)
+                rel_path_str = str(rel_path)
 
-        # 应用 exclude patterns
-        # exclude_patterns 格式示例: ["**/deprecated-*.md", "languages/python.md"]
-        final_filtered = []
-        for template in filtered:
-            rel_path = template.relative_to(template_dir)
-            rel_path_str = str(rel_path)
+                # 检查是否匹配任何 include 规则
+                matched = False
+                for rule in include_rules:
+                    if fnmatch.fnmatch(rel_path_str, rule):
+                        matched = True
+                        break
 
-            # 检查是否匹配任何 exclude pattern
-            excluded = False
-            for pattern in exclude_patterns:
-                if fnmatch.fnmatch(rel_path_str, pattern):
-                    excluded = True
-                    break
+                if matched:
+                    filtered.append(template)
+        else:
+            print(f"🔍 Filtering by profile '{self.profile}' (auto-match via 'profiles' field)...")
 
-            if not excluded:
-                final_filtered.append(template)
+        # 应用 exclude patterns（对两种方式都适用）
+        exclude_patterns = config.get('rules', {}).get('exclude', [])
+        if exclude_patterns:
+            final_filtered = []
+            for template in filtered:
+                rel_path = template.relative_to(template_dir)
+                rel_path_str = str(rel_path)
 
-        return final_filtered
+                # 检查是否匹配任何 exclude pattern
+                excluded = False
+                for pattern in exclude_patterns:
+                    if fnmatch.fnmatch(rel_path_str, pattern):
+                        excluded = True
+                        break
+
+                if not excluded:
+                    final_filtered.append(template)
+
+            return final_filtered
+        else:
+            return filtered
 
     def filter_framework_only_skills(self, templates: List[Path]) -> List[Path]:
         """
@@ -396,29 +423,9 @@ class RuleGenerator:
             - 首次调用: 扫描文件系统
             - 后续调用: 返回缓存结果（几乎零开销）
         """
-        templates = list(template_dir.glob("**/*.md")) + list(template_dir.glob("**/*.md.template"))
+        templates = list(template_dir.glob("**/*.md"))
         return tuple(templates)  # Convert to tuple for caching
 
-    def _normalize_rule_filename(self, template_path: Path) -> str:
-        """
-        将模板文件名转换为规则文件名
-
-        处理 .md.template 扩展名，移除 .template 后缀。
-
-        Args:
-            template_path: 模板文件路径
-
-        Returns:
-            str: 规则文件名（带 .md 扩展名）
-
-        Examples:
-            workflow.md.template → workflow.md
-            naming.md → naming.md
-        """
-        if template_path.name.endswith('.md.template'):
-            return template_path.stem  # workflow.md (stem 已包含 .md)
-        else:
-            return template_path.name  # naming.md
 
     def generate_rules(self, templates: List[Path], dry_run: bool = False) -> int:
         """
@@ -449,8 +456,8 @@ class RuleGenerator:
                 template_dir = template.parent
                 category = template_dir.name
 
-                # 使用统一的文件名规范化方法
-                rule_name = self._normalize_rule_filename(template)
+                # 直接使用文件名（已经是 .md 格式）
+                rule_name = template.name
 
                 target_path = rules_dir / category / rule_name
                 print(f"  - {template.relative_to(self.project_root)} → {target_path.relative_to(self.project_root)}")
@@ -491,8 +498,8 @@ class RuleGenerator:
                 category_dir = rules_dir / category
                 category_dir.mkdir(exist_ok=True)
 
-                # 使用统一的文件名规范化方法
-                rule_name = self._normalize_rule_filename(template)
+                # 直接使用文件名（已经是 .md 格式）
+                rule_name = template.name
 
                 target_path = category_dir / rule_name
 
@@ -525,12 +532,12 @@ def main():
     parser.add_argument(
         '--profile',
         type=str,
-        help='Override profile (default: auto-detect from docs/project-profile.md)'
+        help='Override profile (default: auto-detect from CLAUDE.md or docs/project-profile.md)'
     )
     parser.add_argument(
-        '--instant',
+        '--confirm',
         action='store_true',
-        help='Execute immediately without confirmation (default: False)'
+        help='Ask for confirmation before generating (default: instant mode)'
     )
     parser.add_argument(
         '--dry-run',
@@ -541,8 +548,11 @@ def main():
     args = parser.parse_args()
 
     try:
+        # instant 模式默认开启，除非指定 --confirm
+        instant = not args.confirm
+
         # 创建 RuleGenerator 实例
-        generator = RuleGenerator(profile=args.profile, instant=args.instant)
+        generator = RuleGenerator(profile=args.profile, instant=instant)
 
         # Step 1: Detect profile
         print("🔍 Detecting profile...")
@@ -569,11 +579,11 @@ def main():
         print(f"✅ Filtered: {len(filtered)} templates (excluded {excluded_count} framework-only)")
 
         # Step 5: Generate or show plan
-        if args.dry_run or not args.instant:
+        if args.dry_run or not instant:
             print("\n📋 Dry Run:")
             generator.generate_rules(filtered, dry_run=True)
 
-            if not args.instant and not args.dry_run:
+            if not instant and not args.dry_run:
                 response = input("\nProceed with generation? [y/N]: ")
                 if response.lower() != 'y':
                     print("❌ Cancelled")

@@ -141,6 +141,7 @@ Automated maintenance for CLAUDE.md skills list and plans/ directory cleanup.
 /manage-claude-md --sync-skills        # Only sync CLAUDE.md skills list
 /manage-claude-md --clean-plans        # Only clean plans/ directory
 /manage-claude-md --health-check       # Only run health check
+/manage-claude-md --configure-profile  # Configure profile in CLAUDE.md frontmatter (NEW - Issue #481)
 ```
 
 ---
@@ -185,7 +186,7 @@ All operations include graceful error handling:
 ```bash
 if [ ! -f "docs/project-profile.md" ]; then
   echo "⚠️  Warning: Project profile not configured"
-  echo "Run: /manage-project --select-profile"
+  echo "Run: /manage-claude-md --configure-profile --select-profile"
   echo "Continuing with reduced validation..."
   # Continue without profile-specific checks
 fi
@@ -482,7 +483,7 @@ Next steps:
 - ❌ ADRs → Use `/manage-adrs`
 - ❌ Skills installation → Use `/update-skills`
 - ❌ Rules → Use `/manage-rules`
-- ❌ Profile selection → Use `/manage-project`
+- ❌ Profile selection → Use `/manage-claude-md --configure-profile`
 
 **Clear boundaries**:
 ```bash
@@ -496,7 +497,7 @@ Next steps:
 /manage-adrs
 
 # Profile selection
-/manage-project --select-profile
+/manage-claude-md --configure-profile --select-profile
 
 # Framework sync
 /update-framework
