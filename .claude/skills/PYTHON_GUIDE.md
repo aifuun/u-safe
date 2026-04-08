@@ -49,7 +49,7 @@ This guide provides comprehensive documentation for developing Claude Code skill
 
 **Check version:**
 ```bash
-python3 --version
+uv run python --version
 # Should show: Python 3.9.x or higher
 ```
 

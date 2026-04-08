@@ -356,6 +356,94 @@ Phase 3: /finish-issue #23 → Ship
 - Can't verify criteria coverage
 - **Result:** ❌ Rejected - needs revision
 
+## Safety Features
+
+**Pre-flight checks:**
+- ✅ Plan file exists before evaluation
+- ✅ Valid issue number (from args, branch, or active plan)
+- ✅ Worktree path detection (if applicable)
+- ✅ Status file write permissions
+
+**Smart defaults:**
+- Auto mode continues if score ≥ 90
+- Interactive mode always pauses for review
+- 90-minute validity window for status files
+
+**Validation points:**
+- Architecture rules directory exists
+- Issue body accessible via gh CLI
+- Plan structure parseable (YAML + markdown)
+- Scoring thresholds enforced (0-100 scale)
+
+**Data integrity:**
+- Status file atomic write (no partial writes)
+- Timestamp validation (valid_until checks)
+- Score breakdown consistency (sum = total)
+- Issue number cross-validation (plan vs args)
+
+## Error Handling
+
+### Common Errors
+
+**Plan file not found:**
+```
+❌ Error: Plan file not found
+
+Expected: .claude/plans/active/issue-508-plan.md
+Location: /Users/woo/dev/ai-dev/.claude/plans/active/
+
+Fix:
+1. Run /start-issue #508 to create plan
+2. Check issue number is correct
+3. Verify worktree path if using worktrees
+```
+
+**Invalid issue number:**
+```
+❌ Error: Cannot detect issue number
+
+Tried:
+1. Argument parsing (none provided)
+2. Branch name (on main - no issue number)
+3. Active plans (multiple found)
+4. Worktree path (not in worktree)
+
+Fix: Provide issue number explicitly: /eval-plan #508
+```
+
+**Status file write failure:**
+```
+❌ Error: Cannot write status file
+
+Path: .claude/.eval-plan-status.json
+Cause: Permission denied
+
+Fix:
+1. Check directory permissions: chmod 755 .claude/
+2. Remove existing file: rm .claude/.eval-plan-status.json
+3. Verify disk space: df -h
+```
+
+**GitHub CLI authentication:**
+```
+❌ Error: GitHub CLI not authenticated
+
+Required for: Fetching issue body to check acceptance criteria
+
+Fix: gh auth login
+```
+
+**Expired status file:**
+```
+⚠️  Warning: Status file expired
+
+Created: 2026-04-07T12:00:00
+Valid until: 2026-04-07T13:30:00 (90 minutes)
+Current time: 2026-04-07T14:00:00
+
+Action: Re-run /eval-plan to generate fresh status
+```
+
 ## Best Practices
 
 1. **Run after /start-issue** - Validate auto-generated plans
@@ -396,6 +484,28 @@ Missing items indicate incomplete evaluation.
 - **[SCORING.md](SCORING.md)** - Scoring algorithm, approval thresholds, status file format, and auto-fix mode
 - **[VERSION_CHECK.md](VERSION_CHECK.md)** - Version field checking logic and implementation (Issue #401 feature)
 
+## Testing
+
+This skill has comprehensive test coverage (97%+) following ADR-020 standards.
+
+**Test suite includes:**
+- 8 functional tests (core evaluation features)
+- 4 parameter tests (argument validation)
+- 5 safety tests (safety mechanisms)
+- 5 error handling tests (exception scenarios)
+- 3 integration tests (end-to-end workflows)
+
+**Run tests:**
+```bash
+# All tests
+pytest .claude/skills/eval-plan/tests/
+
+# With coverage
+pytest .claude/skills/eval-plan/tests/ --cov --cov-report=html
+```
+
+**See**: [tests/README.md](tests/README.md) for complete testing guide
+
 ## Related Skills
 
 - **/start-issue** - Creates plan (run before this)
@@ -415,11 +525,12 @@ This is a **workflow skill** and must follow the standard pattern:
 
 ---
 
-**Version:** 1.4.1
+**Version:** 1.5.0
 **Pattern:** Analysis skill (validates before execution)
-**Compliance:** ADR-001 ✅ | ADR-014 ✅ | ADR-016 ✅ | WORKFLOW_PATTERNS.md ✅
-**Last Updated:** 2026-03-30
+**Compliance:** ADR-001 ✅ | ADR-014 ✅ | ADR-016 ✅ | ADR-020 ✅ | WORKFLOW_PATTERNS.md ✅
+**Last Updated:** 2026-04-07
 **Changelog:**
+- v1.5.0: Added comprehensive test suite (99 tests, 97% coverage) - ADR-020 compliance (Issue #520)
 - v1.4.1: Use shared version.py module for version checking (Issue #406)
 - v1.4.0: Split into modular docs (SKILL.md <500L, CHECKLIST.md, SCORING.md, VERSION_CHECK.md) - ADR-016 compliance (Issue #419)
 - v1.3.0: Added mode-aware output (2 lines auto, ≤20 lines interactive) (Issue #263)

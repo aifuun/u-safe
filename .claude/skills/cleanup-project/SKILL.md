@@ -78,21 +78,21 @@ profile = extract_profile(args) or None  # Auto-detect if not specified
 **For cleanup:**
 ```bash
 # Dry-run mode (preview)
-python3 .claude/skills/cleanup-project/scripts/cleanup.py --dry-run
+uv run .claude/skills/cleanup-project/scripts/cleanup.py --dry-run
 
 # Execute cleanup (with confirmation unless --force)
-python3 .claude/skills/cleanup-project/scripts/cleanup.py
+uv run .claude/skills/cleanup-project/scripts/cleanup.py
 
 # Force mode (skip confirmation)
-python3 .claude/skills/cleanup-project/scripts/cleanup.py --force
+uv run .claude/skills/cleanup-project/scripts/cleanup.py --force
 
 # Specify profile
-python3 .claude/skills/cleanup-project/scripts/cleanup.py --profile tauri
+uv run .claude/skills/cleanup-project/scripts/cleanup.py --profile tauri
 ```
 
 **For health check:**
 ```bash
-python3 .claude/skills/cleanup-project/scripts/cleanup.py --health-check
+uv run .claude/skills/cleanup-project/scripts/cleanup.py --health-check
 ```
 
 ### Step 3: Display Results
@@ -152,11 +152,11 @@ if [ ! -f ".claude/skills/cleanup-project/scripts/cleanup.py" ]; then
 fi
 ```
 
-**Python not available:**
+**UV not available:**
 ```bash
-if ! command -v python3 &> /dev/null; then
-    echo "❌ Error: python3 not found"
-    echo "   Install Python 3.7+ to use cleanup-project"
+if ! command -v uv &> /dev/null; then
+    echo "❌ Error: uv not found"
+    echo "   Install uv to use cleanup-project: curl -LsSf https://astral.sh/uv/install.sh | sh"
     exit 1
 fi
 ```
@@ -217,12 +217,12 @@ Unless `--force` is used, script will ask for confirmation before deleting files
 **Execution:**
 ```bash
 # Step 1: Preview (dry-run)
-python3 .claude/skills/cleanup-project/scripts/cleanup.py --dry-run
+uv run .claude/skills/cleanup-project/scripts/cleanup.py --dry-run
 
 # Output: Would delete 3 items (1.5GB)
 
 # Step 2: Confirm and execute
-python3 .claude/skills/cleanup-project/scripts/cleanup.py
+uv run .claude/skills/cleanup-project/scripts/cleanup.py
 
 # Output: Confirm deletion? [y/N] y
 # ✅ Deleted 3 items (1.5GB)
@@ -236,7 +236,7 @@ python3 .claude/skills/cleanup-project/scripts/cleanup.py
 
 **Execution:**
 ```bash
-python3 .claude/skills/cleanup-project/scripts/cleanup.py --force
+uv run .claude/skills/cleanup-project/scripts/cleanup.py --force
 
 # Output: ✅ Deleted 3 items (1.5GB)
 ```
@@ -249,7 +249,7 @@ python3 .claude/skills/cleanup-project/scripts/cleanup.py --force
 
 **Execution:**
 ```bash
-python3 .claude/skills/cleanup-project/scripts/cleanup.py --health-check
+uv run .claude/skills/cleanup-project/scripts/cleanup.py --health-check
 
 # Output: ⚠️ Found 2 large unignored files
 #   - dist/bundle.js (15.2MB)
@@ -262,10 +262,10 @@ python3 .claude/skills/cleanup-project/scripts/cleanup.py --health-check
 **Run tests:**
 ```bash
 # All tests
-python3 -m pytest .claude/skills/cleanup-project/tests/test_cleanup_safety.py -v
+uv run -m pytest .claude/skills/cleanup-project/tests/test_cleanup_safety.py -v
 
 # With coverage
-python3 -m pytest .claude/skills/cleanup-project/tests/test_cleanup_safety.py --cov=scripts/cleanup --cov-report=term-missing
+uv run -m pytest .claude/skills/cleanup-project/tests/test_cleanup_safety.py --cov=scripts/cleanup --cov-report=term-missing
 
 # Should show >60% coverage
 ```

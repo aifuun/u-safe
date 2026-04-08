@@ -120,22 +120,22 @@ title: 下一个 Issue
 **基础用法**:
 ```bash
 # 创建单个 issue
-python3 scripts/create.py --title "标题" --body "内容"
+uv run scripts/create.py --title "标题" --body "内容"
 
 # 使用模板
-python3 scripts/create.py --template feature --title "标题"
+uv run scripts/create.py --template feature --title "标题"
 
 # 批量创建
-python3 scripts/create.py --from issues.md
+uv run scripts/create.py --from issues.md
 
 # 仅估算尺寸
-python3 scripts/create.py --estimate-only --title "标题" --body "内容"
+uv run scripts/create.py --estimate-only --title "标题" --body "内容"
 
 # 检查去重
-python3 scripts/create.py --check-duplicate --title "标题"
+uv run scripts/create.py --check-duplicate --title "标题"
 
 # 预览模式
-python3 scripts/create.py --dry-run --title "标题" --body "内容"
+uv run scripts/create.py --dry-run --title "标题" --body "内容"
 ```
 
 **完整参数**:
@@ -220,7 +220,7 @@ python3 scripts/create.py --dry-run --title "标题" --body "内容"
 ### 单元测试
 
 ```bash
-$ python3 .claude/skills/create-issue/scripts/size_validator.py
+$ uv run .claude/skills/create-issue/scripts/size_validator.py
 测试 1: PASS
   尺寸理想（4 任务，3.2 小时，~160 行代码，~3 个文件）
 
@@ -238,7 +238,7 @@ $ python3 .claude/skills/create-issue/scripts/size_validator.py
 
 ```bash
 # 测试 1: 理想尺寸估算
-$ python3 scripts/create.py --estimate-only --title "Add user profile page" --body "..."
+$ uv run scripts/create.py --estimate-only --title "Add user profile page" --body "..."
 📏 尺寸估算
    任务数: 4
    估算时间: 3.2 小时
@@ -246,7 +246,7 @@ $ python3 scripts/create.py --estimate-only --title "Add user profile page" --bo
    尺寸理想（4 任务，3.2 小时，~160 行代码，~3 个文件）
 
 # 测试 2: 模板加载
-$ python3 scripts/create.py --estimate-only --template feature --title "Add export to CSV"
+$ uv run scripts/create.py --estimate-only --template feature --title "Add export to CSV"
 📏 尺寸估算
    任务数: 3
    估算时间: 2.4 小时

@@ -177,7 +177,7 @@ Add code to `_scripts/` when:
 
 5. **Test the import:**
    ```bash
-   python3 -c "import sys; sys.path.insert(0, '.claude/skills/_scripts'); from git.worktree import list_worktrees; print('OK')"
+   uv run -c "import sys; sys.path.insert(0, '.claude/skills/_scripts'); from git.worktree import list_worktrees; print('OK')"
    ```
 
 ## Migration from Old Structure

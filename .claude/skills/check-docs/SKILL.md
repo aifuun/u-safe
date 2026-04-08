@@ -241,7 +241,7 @@ Issues: 3 | Fixes available: 3
 # In .github/workflows/docs-check.yml
 - name: Validate docs
   run: |
-    python3 .claude/skills/check-docs/scripts/check_docs.py --json > report.json
+    uv run .claude/skills/check-docs/scripts/check_docs.py --json > report.json
     if [ $? -ne 0 ]; then
       echo "Documentation validation failed"
       exit 1

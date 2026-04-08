@@ -4,7 +4,7 @@ description: |
   Sync Pillars between projects - bidirectional copy with smart filtering.
   TRIGGER when: user wants to sync Pillars ("update pillars from X", "sync pillars", "pull pillars from framework", "push pillars to project").
   DO NOT TRIGGER when: user wants to update rules/skills/workflow (use respective update-* skills), or just wants to read Pillar docs.
-version: "2.1.1"
+version: "3.0.0"
 framework-only: true
 allowed-tools: Bash(cp *), Bash(mkdir *), Bash(ls *), Bash(find *), Bash(test *), Bash(cat *), Bash(git *), Read, Write, Glob, Grep, Edit
 disable-model-invocation: false
@@ -13,19 +13,23 @@ user-invocable: true
 
 # Update Pillars - Project Pillar Synchronization
 
-Sync Pillar documentation between projects bidirectionally with profile-aware filtering.
+Sync Pillar documentation from ai-dev framework to target projects with profile-aware filtering.
 
 ## Overview
 
-This skill synchronizes Pillar documentation (.claude/pillars/) between projects:
+This skill synchronizes Pillar documentation (.claude/pillars/) from ai-dev framework to target projects:
+
+**Behavior:** Always syncs FROM current directory (ai-dev) TO target project path.
 
 **What it does:**
-1. Scans source and target projects for Pillars
+1. Scans ai-dev and target projects for Pillars
 2. Compares Pillars to detect new/updated content
 3. Shows detailed diff preview
 4. Syncs Pillars with confirmation
 5. Respects project profiles (minimal, node-lambda, react-aws)
 6. Reports what was synced
+
+**Note**: Must be run from ai-dev framework directory.
 
 **Why it's needed:**
 Framework upgrades require updating Pillar documentation across projects. Manual copying is error-prone and time-consuming. This skill automates the sync with safety checks and profile awareness.
@@ -52,11 +56,11 @@ Framework upgrades require updating Pillar documentation across projects. Manual
 
 **Sync operations:**
 ```bash
-# Pull from framework (uses .claude/pillars/)
-/update-pillars --from ~/dev/ai-dev
+# Must be in ai-dev directory
+cd ~/dev/ai-dev
 
-# Push to target (uses .claude/pillars/)
-/update-pillars --to ~/projects/my-app
+# Sync to target project (uses .claude/pillars/)
+/update-pillars ~/projects/my-app
 ```
 
 **File count:** 18 Pillars (A-R) in `.claude/pillars/` subdirectories
@@ -78,54 +82,43 @@ Task #6: Report sync results (blocked by #5)
 
 After creating tasks, proceed with sync execution.
 
+## Arguments
+
+```bash
+/update-pillars <target-path> [options]
+```
+
+**Required:**
+- `<target-path>` - Target project path
+
+**Options:**
+- `--dry-run` - Preview changes without applying
+- `--pillars <list>` - Sync only specific Pillars (comma-separated)
+- `--skip-validation` - Skip path validation (used by update-framework)
+
+**Usage:**
+```bash
+# Must be in ai-dev directory
+cd ~/dev/ai-dev
+
+# Sync to target project
+/update-pillars ../my-app
+
+# Preview first
+/update-pillars ../my-app --dry-run
+
+# Selective Pillars
+/update-pillars ../my-app --pillars A,B,K
+```
+
 ## Sync Modes
 
-### 1. Pull Pillars (--from)
-
-Pull Pillars from source project to current project:
-
-```bash
-/update-pillars --from ~/dev/ai-dev
-/update-pillars --from ~/dev/ai-dev --dry-run
-/update-pillars --from ~/dev/ai-dev --pillars A,B,K
-```
-
-**What happens:**
-1. Scan source project: `<source>/.claude/pillars/`
-2. Scan current project: `.claude/pillars/`
-3. Compare modification times and sizes
-4. Detect: NEW, NEWER, SAME, OLDER
-5. Show analysis table
-6. Confirm and copy updated Pillars
-
-**Profile-aware filtering:**
-- Reads `docs/project-profile.md` to determine profile
-- Only updates Pillars enabled in profile
-- Example: `minimal` profile → only A, B, K
-
-### 2. Push Pillars (--to)
-
-Push Pillars from current project to target project:
-
-```bash
-/update-pillars --to ~/projects/my-app
-/update-pillars --to ~/projects/my-app --dry-run
-/update-pillars --to ~/projects/my-app --pillars M,Q
-```
-
-**What happens:**
-1. Scan current project Pillars
-2. Scan target project Pillars
-3. Compare and detect changes
-4. Show what will be pushed
-5. Confirm and copy to target
-
-### 3. Dry Run Mode (--dry-run)
+### 1. Dry Run Mode (--dry-run)
 
 Preview changes without applying:
 
 ```bash
-/update-pillars --from ~/dev/ai-dev --dry-run
+/update-pillars ../my-app --dry-run
 ```
 
 **Output:**
@@ -134,13 +127,13 @@ Preview changes without applying:
 - No confirmation required
 - No actual changes made
 
-### 4. Selective Sync (--pillars)
+### 2. Selective Sync (--pillars)
 
 Sync only specific Pillars:
 
 ```bash
-/update-pillars --from ~/dev/ai-dev --pillars A,M,Q
-/update-pillars --to ~/projects/my-app --pillars K,L,R
+/update-pillars ../my-app --pillars A,M,Q
+/update-pillars ~/projects/my-app --pillars K,L,R
 ```
 
 **Pillar selection:**
@@ -148,14 +141,13 @@ Sync only specific Pillars:
 - Only syncs specified Pillars
 - Ignores others
 
-### 5. Skip Validation Mode (--skip-validation)
+### 3. Skip Validation Mode (--skip-validation)
 
 Skip path validation when called by meta-skill (update-framework):
 
 ```bash
 # Called by update-framework (validation already done)
-/update-pillars --from ~/dev/ai-dev --skip-validation
-/update-pillars --to ~/projects/my-app --skip-validation
+/update-pillars ../my-app --skip-validation
 ```
 
 **When to use:**
@@ -283,19 +275,20 @@ Current profile: minimal (A, B, K)
 
 **Time:** ~45 seconds
 
-### Example 3: Cross-Project Learning
+### Example 3: Selective Pillar Sync
 
 **User says:**
-> "pull Pillar M and Q from my other project"
+> "sync only Pillar M and Q to my project"
 
 **What happens:**
-1. `/update-pillars --from ~/projects/other-project --pillars M,Q`
-2. Compare Saga and Idempotency Pillars
-3. Show diff
-4. Sync if newer
-5. Adopt best practices
+1. `cd ~/dev/ai-dev`
+2. `/update-pillars ~/projects/my-app --pillars M,Q`
+3. Compare only Saga and Idempotency Pillars
+4. Show diff for selected Pillars
+5. Sync if needed
+6. Skip all other Pillars
 
-**Time:** ~30 seconds
+**Time:** ~15 seconds
 
 ## Safety Features
 
@@ -356,43 +349,46 @@ Action: Skip (keeping newer target version)
 
 1. **Always dry-run first for major updates:**
 ```bash
-/update-pillars --from ~/dev/ai-dev --dry-run
-/update-pillars --from ~/dev/ai-dev
+cd ~/dev/ai-dev
+/update-pillars ../my-app --dry-run
+/update-pillars ../my-app
 ```
 
 2. **Selective updates for safety:**
 ```bash
 # Update only Pillars you understand
-/update-pillars --from ~/dev/ai-dev --pillars A,B,K
+cd ~/dev/ai-dev
+/update-pillars ../my-app --pillars A,B,K
 ```
 
 3. **Framework as source of truth:**
 ```bash
-# In projects: pull from framework
-/update-pillars --from ~/dev/ai-dev
-
-# In framework: pull innovations from projects
-/update-pillars --from ~/projects/my-app --pillars X
+# Always sync from ai-dev to projects
+cd ~/dev/ai-dev
+/update-pillars ../my-app
 ```
 
 4. **Regular framework upgrades:**
 ```bash
 # Monthly routine
-/update-pillars --from ~/dev/ai-dev
+cd ~/dev/ai-dev
+/update-pillars ../my-app
 ```
 
 ## Integration
 
 **With other update-* skills:**
 ```bash
+# Must be in ai-dev directory
+cd ~/dev/ai-dev
+
 # Complete framework update
-/update-pillars --from ~/dev/ai-dev   # 1. Pillars
-/update-rules --from ~/dev/ai-dev     # 2. Rules
-/update-workflow --from ~/dev/ai-dev  # 3. Workflow
-/update-skills --from ~/dev/ai-dev    # 4. Skills
+/update-pillars ../my-app   # 1. Pillars
+/update-guides ../my-app    # 2. Guides
+/update-skills ../my-app    # 3. Skills
 
 # Or use meta-skill
-/update-framework --from ~/dev/ai-dev # All-in-one
+/update-framework ../my-app # All-in-one
 ```
 
 **Common workflow:**
@@ -444,6 +440,33 @@ This is a **workflow skill** and must follow the standard pattern:
 
 **See**: [WORKFLOW_PATTERNS.md](../WORKFLOW_PATTERNS.md) for complete implementation guide
 
+## Testing
+
+This skill has comprehensive test coverage following ADR-020 standards.
+
+**Test suite includes:**
+- 13 functional tests (core Pillars sync features)
+- 10 argument tests (parameter validation)
+- 11 safety tests (safety mechanisms)
+- 11 error handling tests (exception scenarios)
+- 5 integration tests (end-to-end workflows)
+
+**Run tests:**
+```bash
+# All tests
+pytest .claude/skills/update-pillars/tests/
+
+# With coverage
+pytest .claude/skills/update-pillars/tests/ --cov=.claude/skills/update-pillars --cov-report=term-missing
+
+# Specific category
+pytest .claude/skills/update-pillars/tests/test_functional.py
+```
+
+**Coverage:** 94% (target: ≥80%)
+
+**See**: [tests/README.md](tests/README.md) for complete testing guide
+
 ## Related Skills
 
 - **/update-framework** - Sync entire framework (calls this skill)
@@ -453,9 +476,12 @@ This is a **workflow skill** and must follow the standard pattern:
 
 ---
 
-**Version:** 2.1.0
-**Last Updated:** 2026-03-12
+**Version:** 3.1.0
+**Last Updated:** 2026-04-07
 **Changelog:**
+- v3.1.0 (2026-04-07): Added comprehensive test suite with 94% coverage (50 tests, ADR-020 compliant) (Issue #531)
+- v3.0.0 (2026-04-06): **BREAKING** - Removed --from/--to parameters, now only supports ai-dev → target (one direction)
+- v2.2.0 (2026-04-06): **FEATURE** - Default to --to (push) when only path provided
 - v2.1.0 (2026-03-12): Sync pillar documentation between projects
 **Pattern:** Tool-Reference (guides sync process)
-**Compliance:** ADR-001 Section 4 ✅
+**Compliance:** ADR-001 Section 4 ✅ | ADR-020 ✅

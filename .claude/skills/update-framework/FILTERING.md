@@ -55,7 +55,7 @@ Complete guide to intelligent filtering based on tech stack configuration (FALLB
 When `.framework-install` doesn't exist:
 
 ```bash
-/update-framework --to ~/projects/legacy-app
+cd ~/dev/ai-dev && /update-framework ~/projects/legacy-app
 ```
 
 **What happens:**
@@ -73,7 +73,7 @@ When `.framework-install` doesn't exist:
 When `.framework-install` exists:
 
 ```bash
-/update-framework --from ~/dev/ai-dev
+cd ~/dev/ai-dev && /update-framework ../my-app
 ```
 
 **What happens:**
@@ -88,8 +88,8 @@ When `.framework-install` exists:
 When tech stack changes or initial config was wrong:
 
 ```bash
-/update-framework --to ~/projects/app --reconfigure
-/update-framework --from ~/dev/ai-dev --reconfigure
+cd ~/dev/ai-dev && /update-framework ~/projects/app --reconfigure
+cd ~/dev/ai-dev && /update-framework ../my-app --reconfigure
 ```
 
 **What happens:**

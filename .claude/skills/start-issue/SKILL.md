@@ -4,7 +4,7 @@ description: |
   Start working on a GitHub issue with automated branch creation and planning.
   TRIGGER when: user wants to begin work on an issue (e.g., "start issue #23", "begin working on #45", "work on that bug", "let's tackle the auth issue").
   Also trigger when user mentions starting, picking up, or beginning any GitHub issue by number or description.
-version: "2.2.0"
+version: "2.3.0"
   DO NOT TRIGGER when: user just wants to view/list issues (use /issue instead), or close/finish issues (use /finish-issue).
 ---
 
@@ -57,6 +57,124 @@ $ARGUMENTS = "[issue-number] [options]" or "--create \"title\" [options]"
 - `--branch-prefix fix` - Use custom prefix instead of "feature"
 - `--dry-run` - Preview actions without executing
 - `--force` - Override safety checks
+
+## Safety Features
+
+This skill includes multiple safety checks to prevent common mistakes:
+
+### 1. Pre-Flight Environment Validation
+
+**What it checks:**
+- Current branch is not already a feature branch
+- Git working directory is clean (no uncommitted changes)
+- GitHub CLI is authenticated
+
+**Why it matters:**
+- Starting on a feature branch would create nested branches
+- Uncommitted changes could be lost or mixed with new work
+- GitHub CLI authentication required for issue fetching
+
+**On failure:**
+```
+❌ Safety check failed: Already on feature branch
+
+Current branch: feature/42-existing-work
+Action: Finish current work (/finish-issue #42) or switch to main
+Override: Use --force (not recommended)
+```
+
+### 2. Branch Existence Validation
+
+**What it checks:**
+- Proposed branch name doesn't already exist locally
+- Proposed branch name doesn't exist on remote
+
+**Why it matters:**
+- Prevents accidental branch overwrites
+- Ensures clean starting point
+
+**On failure:**
+```
+⚠️ Branch already exists: feature/23-fix-bug
+
+Options:
+  1. Checkout existing branch
+  2. Delete and recreate (git branch -D)
+  3. Use different prefix (--branch-prefix v2)
+```
+
+### 3. Issue Existence and State Validation
+
+**What it checks:**
+- Issue number exists in GitHub
+- Issue is open (warns if closed)
+
+**Why it matters:**
+- Prevents work on non-existent issues
+- Alerts to closed issues (may be outdated)
+
+**On failure:**
+```
+❌ Issue #999 not found
+
+Check:
+  - Issue number correct?
+  - Repository correct? (gh repo view)
+  - Authentication valid? (gh auth status)
+```
+
+### 4. Worktree Conflict Prevention
+
+**What it checks:**
+- Proposed worktree directory doesn't already exist
+- Parent directory has write permissions
+
+**Why it matters:**
+- Prevents directory conflicts
+- Ensures worktree can be created successfully
+
+**On failure:**
+```
+⚠️ Worktree directory exists: ../ai-dev-23-fix-bug
+
+Options:
+  1. Remove existing directory (if safe)
+  2. Use --no-worktree to skip worktree creation
+  3. Delete existing worktree: git worktree remove
+```
+
+### 5. Smart Defaults and Auto-Recovery
+
+**Safe behaviors:**
+- If plan generation fails, continues without plan (can add later with /plan)
+- If npm install fails, warns but continues (dependencies may not be needed)
+- If sync with main fails, shows clear error and stops (prevents outdated branch)
+
+**Auto-recovery:**
+- Uncommitted changes → offers to stash automatically
+- Detached HEAD → switches to main before creating branch
+- Failed push → retries once, then shows manual instructions
+
+### Safety Override
+
+Use `--force` flag to bypass safety checks:
+
+```bash
+/start-issue #23 --force  # Skips all validation
+```
+
+**Warning:** Only use --force when you understand the risks:
+- May create nested branches
+- May lose uncommitted changes
+- May overwrite existing branches
+
+**Recommended approach:** Fix the safety issue instead of forcing:
+```bash
+# Instead of --force, fix the issue:
+git checkout main              # Switch from feature branch
+git stash                      # Save uncommitted changes
+/start-issue #23               # Now safe to proceed
+```
 
 ## AI Execution Instructions
 
@@ -491,7 +609,7 @@ Options:
   3. Use different prefix: /start-issue #23 --branch-prefix v2
 ```
 
-## Examples
+## Usage Examples
 
 ### Example 1: Start Existing Issue
 

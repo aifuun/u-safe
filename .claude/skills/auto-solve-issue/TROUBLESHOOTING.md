@@ -463,7 +463,7 @@ logging.basicConfig(level=logging.DEBUG)
 /tasks
 
 # Or use TaskList() in Python
-python3 -c "
+uv run -c "
 import sys
 sys.path.insert(0, '.claude/skills/auto-solve-issue/scripts')
 from coordinator import *

@@ -73,7 +73,7 @@ Profiles define project configuration including active Pillars, rules, tech stac
 
 ```bash
 # Auto-activates profile during init
-python3 scripts/init-project.py --profile=tauri --name=my-app
+uv run scripts/init-project.py --profile=tauri --name=my-app
 
 # Creates docs/project-profile.md automatically
 ```
@@ -185,7 +185,7 @@ This allows switching profiles without re-syncing framework.
 vim framework/.claude/guides/profiles/new-profile.md
 
 # 2. Test locally
-python3 scripts/init-project.py --profile=new-profile --name=test-project
+uv run scripts/init-project.py --profile=new-profile --name=test-project
 
 # 3. Verify activation
 cat test-project/docs/project-profile.md
@@ -195,7 +195,7 @@ cat test-project/docs/project-profile.md
 
 ```bash
 # 1. Initialize project with profile
-python3 scripts/init-project.py --profile=tauri --name=my-app
+uv run scripts/init-project.py --profile=tauri --name=my-app
 
 # 2. Verify active profile
 cd my-app
@@ -273,7 +273,7 @@ rules:
 
 ```bash
 # Test initialization
-python3 scripts/init-project.py --profile=custom --name=test-custom
+uv run scripts/init-project.py --profile=custom --name=test-custom
 
 # Verify rules generated
 ls test-custom/.claude/rules/

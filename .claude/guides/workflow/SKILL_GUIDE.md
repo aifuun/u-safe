@@ -395,7 +395,7 @@ else:
 description: |
   Sync skills from framework.
   TRIGGER when: user wants to sync skills
-argument-hint: "[--from PATH] [--clean]"
+argument-hint: "<target-path> [--clean] [--dry-run]"
 ```
 
 **自动检测** - 优先自动检测而非要求输入:

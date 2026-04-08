@@ -4,7 +4,7 @@ description: |
   Sync skills between projects - complete directory replacement by default, with optional incremental mode.
   TRIGGER when: user wants to sync skills ("update skills from X", "sync skills", "pull skills from framework", "push skills to project").
   DO NOT TRIGGER when: user wants to update pillars/rules/workflow (use respective update-* skills), or just wants to read skill docs.
-version: "3.2.0"
+version: "6.0.0"
 framework-only: true
 allowed-tools: Bash(cp *), Bash(mkdir *), Bash(ls *), Bash(find *), Bash(test *), Bash(cat *), Bash(wc *), Bash(stat *), Bash(git *), Read, Write, Glob, Grep, Edit
 disable-model-invocation: false
@@ -13,56 +13,26 @@ user-invocable: true
 
 # Update Skills - Skills Synchronization
 
-> Sync skill files between projects bidirectionally with smart version detection and conflict handling
-
-**Quick Links:**
-- **[Sync Modes Guide](./MODES.md)** - Complete vs Incremental synchronization
-- **[Framework-Only Filtering](./FRAMEWORK_ONLY.md)** - Issue #401: Auto-exclude framework tools
-- **[Usage Examples](./EXAMPLES.md)** - Common scenarios and best practices
+> Sync skill files from ai-dev framework to target projects with complete directory replacement
 
 ## Overview
 
-This skill synchronizes skills (`.claude/skills/`) between projects with **complete directory replacement** as the default behavior:
+This skill synchronizes skills (`.claude/skills/`) between projects with **complete directory replacement** as the default behavior.
 
-### Default Mode: Complete Replacement
+**What it does:**
+1. Deletes target .claude/skills/ directory completely
+2. Performs complete copy of entire .claude/skills/ directory (includes all skills, _scripts/, _shared/, _templates/)
+3. Reports sync completion
+4. Optionally supports incremental mode for version-aware synchronization
 
-**Simple, fast, conflict-free** - Recommended for 99% of use cases.
+**Why it's needed:**
+Framework upgrades require updating skills across projects. Manual copying is error-prone and time-consuming. This skill automates the sync with safety checks.
 
-```
-1. Delete target .claude/skills/ directory completely
-2. Complete copy of entire .claude/skills/ directory
-   - Includes all skills
-   - Includes _scripts/ (shared utilities)
-   - Includes _shared/ (shared resources)
-   - Includes _templates/ (skill templates)
-3. Report sync completion
-```
-
-**Why it's default:**
-- ✅ **Fast**: ~1.5 seconds for complete sync
-- ✅ **Simple**: Two commands (rm + cp)
-- ✅ **Complete**: No missing dependencies
-- ✅ **Predictable**: Exact mirror of source
-- ✅ **Safe**: Git provides rollback if needed
-
-### Alternative: Incremental Mode
-
-For complex scenarios requiring version-aware synchronization:
-
-```
-1. Scan source and target skills
-2. Compare semantic versions from YAML frontmatter
-3. Detect: NEW, NEWER, OLDER, CONFLICT, SAME
-4. Show analysis table with version details
-5. Sync only changed skills with confirmation
-```
-
-**When to use incremental:**
-- Bidirectional development (both sides modified)
-- Need version conflict detection
-- Want selective skill updates (--skills flag)
-
-**See**: [MODES.md](./MODES.md) for complete mode comparison
+**When to use:**
+- Monthly framework upgrades
+- Initial project setup
+- Cross-project consistency
+- Part of /update-framework meta-skill
 
 ## Arguments
 
@@ -70,108 +40,18 @@ For complex scenarios requiring version-aware synchronization:
 /update-skills [options]
 ```
 
-### Direction (required, mutually exclusive)
-
-- `--from <path>` - Pull skills from source project to current project
-- `--to <path>` - Push skills from current project to target project
-
-### Sync Mode
-
-- **(Default)** - Complete directory replacement (fast, conflict-free)
-- `--incremental` - Version comparison and selective sync (slower, more control)
-
-### Options (work with both modes)
-
-- `--dry-run` - Preview changes without applying
-- `--skip-validation` - Skip path validation (used when called by update-framework)
-
-### Options (only with --incremental)
-
-- `--skills <list>` - Sync only specific skills (comma-separated)
-- `--filter-config <path>` - Apply smart filter based on tech stack config
-
-### Deprecated
-
-- `--clean` - ⚠️ Deprecated in v3.0.0 (complete replacement is now default)
-
-## Quick Start
-
-### Most Common: Pull from Framework
-
-```bash
-# Pull latest skills from ai-dev framework
-/update-skills --from ~/dev/ai-dev
-
-# Preview changes first
-/update-skills --from ~/dev/ai-dev --dry-run
-
-# Push skills to target project
-/update-skills --to ~/projects/my-app
-```
-
-**What happens:**
-```
-🔄 Syncing skills (complete replacement mode)
-
-Source: ~/dev/ai-dev/.claude/skills/
-Target: ./.claude/skills/
-
-Removing target directory...
-✅ Removed: .claude/skills/
-
-Copying entire skills directory...
-✅ Skills directory synced completely
-   Source: ~/dev/ai-dev/.claude/skills/
-   Target: ./.claude/skills/
-
-Time: 1.5s
-```
-
-### Incremental Sync with Version Detection
-
-```bash
-# Compare versions before syncing
-/update-skills --from ~/dev/ai-dev --incremental
-
-# Selective skills only
-/update-skills --from ~/dev/ai-dev --incremental --skills adr,status,review
-```
-
-**What happens:**
-```
-🔍 Scanning skills...
-
-┌──────────────┬─────────┬─────────┬──────────┬──────────┐
-│ Skill        │ Source  │ Target  │ Status   │ Decision │
-├──────────────┼─────────┼─────────┼──────────┼──────────┤
-│ adr          │ 1.5.0   │ 1.4.0   │ NEWER    │ Sync     │
-│ status       │ 2.1.0   │ 2.1.0   │ SAME     │ Skip     │
-│ review       │ 2.3.0   │ 2.4.0   │ OLDER    │ Skip     │
-│ new-skill    │ 1.0.0   │ -       │ NEW      │ Sync     │
-└──────────────┴─────────┴─────────┴──────────┴──────────┘
-
-Total to sync: 2 skills
-
-Continue? [Y/n]: Y
-✅ Skills synced successfully!
-```
-
-**See**: [EXAMPLES.md](./EXAMPLES.md) for more scenarios
-
 ## AI Execution Instructions
 
 ### Step 1: Parse Arguments
 
 ```python
-# Parse direction
-if '--from' in args:
-    source_path = args['--from']
-    target_path = '.'
-    direction = 'pull'
-elif '--to' in args:
-    source_path = '.'
-    target_path = args['--to']
-    direction = 'push'
+# Parse target path (required)
+positional_args = [arg for arg in args if not arg.startswith('--')]
+if not positional_args:
+    raise Error("Missing required argument: <target-path>")
+
+source_path = '.'  # Always current directory (ai-dev)
+target_path = positional_args[0]
 
 # Parse mode
 use_incremental = '--incremental' in args
@@ -202,10 +82,9 @@ echo "   Target: {target_path}/.claude/skills/"
 
 **Note**: Incremental mode is deprecated in v4.0.0. Use default complete replacement mode for all use cases.
 
-If you still need version-aware syncing, see [MODES.md](./MODES.md) for legacy documentation.
-```
+If you still need version-aware syncing, see git history of MODES.md (archived in v5.0.0).
 
-### Step 4: Handle Errors
+### Step 3: Handle Errors
 
 ```python
 # Validate paths exist
@@ -220,56 +99,131 @@ if filter_config and not use_incremental:
     raise Error("--filter-config requires --incremental mode")
 ```
 
-## Safety Features
+## Quick Start
 
-### Git Version Control
-
-Complete replacement doesn't need automatic backups because:
-
-1. **Git tracks all changes**: `git diff` shows what changed
-2. **Easy rollback**: `git restore .claude/skills/` undoes sync
-3. **Commit before sync**: Standard practice for safety
-4. **No silent overwrites**: All changes visible in git status
-
-**Best practice workflow:**
+### Basic Usage
 
 ```bash
-# 1. Commit current state
-git add .claude/skills/
-git commit -m "chore: before skills sync"
+# Must be in ai-dev framework directory
+cd ~/dev/ai-dev
 
-# 2. Preview changes
-/update-skills --from ~/dev/ai-dev --dry-run
+# Sync skills to target project
+/update-skills ../my-app
 
-# 3. Sync
-/update-skills --from ~/dev/ai-dev
-
-# 4. Review changes
-git diff HEAD .claude/skills/
-
-# 5. Rollback if needed (or commit)
-git restore .claude/skills/  # Undo
-# OR
-git commit -m "chore: update skills from framework"
+# Preview first
+/update-skills ../my-app --dry-run
 ```
 
-### Validation Checks
+## Sync Modes
 
-Before syncing:
-- ✅ Source path exists
-- ✅ Target path writable
-- ✅ Not on main branch (if using git)
-- ✅ Valid parameter combinations
+### Default Mode: Complete Replacement
 
-During sync:
-- ✅ Complete directory copy executed
-- ✅ Version format validation (incremental mode)
-- ✅ Conflict detection (incremental mode)
+**Simple, fast, conflict-free** - Recommended for 99% of use cases.
 
-After sync:
-- ✅ File count verification
-- ✅ Permission preservation
-- ✅ Summary report
+**Process:**
+```
+1. Delete target .claude/skills/ directory
+2. Complete copy of source .claude/skills/
+3. Report completion
+```
+
+**Advantages:**
+- ✅ **Fast**: ~1.5 seconds
+- ✅ **Simple**: Two commands (rm + cp)
+- ✅ **Complete**: No missing dependencies
+- ✅ **Predictable**: Exact mirror
+- ✅ **Safe**: Git provides rollback
+
+### Alternative: Incremental Mode
+
+For complex scenarios requiring version-aware synchronization.
+
+**Process:**
+```
+1. Scan source and target skills
+2. Compare semantic versions from YAML frontmatter
+3. Detect status: NEW, NEWER, OLDER, CONFLICT, SAME
+4. Show analysis table with version details
+5. Sync only changed skills with confirmation
+```
+
+**When to use incremental:**
+- Bidirectional development (both sides modified)
+- Need version conflict detection
+- Want selective skill updates (--skills flag)
+
+**Usage:**
+```bash
+/update-skills ../my-app --incremental
+/update-skills ../my-app --incremental --skills adr,review
+```
+
+### Version Detection Logic
+
+```python
+def compare_versions(source_version: str, target_version: str) -> Status:
+    """
+    Compare semantic versions
+
+    Returns:
+        NEW: Skill exists only in source
+        NEWER: Source version > target version
+        OLDER: Source version < target version
+        SAME: Versions are identical
+        CONFLICT: Versions differ in major (breaking changes)
+    """
+    if not target_version:
+        return Status.NEW
+
+    s_major, s_minor, s_patch = parse_semver(source_version)
+    t_major, t_minor, t_patch = parse_semver(target_version)
+
+    if s_major != t_major:
+        return Status.CONFLICT  # Major version mismatch
+
+    if (s_major, s_minor, s_patch) > (t_major, t_minor, t_patch):
+        return Status.NEWER
+    elif (s_major, s_minor, s_patch) < (t_major, t_minor, t_patch):
+        return Status.OLDER
+    else:
+        return Status.SAME
+```
+
+### Output Example
+
+```
+🔍 Scanning skills...
+
+Source: ~/dev/ai-dev/.claude/skills/ (35 skills)
+Target: ./.claude/skills/ (30 skills)
+
+📊 Skills Analysis:
+- Total source skills: 35
+- Framework-only (excluded): 7
+- Comparing: 28 skills
+
+┌──────────────────┬─────────┬─────────┬──────────┬──────────┐
+│ Skill            │ Source  │ Target  │ Status   │ Decision │
+├──────────────────┼─────────┼─────────┼──────────┼──────────┤
+│ adr              │ 1.5.0   │ 1.4.0   │ NEWER    │ Sync     │
+│ status           │ 2.1.0   │ 2.1.0   │ SAME     │ Skip     │
+│ review           │ 2.3.0   │ 2.4.0   │ OLDER    │ Skip     │
+
+## Safety Features
+
+**Pre-flight checks:**
+- ✅ Source/target paths exist
+- ✅ Source has .claude/skills/ directory
+- ✅ User confirmation before changes (if not --skip-validation)
+- ✅ Dry-run preview available
+
+**Smart defaults:**
+- Complete replacement by default (simple, fast)
+- Automatic backup via git (no manual backups needed)
+
+**Error handling:**
+- Invalid paths: Clear error message with fix suggestions
+- Permission issues: Helpful guidance
 
 ## Error Handling
 
@@ -290,7 +244,7 @@ Fix: Check path spelling and ensure project exists
 ❌ Error: --skills requires --incremental mode
 
 Default mode syncs all skills completely.
-Use: /update-skills --from ~/dev/ai-dev --incremental --skills adr,status
+Use: /update-skills ../my-app --incremental --skills adr,status
 ```
 
 **Version conflict (incremental mode):**
@@ -308,6 +262,139 @@ Options:
 3. Manual merge (recommended for customizations)
 ```
 
+## Usage Examples
+
+### Example 1: Pull Skills from Framework (Most Common)
+
+**Scenario**: You have a project that needs the latest skills from ai-dev framework.
+
+**Command**:
+```bash
+cd ~/dev/ai-dev && /update-skills ../my-app
+```
+
+**What happens**:
+1. Deletes `.claude/skills/` in current project
+2. Copies all skills from framework (excludes 7 framework-only skills)
+3. Reports 28 skills synced
+
+**Output**:
+```
+🔄 Syncing skills (complete replacement mode)
+
+Source: ~/dev/ai-dev/.claude/skills/ (35 skills)
+Target: ./.claude/skills/ (30 skills)
+
+Removing target directory...
+✅ Removed: .claude/skills/
+
+Copying skills...
+📊 Skills Analysis:
+- Total source skills: 35
+- Framework-only (excluded): 7
+- Synced to target: 28
+
+✅ Skills synced successfully!
+
+Time: 2.3s
+```
+
+
+### Example 2: Preview Before Syncing
+
+**Scenario**: Want to see what will change before actually syncing.
+
+**Command**:
+```bash
+cd ~/dev/ai-dev && /update-skills ../my-app --dry-run
+```
+
+**Output**:
+```
+🔍 DRY RUN - Preview Mode
+
+Source: ~/dev/ai-dev/.claude/skills/ (35 skills)
+Target: ./.claude/skills/ (30 skills)
+
+Would remove: .claude/skills/
+
+Would sync: 28 skills (7 framework-only excluded)
+
+Framework-only skills (excluded):
+- update-framework
+- update-skills
+- update-pillars
+- update-guides
+- update-permissions
+- update-doc-refs
+- update-rules
+
+No changes made (dry run mode).
+```
+
+
+### Example 3: Push Skills to Target Project
+
+**Scenario**: You developed new skills in current project and want to push them to another project.
+
+**Command**:
+```bash
+cd ~/dev/ai-dev && /update-skills ~/projects/my-app
+```
+
+**What happens**:
+1. Deletes `.claude/skills/` in target project
+2. Copies all skills from current project
+3. Framework-only filtering applies
+
+
+### Example 4: Incremental Sync with Version Detection
+
+**Scenario**: Both projects have been modified, need version-aware sync.
+
+**Command**:
+```bash
+cd ~/dev/ai-dev && /update-skills ../my-app --incremental
+```
+
+**Output**:
+```
+🔍 Scanning skills...
+
+Source: ~/dev/ai-dev/.claude/skills/ (35 skills)
+Target: ./.claude/skills/ (30 skills)
+
+📊 Skills Analysis:
+- Total source skills: 35
+- Framework-only (excluded): 7
+- Comparing: 28 skills
+
+┌──────────────────┬─────────┬─────────┬──────────┬──────────┐
+│ Skill            │ Source  │ Target  │ Status   │ Decision │
+├──────────────────┼─────────┼─────────┼──────────┼──────────┤
+│ adr              │ 1.5.0   │ 1.4.0   │ NEWER    │ Sync     │
+│ status           │ 2.1.0   │ 2.1.0   │ SAME     │ Skip     │
+│ review           │ 2.3.0   │ 2.4.0   │ OLDER    │ Skip     │
+│ new-feature      │ 1.0.0   │ -       │ NEW      │ Sync     │
+└──────────────────┴─────────┴─────────┴──────────┴──────────┘
+
+Summary:
+- NEW: 1 skill
+- NEWER: 1 skill
+- OLDER: 1 skill (target is newer, skipping)
+- SAME: 25 skills
+
+Total to sync: 2 skills
+
+Continue? [Y/n]: Y
+
+Syncing 2 skills...
+✅ adr (1.4.0 → 1.5.0)
+✅ new-feature (new)
+
+✅ Skills synced successfully!
+```
+
 ## Best Practices
 
 1. **Use complete replacement for framework updates** (99% of cases)
@@ -318,27 +405,7 @@ Options:
 
 ## Integration
 
-### Part of /update-framework
-
-```bash
-/update-framework ~/dev/ai-dev
-
-# Internally calls:
-# 1. update-pillars --from ~/dev/ai-dev
-# 2. update-skills --from ~/dev/ai-dev --incremental --filter-config ...
-# 3. update-guides --from ~/dev/ai-dev
-```
-
-### Workflow Integration
-
-```bash
-# Monthly framework update routine
-/update-skills --from ~/dev/ai-dev --dry-run  # Preview
-/update-skills --from ~/dev/ai-dev            # Sync
-/status                                       # Verify
-```
-
-## Task Management
+### Task Management
 
 When executing via AI orchestration, use TaskCreate/TaskUpdate:
 
@@ -383,30 +450,29 @@ This reduces total output length when update-framework orchestrates multiple syn
 - **/update-pillars** - Sync Pillars between projects
 - **/update-guides** - Sync AI guides between projects
 
+
 ## Documentation
 
-- **[MODES.md](./MODES.md)** - Complete guide to sync modes
-  - Complete replacement vs incremental comparison
-  - Version detection logic (for incremental mode)
-  - Conflict handling
-  - Parameter combinations
+This skill follows ADR-020 test-driven documentation standard:
+- All testing baseline chapters are self-contained in SKILL.md
+- No external documentation required for core functionality
 
-- **[EXAMPLES.md](./EXAMPLES.md)** - Usage examples
-  - Common scenarios
-  - Advanced use cases
-  - Workflow integration
-  - Error scenarios
-  - Best practices
+For detailed mode comparison and extended examples, see git history of MODES.md and EXAMPLES.md (archived in v5.0.0).
 
-**Note**: FRAMEWORK_ONLY.md is deprecated as of v4.0.0 (no longer filtering framework-only skills)
 
 ---
 
-**Version:** 4.0.0
+**Version:** 6.0.0
 **Pattern:** Tool-Reference (guides AI through sync workflow)
-**Compliance:** ADR-001 ✅ | ADR-014 ✅ (modular documentation)
-**Last Updated:** 2026-04-05
+**Compliance:** ADR-001 ✅ | ADR-014 ✅ | ADR-020 ✅ (test-driven documentation)
+**Last Updated:** 2026-04-06
 **Changelog:**
+- v6.0.0 (2026-04-06): **BREAKING** - Refactor to ADR-020 test-driven documentation standard (Issue #488)
+  - Merged MODES.md and EXAMPLES.md into SKILL.md
+  - All testing baseline chapters now self-contained
+  - Removed external documentation dependencies
+- v5.0.0 (2026-04-06): **BREAKING** - Removed --from/--to parameters, now only supports ai-dev → target (one direction)
+- v4.1.0 (2026-04-06): **FEATURE** - Default to --to (push) when only path provided, improving UX for framework → project sync
 - v4.0.0 (2026-04-05): **BREAKING** - Removed framework-only filtering, simplified to pure directory copy (rm + cp)
 - v3.2.0 (2026-03-30): Refactor to modular docs - extracted MODES.md, FRAMEWORK_ONLY.md, EXAMPLES.md (Issue #418)
 - v3.1.0 (2026-03-18): Added framework-only filtering (Issue #401)

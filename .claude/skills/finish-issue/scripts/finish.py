@@ -232,71 +232,151 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"""
 
 
 def generate_issue_summary(issue_number: int, branch_name: str) -> str:
-    """Generate comprehensive issue completion summary.
+    """Generate human-friendly issue completion summary.
 
     Args:
         issue_number: GitHub issue number
         branch_name: Feature branch name
 
     Returns:
-        Formatted markdown summary with commits, files, review scores
+        Formatted markdown summary focusing on business value (Why/What/Achievements)
     """
     from datetime import datetime
+    from formatter import HumanReadableSummary
 
-    # 1. Get commits list from origin/main to HEAD
+    # 1. Get issue details (for title and body)
+    returncode, issue_json, _ = run_command(
+        ["gh", "issue", "view", str(issue_number), "--json", "title,body,url"],
+        check=False
+    )
+
+    issue_title = f"Issue #{issue_number}"
+    issue_body = ""
+    issue_url = f"https://github.com/aifuun/ai-dev/issues/{issue_number}"
+
+    if returncode == 0:
+        try:
+            issue_data = json.loads(issue_json)
+            issue_title = issue_data.get("title", issue_title)
+            issue_body = issue_data.get("body", "")
+            issue_url = issue_data.get("url", issue_url)
+        except:
+            pass
+
+    # 2. Get commits list from origin/main to HEAD
     returncode, commits, _ = run_command(
         ["git", "log", "origin/main..HEAD", "--oneline"],
         check=False
     )
-    commit_count = len(commits.split('\n')) if commits else 0
 
-    # 2. Get file change statistics
-    returncode, diff_stat, _ = run_command(
-        ["git", "diff", "origin/main..HEAD", "--stat"],
-        check=False
-    )
+    # 3. Read plan content (if exists)
+    plan_content = None
+    plan_file = Path(f".claude/plans/active/issue-{issue_number}-plan.md")
+    if not plan_file.exists():
+        # Check in archive
+        plan_file = Path(f".claude/plans/archive/issue-{issue_number}-plan.md")
 
-    # 3. Read review score from .claude/.review-status.json (if exists)
-    review_score = None
+    if plan_file.exists():
+        try:
+            with open(plan_file) as f:
+                plan_content = f.read()
+        except:
+            pass
+
+    # 4. Read review data from .claude/.review-status.json (if exists)
+    review_data = None
     review_status_file = Path(".claude/.review-status.json")
     if review_status_file.exists():
         try:
             with open(review_status_file) as f:
                 review_data = json.load(f)
-                review_score = review_data.get("score")
         except:
             pass
 
-    # 4. Get PR number from merged PRs
-    pr_number = "N/A"
+    # 5. Get file change statistics
+    returncode, diff_stat, _ = run_command(
+        ["git", "diff", "origin/main..HEAD", "--stat"],
+        check=False
+    )
+
+    # Extract file count and lines summary
+    files_changed = 0
+    lines_summary = ""
+    if diff_stat:
+        lines = diff_stat.strip().split('\n')
+        if lines:
+            summary_line = lines[-1]
+            # Extract "N files changed, X insertions(+), Y deletions(-)"
+            import re
+            files_match = re.search(r'(\d+) files? changed', summary_line)
+            if files_match:
+                files_changed = int(files_match.group(1))
+
+            insertions_match = re.search(r'(\d+) insertions?\(\+\)', summary_line)
+            deletions_match = re.search(r'(\d+) deletions?\(-\)', summary_line)
+
+            if insertions_match and deletions_match:
+                lines_summary = f"(+{insertions_match.group(1)}/-{deletions_match.group(1)})"
+            elif insertions_match:
+                lines_summary = f"(+{insertions_match.group(1)})"
+            elif deletions_match:
+                lines_summary = f"(-{deletions_match.group(1)})"
+
+    # 6. Get PR number from merged PRs
+    pr_number = 0
     returncode, pr_output, _ = run_command(
-        ["gh", "pr", "list", "--state", "merged", "--head", branch_name,
+        ["gh", "pr", "list", "--state", "all", "--head", branch_name,
          "--json", "number", "--jq", ".[0].number"],
         check=False
     )
     if returncode == 0 and pr_output:
-        pr_number = pr_output.strip()
+        try:
+            pr_number = int(pr_output.strip())
+        except:
+            pr_number = 0
 
-    # 5. Format markdown summary
-    return f"""## ✅ Issue 完成总结
+    # 7. Calculate duration (rough estimate from first commit time)
+    returncode, first_commit_time, _ = run_command(
+        ["git", "log", "origin/main..HEAD", "--reverse", "--format=%ar", "--max-count=1"],
+        check=False
+    )
+    duration = first_commit_time.strip() if first_commit_time else "未知"
 
+    # 8. Use formatter to generate human-friendly summary
+    try:
+        summary = HumanReadableSummary.from_issue_data(
+            issue_number=issue_number,
+            issue_title=issue_title,
+            issue_body=issue_body,
+            commits=commits,
+            plan_content=plan_content,
+            review_data=review_data,
+            files_changed=files_changed,
+            lines_summary=lines_summary,
+            duration=duration,
+            issue_url=issue_url,
+            pr_number=pr_number
+        )
+        return summary.format_output()
+    except Exception as e:
+        # Graceful fallback to simple summary if formatter fails
+        print(f"⚠️  Formatter failed: {e}", file=sys.stderr)
+        print("⚠️  Using simple summary format", file=sys.stderr)
+
+        return f"""## ✅ Issue 完成总结
+
+**Issue**: #{issue_number} - {issue_title}
 **分支**: {branch_name}
 **PR**: #{pr_number}
 **完成时间**: {datetime.now().strftime('%Y-%m-%d %H:%M')}
 
-### Commits 列表
+### Commits
 
 {commits if commits else 'No commits found'}
-
-**总计**: {commit_count} commits
 
 ### 变更文件
 
 {diff_stat if diff_stat else 'No changes'}
-
-### 代码质量
-
-{"✅ Review Score: " + str(review_score) + "/100" if review_score else "No review data"}
 
 ---
 

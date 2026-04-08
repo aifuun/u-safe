@@ -120,7 +120,7 @@ compare_versions("2.1.0", "2.0.0")  # 1 (v1 > v2)
 **Run tests**:
 ```bash
 cd .claude/skills/_scripts
-python3 -m pytest tests/
+uv run -m pytest tests/
 ```
 
 **Coverage**: Core sync functions, version validation, framework-only filtering, edge cases

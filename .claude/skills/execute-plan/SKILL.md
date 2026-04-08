@@ -4,7 +4,7 @@ description: |
   Execute implementation plan step-by-step - creates todos from plan, guides through tasks sequentially, runs until issue resolved.
   TRIGGER when: user wants to execute the plan after /start-issue (e.g., "execute the plan", "execute plan for #23", "implement issue #23", "work on the plan").
   DO NOT TRIGGER when: user just wants to plan (use /start-issue), review code (use /review), or finish work (use /finish-issue).
-version: "3.1.0"
+version: "3.3.0"
 argument-hint: "[issue-number] [--resume] [--skip-task N]"
 allowed-tools: Bash(git *), Bash(gh *), Bash(npm *), Read, Write, Glob, Grep, Edit
 disable-model-invocation: false
@@ -381,6 +381,108 @@ Next: /review → /finish-issue #{issue_number}
 - `/review` - Quality validation
 - `/finish-issue #23` - Final commit + PR + merge
 
+## Safety Features
+
+This skill includes multiple safety mechanisms to prevent issues during execution:
+
+### 1. Plan Structure Validation
+
+**Purpose**: Prevent infinite loops and malformed execution
+
+**How it works:**
+```python
+# Validate required sections and parseable tasks
+validate_sections(["## Tasks", "## Acceptance Criteria"])
+tasks = extract_tasks_from_plan(plan_content)
+if not tasks: raise ValidationError("No tasks found")
+```
+
+**Prevents:** Empty plans, malformed markdown, missing sections
+
+### 2. Task Dependency Checking
+
+**Purpose**: Prevent circular dependencies and deadlocks
+
+**How it works:**
+```python
+# DFS cycle detection when adding dependencies
+def validate_no_cycles(task_id, blockedBy_ids):
+    visited = set()
+    if task_id in visited:
+        raise CircularDependencyError(task_id)
+```
+
+**Prevents:** Task A blocks B → B blocks A (deadlock), long chains with cycles, unexecutable graphs
+
+### 3. Error Recovery Mechanism
+
+**Purpose**: Save progress and resume after failures
+
+**How it works:**
+```python
+# Save checkpoint before each task
+state = {"issue_number": N, "current_task": id, "completed": [ids]}
+save_to(".claude/.execute-plan-state.json")
+
+# Resume with --resume flag
+state = load_checkpoint()
+skip_completed_tasks(state["completed"])
+```
+
+**Enables:** Resume after interruption, skip completed tasks, state persistence
+
+### 4. Failure Limits
+
+**Purpose**: Prevent infinite retry loops
+
+**How it works:**
+```python
+MAX_RETRIES = 3
+retry_count = 0
+
+while retry_count < MAX_RETRIES:
+    try:
+        execute_task(task)
+        break
+    except TaskExecutionError as e:
+        retry_count += 1
+        if retry_count >= MAX_RETRIES:
+            save_checkpoint(issue_num, task_id, completed_tasks)
+            raise MaxRetriesExceeded(f"Task failed after {MAX_RETRIES} attempts")
+        log.warning(f"Task failed, retry {retry_count}/{MAX_RETRIES}")
+```
+
+**Prevents:**
+- Infinite loops on persistent failures
+- Resource exhaustion
+- Unrecoverable errors blocking workflow
+
+### 5. State File Management
+
+**Purpose**: Clean up temporary files and prevent state corruption
+
+**How it works:**
+```python
+# On successful completion
+cleanup_files([".claude/.execute-plan-state.json", ...])
+
+# On start, warn if state older than 24h
+if state_age > 86400:
+    warn("State file stale, consider fresh start")
+```
+
+**Prevents:** Stale state confusion, disk accumulation, corruption from incomplete cleanup
+
+### Safety Best Practices
+
+When executing plans:
+
+1. **Always validate before execution** - Run `/eval-plan` first to catch plan issues
+2. **Use --resume carefully** - Verify state is recent and relevant
+3. **Monitor task execution** - Watch for repeated failures indicating deeper issues
+4. **Clean state on completion** - Automatic cleanup ensures fresh starts
+5. **Respect failure limits** - If task fails 3 times, investigate root cause before forcing
+
 ## Error Handling
 
 **Not on feature branch:**
@@ -618,6 +720,340 @@ This is a **workflow skill** and must follow the standard pattern:
 
 **See**: [WORKFLOW_PATTERNS.md](../WORKFLOW_PATTERNS.md) for complete implementation guide
 
+## Usage Examples
+
+This section provides practical examples of execute-plan usage across different scenarios.
+
+### Example 1: Simple Task List Execution
+
+**Scenario**: Implementing a documentation update with 3-4 independent tasks
+
+**Plan excerpt:**
+```markdown
+## Tasks
+- [ ] Update SKILL.md with new safety section
+- [ ] Add usage examples section
+- [ ] Verify ADR-020 compliance
+- [ ] Check document length < 1000 lines
+```
+
+**Execution:**
+```bash
+/execute-plan #509
+```
+
+**What happens:**
+1. **Load plan** - Reads issue-509-plan.md from worktree
+2. **Create 4 todos** - Each task becomes a tracked todo
+3. **Execute Task 1** - Updates SKILL.md with safety content
+   - Validates: No syntax errors
+4. **Execute Task 2** - Adds usage examples section
+   - Validates: Section properly formatted
+5. **Execute Task 3** - Runs compliance check
+   - Validates: All 5 required sections present
+6. **Execute Task 4** - Counts lines
+   - Validates: 820 lines < 1000 ✅
+7. **Final validation** - All tasks complete, ready for review
+
+**Output:**
+```
+✅ All tasks complete (4/4)
+
+Files changed: 1 file
+- .claude/skills/execute-plan/SKILL.md (+180/-0)
+
+Next: /review → /finish-issue #509
+```
+
+**Time:** ~15-20 minutes (documentation tasks are straightforward)
+
+### Example 2: Tasks with Dependencies
+
+**Scenario**: Feature implementation requiring sequential order
+
+**Plan excerpt:**
+```markdown
+## Tasks
+- [ ] Create service layer (src/services/auth.ts)
+- [ ] Add repository methods (src/repositories/user.ts)
+- [ ] Implement API endpoint (src/routes/auth.ts)
+- [ ] Add integration tests (tests/auth.test.ts)
+```
+
+**Execution:**
+```bash
+/execute-plan #142
+```
+
+**What happens:**
+1. **Task dependencies created** automatically:
+   - Task 2 blocked by Task 1 (repository needs service)
+   - Task 3 blocked by Task 2 (endpoint needs repository)
+   - Task 4 blocked by Task 3 (tests need endpoint)
+
+2. **Execute Task 1: Create service**
+   ```typescript
+   // src/services/auth.ts created
+   export class AuthService {
+     constructor(private userRepo: UserRepository) {}
+     async login(email: string, password: string) { ... }
+   }
+   ```
+   - Validation: TypeScript compiles ✅
+
+3. **Execute Task 2: Add repository**
+   ```typescript
+   // src/repositories/user.ts updated
+   async findByEmail(email: string): Promise<User | null> { ... }
+   ```
+   - Validation: TypeScript compiles ✅
+
+4. **Execute Task 3: Implement endpoint**
+   ```typescript
+   // src/routes/auth.ts created
+   router.post('/login', async (req, res) => { ... })
+   ```
+   - Validation: TypeScript compiles ✅
+
+5. **Execute Task 4: Add tests**
+   ```typescript
+   // tests/auth.test.ts created
+   describe('Auth API', () => { ... })
+   ```
+   - Validation: Tests run and pass ✅
+
+**Output:**
+```
+✅ All tasks complete (4/4)
+
+Files changed: 4 files
+- src/services/auth.ts (+45 lines)
+- src/repositories/user.ts (+30 lines)
+- src/routes/auth.ts (+60 lines)
+- tests/auth.test.ts (+80 lines)
+
+Tests: 8/8 passing ✅
+
+Next: /review → /finish-issue #142
+```
+
+**Time:** ~45-60 minutes (includes implementation + tests)
+
+**Key insight:** Dependencies ensure correct order - you can't implement the endpoint before the service exists.
+
+### Example 3: Resume After Failure
+
+**Scenario**: Task 3 fails due to missing dependency, fix it and resume
+
+**Initial execution:**
+```bash
+/execute-plan #88
+```
+
+**What happens:**
+```
+✅ Task 1 complete: Install auth library
+✅ Task 2 complete: Create auth service
+❌ Task 3 failed: Add login endpoint
+
+Error: Missing type definition for AuthRequest
+
+Options:
+1. Fix and retry
+2. Skip (--skip-task 3) - not recommended
+3. Pause and investigate
+```
+
+**User investigates and fixes:**
+```bash
+# Install missing type package
+npm install --save-dev @types/auth-request
+
+# Resume execution
+/execute-plan #88 --resume
+```
+
+**Resume execution:**
+```
+📋 Resuming from checkpoint
+
+Completed:
+✅ Task 1: Install auth library
+✅ Task 2: Create auth service
+
+Current:
+⏯️ Task 3: Add login endpoint (retrying)
+
+Remaining: 2 tasks
+```
+
+**What happens:**
+1. **Load checkpoint** - Reads .claude/.execute-plan-state.json
+2. **Skip completed tasks** - Tasks 1-2 already done
+3. **Retry Task 3** - Missing types now available ✅
+4. **Continue to Task 4** - Add tests
+5. **Complete Task 5** - Update documentation
+6. **Cleanup state** - Remove .execute-plan-state.json
+
+**Output:**
+```
+✅ All tasks complete (5/5)
+
+Resumed from: Task 3
+Fixed issues: Missing type definition installed
+
+Files changed: 3 files
+Tests: 12/12 passing ✅
+
+Next: /review → /finish-issue #88
+```
+
+**Time:**
+- Initial run: 20 minutes (failed at task 3)
+- Investigation: 5 minutes
+- Resume run: 15 minutes (tasks 3-5)
+- **Total:** 40 minutes (vs 60 minutes if restarted from scratch)
+
+**Key insight:** Resume mechanism saves significant time by skipping completed work.
+
+### Example 4: Worktree-Based Execution
+
+**Scenario**: Working on issue in isolated worktree directory
+
+**Setup (from /start-issue):**
+```bash
+/start-issue #123
+# Creates: /Users/woo/dev/ai-dev-123-add-logging
+# Branch: feature/123-add-logging
+```
+
+**Execute plan:**
+```bash
+/execute-plan #123
+```
+
+**What happens (worktree-aware):**
+1. **Detect worktree** - Reads plan metadata:
+   ```markdown
+   **Worktree**: /Users/woo/dev/ai-dev-123-add-logging
+   ```
+
+2. **All file operations use worktree path:**
+   ```python
+   # ✅ CORRECT
+   Read("/Users/woo/dev/ai-dev-123-add-logging/src/logger.ts")
+   Edit("/Users/woo/dev/ai-dev-123-add-logging/.claude/skills/...")
+
+   # ❌ WRONG (would modify main repo)
+   Read("src/logger.ts")
+   ```
+
+3. **Git operations use -C flag:**
+   ```bash
+   git -C /Users/woo/dev/ai-dev-123-add-logging status
+   git -C /Users/woo/dev/ai-dev-123-add-logging add .
+   ```
+
+4. **Execute tasks in worktree context:**
+   - Task 1: Create logger.ts (in worktree)
+   - Task 2: Update app.ts to use logger (in worktree)
+   - Task 3: Add tests (in worktree)
+
+**Benefits:**
+- ✅ Main repo stays clean (still on main branch)
+- ✅ Can work on multiple issues in parallel
+- ✅ Each worktree has isolated dependencies
+- ✅ No branch switching needed
+
+**Output:**
+```
+✅ All tasks complete (3/3)
+
+Worktree: /Users/woo/dev/ai-dev-123-add-logging
+Files changed: 3 files
+
+Next: /review → /finish-issue #123
+```
+
+**Key insight:** Worktrees enable parallel development without interference.
+
+## Testing
+
+This skill has comprehensive test coverage following ADR-020 standards.
+
+### Test Suite
+
+**Location**: `.claude/skills/execute-plan/tests/`
+
+**Coverage**: 96% (target: >60%)
+
+**Test Files**:
+- `test_functional.py` (7 tests) - Core "What it does" functionality
+- `test_arguments.py` (6 tests) - Argument validation and handling
+- `test_safety.py` (7 tests) - Safety mechanisms validation
+
+**Total**: 20 tests across 3 categories
+
+### Running Tests
+
+```bash
+# Navigate to skill directory
+cd .claude/skills/execute-plan
+
+# Activate virtual environment
+python3 -m venv .venv
+source .venv/bin/activate
+pip install pytest pytest-cov
+
+# Run all tests
+pytest tests/
+
+# Run with coverage
+pytest tests/ --cov --cov-report=term-missing
+
+# Run specific category
+pytest tests/test_functional.py
+pytest tests/ -m functional
+pytest tests/ -m safety
+```
+
+### Test Categories
+
+**1. Functional Tests** (test_functional.py)
+- Load plan from file path
+- Extract tasks from markdown plan
+- Create todos with dependencies
+- Execute tasks respecting order
+- Validate task completion
+- Generate deliverables summary
+- Complete end-to-end workflow
+
+**2. Argument Tests** (test_arguments.py)
+- Extract issue number from branch name
+- Load checkpoint with --resume flag
+- Skip task functionality
+- Dry-run preview mode
+- Invalid argument detection
+- Auto-detect from active plan
+
+**3. Safety Tests** (test_safety.py)
+- Empty plan validation
+- Malformed markdown detection
+- Circular dependency prevention
+- Error recovery checkpoints
+- Max retry limits
+- State file cleanup
+- Stale state warnings
+
+### Detailed Documentation
+
+See [tests/README.md](tests/README.md) for:
+- Complete test suite overview
+- Running tests with markers
+- Adding new tests
+- CI/CD integration
+- Troubleshooting
+
 ## Related Skills
 
 - **/start-issue** - Creates branch and plan (Phase 1 - run before this)
@@ -626,23 +1062,15 @@ This is a **workflow skill** and must follow the standard pattern:
 - **/finish-issue** - Commit and close issue (Phase 3 - final step)
 - **/next** - Get single next task (lighter alternative)
 
-## Advanced Topics
-
-For detailed guidance on:
-- **TDD Workflow** - Test-first development approach
-- **Architecture Documentation** - When and how to document design
-- **Complex Task Patterns** - Multi-file refactoring, API changes
-- **State Recovery** - Handling interruptions and resuming
-
-**See**: [REFERENCE.md](REFERENCE.md) for complete details
-
 ---
 
-**Version:** 3.1.0
+**Version:** 3.3.0
 **Pattern:** Workflow Orchestrator (executes plan step-by-step)
-**Compliance:** ADR-001 ✅ | WORKFLOW_PATTERNS.md ✅
-**Last Updated:** 2026-03-18
+**Compliance:** ADR-001 ✅ | ADR-015 ✅ | ADR-020 ✅ | WORKFLOW_PATTERNS.md ✅
+**Last Updated:** 2026-04-07
 **Changelog:**
+- v3.3.0: Added comprehensive test suite with 96% coverage (20 tests, ADR-020 compliant) (Issue #521)
+- v3.2.0: Added Safety Features and Usage Examples sections for ADR-020 compliance (Issue #509)
 - v3.1.0: Added mode-aware output (2 lines auto, ≤20 lines interactive) (Issue #263)
 - v3.0.0: Worktree support and task execution
 - v2.0.0: Added progress tracking

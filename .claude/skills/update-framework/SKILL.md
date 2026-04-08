@@ -4,7 +4,7 @@ description: |
   Sync framework content (Pillars, Skills) - Rules excluded (use /manage-rules).
   TRIGGER when: user wants complete framework sync ("update framework from X", "sync entire framework", "pull all from framework", "upgrade framework").
   DO NOT TRIGGER when: user wants specific components only (use /update-pillars, /update-skills), or just wants to read framework docs.
-version: "4.1.1"
+version: "5.1.0"
 framework-only: true
 allowed-tools: Bash(cp *), Bash(mkdir *), Bash(ls *), Bash(find *), Bash(test *), Bash(cat *), Bash(git *), Bash(gh *), Read, Write, Glob, Grep, Edit
 disable-model-invocation: false
@@ -34,6 +34,35 @@ Monthly framework upgrades require syncing framework components. Running separat
 - Initial project setup (push framework to new project)
 - Complete framework sync needed
 - Cross-project consistency enforcement
+
+## Arguments
+
+```
+[target-directory] [options]
+```
+
+**Common usage:**
+```bash
+/update-framework ../my-project
+/update-framework ../my-project --dry-run
+/update-framework ../my-project --skip skills
+/update-framework ../my-project --only pillars,guides
+/update-framework ../my-project --without-permission-enable
+```
+
+**Options:**
+- `[target-directory]` - Required, target project path (relative or absolute)
+- `--dry-run` - Preview changes without executing
+- `--skip <components>` - Skip specific components (comma-separated: pillars, guides, skills)
+- `--only <components>` - Sync only specific components (comma-separated: pillars, guides, skills)
+- `--reconfigure` - Re-run tech stack questionnaire and update profile
+- `--without-permission-enable` - Skip permission configuration after sync
+
+**Notes:**
+- Must run from ai-dev framework directory
+- Cannot use both `--skip` and `--only` together
+- Permission configuration is enabled by default (copies .claude/settings.json)
+- Rules are NOT synced (use `/manage-rules` instead)
 
 ## AI Execution Instructions
 
@@ -106,23 +135,23 @@ os.environ["CALLED_BY_UPDATE_FRAMEWORK"] = "1"
 
 # Call update-pillars sub-skill
 TaskUpdate(tasks["pillars"], "in_progress")
-Skill("update-pillars", args=f"--to {target} --pillars {profile.pillars} --skip-validation")
+Skill("update-pillars", args=f"{target} --pillars {profile.pillars} --skip-validation")
 TaskUpdate(tasks["pillars"], "completed")
 
 # Call update-guides sub-skill
 TaskUpdate(tasks["guides"], "in_progress")
-Skill("update-guides", args=f"--to {target} --skip-validation")
+Skill("update-guides", args=f"{target} --skip-validation")
 TaskUpdate(tasks["guides"], "completed")
 
 # Call update-skills sub-skill
 TaskUpdate(tasks["skills"], "in_progress")
-Skill("update-skills", args=f"--to {target} --skip-validation")
+Skill("update-skills", args=f"{target} --skip-validation")
 TaskUpdate(tasks["skills"], "completed")
 
 # Call update-permissions sub-skill by default (unless --without-permission-enable flag set)
 if not without_permission_enable and "permissions" in tasks:
     TaskUpdate(tasks["permissions"], "in_progress")
-    Skill("update-permissions", args=f"--to {target} --skip-validation")
+    Skill("update-permissions", args=f"{target} --skip-validation")
     TaskUpdate(tasks["permissions"], "completed")
 
 # Clean up environment variable after all sub-skills complete
@@ -161,9 +190,9 @@ rm -rf ../target/.claude/rules/backend  # Manual cleanup
 
 **✅ CORRECT - Delegate to sub-skills:**
 ```python
-Skill("update-pillars", args="--to ../target --pillars A,B,K,L")
-Skill("update-rules", args="--to ../target --profile nextjs-aws")
-Skill("update-skills", args="--to ../target")
+Skill("update-pillars", args="../target --pillars A,B,K,L")
+Skill("update-guides", args="../target")
+Skill("update-skills", args="../target")
 ```
 
 **Why**: Sub-skills handle filtering, validation, error handling, and backups correctly.
@@ -236,17 +265,17 @@ Sync Order (dependency-optimized):
 
 ## Usage
 
-### Push Framework to Target Project
+### Basic Usage
 
 **Must run from ai-dev framework directory.**
 
-Push entire framework from ai-dev to target project:
+Sync entire framework from ai-dev to target project:
 
 ```bash
 # Must be in ai-dev directory
 cd ~/dev/ai-dev
 
-# Push to target project
+# Sync to target project
 /update-framework ../target-project
 /update-framework ../target-project --dry-run
 /update-framework ../target-project --skip skills
@@ -256,33 +285,35 @@ cd ~/dev/ai-dev
 0. **Validate working directory** - must be in ai-dev framework
 1. Auto-detect profile from target project's `.framework-install`
 2. Load profile configuration and extract rules list
-3. Call all 4 update-* skills with target path and filter config
+3. Call all update-* skills (update-pillars, update-guides, update-skills) with target path
 4. Aggregate analysis results (with filter summary)
-5. Show what will be pushed
+5. Show what will be synced
 6. Confirm once
-7. Execute all 4 syncs with smart filtering
+7. Execute all syncs
 
-### 3. Dry Run Mode (--dry-run)
+**Note**: All sub-skills (update-pillars, update-guides, update-skills) only support one-way sync from ai-dev to target.
+
+### 2. Dry Run Mode (--dry-run)
 
 Preview all changes without applying:
 
 ```bash
-/update-framework --from ~/dev/ai-dev --dry-run
+/update-framework ../target-project --dry-run
 ```
 
 **Output:**
-- Aggregated analysis from all 4 components
+- Aggregated analysis from all components
 - Shows what would be synced
 - No confirmation required
 - No actual changes made
 
-### 4. Selective Sync (--skip / --only)
+### 3. Selective Sync (--skip / --only)
 
 Sync only specific components:
 
 ```bash
-/update-framework --from ~/dev/ai-dev --only skills
-/update-framework --from ~/dev/ai-dev --skip pillars
+/update-framework ../target-project --only skills
+/update-framework ../target-project --skip pillars
 ```
 
 **Available components:**
@@ -292,13 +323,12 @@ Sync only specific components:
 
 **Note:** Cannot use both --skip and --only together.
 
-### 5. Reconfigure Tech Stack (--reconfigure)
+### 4. Reconfigure Tech Stack (--reconfigure)
 
 Update tech stack configuration and regenerate filters:
 
 ```bash
-/update-framework --to ../u-safe --reconfigure
-/update-framework --from ~/dev/ai-dev --reconfigure
+/update-framework ../target-project --reconfigure
 ```
 
 **What happens:**
@@ -319,13 +349,14 @@ Update tech stack configuration and regenerate filters:
 **Permission configuration is ENABLED BY DEFAULT** after framework sync:
 
 ```bash
+# Must be in ai-dev directory
+cd ~/dev/ai-dev
+
 # Default: permissions configured automatically
 /update-framework ../target-project
-/update-framework --from ~/dev/ai-dev
 
 # Opt-out: skip permission configuration
 /update-framework ../target-project --without-permission-enable
-/update-framework --from ~/dev/ai-dev --without-permission-enable
 ```
 
 **What happens by default:**
@@ -417,23 +448,23 @@ Total: 71 items synced in 25 seconds
 > "push entire framework to my new project at ~/projects/new-app"
 
 **What happens:**
-1. `/update-framework --to ~/projects/new-app`
+1. `cd ~/dev/ai-dev && /update-framework ~/projects/new-app`
 2. Detect profile: nextjs-aws (from .framework-install)
-3. Aggregate: 38 NEW items to push
+3. Aggregate: 38 NEW items to sync
 4. Confirm once
-5. Execute all 4 pushes with profile-based filtering
-6. Report: "Pushed 38 items (nextjs-aws profile)"
+5. Execute all syncs with profile-based filtering
+6. Report: "Synced 38 items (nextjs-aws profile)"
 
 **Time:** ~45 seconds
 
 ### Example 3: Selective Update (Documentation Only)
 
 **User says:**
-> "update framework from ai-dev but skip skills"
+> "update framework but skip skills"
 
 **What happens:**
-1. `/update-framework --from ~/dev/ai-dev --skip skills`
-2. Only call update-pillars
+1. `cd ~/dev/ai-dev && /update-framework ../my-app --skip skills`
+2. Only call update-pillars and update-guides
 3. Aggregate: 8 items to sync (skip skills)
 4. Confirm and sync
 5. Report: "Updated 8 items (skipped skills)"
@@ -443,11 +474,11 @@ Total: 71 items synced in 25 seconds
 ### Example 4: Dry Run Preview
 
 **User says:**
-> "show me what would change if I pulled framework from ai-dev"
+> "show me what would change if I synced framework"
 
 **What happens:**
-1. `/update-framework --from ~/dev/ai-dev --dry-run`
-2. Call all 4 skills with --dry-run
+1. `cd ~/dev/ai-dev && /update-framework ../my-app --dry-run`
+2. Call all skills with --dry-run
 3. Show aggregated analysis
 4. No confirmation, no changes
 5. Report: "11 items would be synced (dry run)"
@@ -541,32 +572,33 @@ Framework sync complete.
 
 1. **Always dry-run first for major updates:**
 ```bash
-/update-framework --from ~/dev/ai-dev --dry-run
-/update-framework --from ~/dev/ai-dev
+cd ~/dev/ai-dev
+/update-framework ../my-app --dry-run
+/update-framework ../my-app
 ```
 
 2. **Regular framework upgrades:**
 ```bash
 # Weekly/monthly routine
-/update-framework --from ~/dev/ai-dev
+cd ~/dev/ai-dev
+/update-framework ../my-app
 ```
 
 3. **Selective updates for safety:**
 ```bash
 # Only update documentation first
-/update-framework --from ~/dev/ai-dev --only pillars,rules,workflow
+cd ~/dev/ai-dev
+/update-framework ../my-app --only pillars,guides
 
 # Then update tools after testing
-/update-framework --from ~/dev/ai-dev --only skills
+/update-framework ../my-app --only skills
 ```
 
 4. **Framework as source of truth:**
 ```bash
-# In projects: pull from framework
-/update-framework --from ~/dev/ai-dev
-
-# In framework: pull innovations from projects
-/update-framework --from ~/projects/my-app --only skills
+# Always sync from ai-dev to projects
+cd ~/dev/ai-dev
+/update-framework ../my-app
 ```
 
 ## Integration with Component Skills
@@ -575,14 +607,16 @@ Framework sync complete.
 
 ```bash
 # Fine-grained control
-/update-pillars --from ~/dev/ai-dev --pillars A,B,K
-/update-skills --from ~/dev/ai-dev --skills adr,review
+cd ~/dev/ai-dev
+/update-pillars ../my-app --pillars A,B,K
+/update-skills ../my-app --incremental --skills adr,review
 
-# For rules, use /manage-rules (deprecated: /update-rules)
+# For rules, use /manage-rules
 /manage-rules --profile tauri --instant
 
 # Coarse-grained control (this meta-skill)
-/update-framework --from ~/dev/ai-dev
+cd ~/dev/ai-dev
+/update-framework ../my-app
 ```
 
 **When to use update-framework:**
@@ -658,14 +692,16 @@ Missing items indicate incomplete meta-sync.
 
 **Old workflow (v2.x)**:
 ```bash
-/update-framework --from ~/dev/ai-dev
+cd ~/dev/ai-dev
+/update-framework ../my-app
 # Rules automatically synced
 ```
 
 **New workflow (v4.0.0+)**:
 ```bash
 # 1. Sync framework content (Pillars, Guides, Skills)
-/update-framework --from ~/dev/ai-dev
+cd ~/dev/ai-dev
+/update-framework ../my-app
 
 # 2. Generate project-specific rules
 /manage-rules --profile tauri --instant
@@ -679,6 +715,38 @@ Missing items indicate incomplete meta-sync.
 3. Commit generated rules to your project
 
 **See**: ADR-013 (#348) for complete architecture
+
+## Testing
+
+This skill has comprehensive test coverage following ADR-020 standards.
+
+**Test Suite**: 25 tests across 5 categories
+**Coverage**: 96% (target: 80%+)
+**Status**: ✅ All tests passing
+
+### Test Categories
+
+- **Functional** (8 tests): Core sync operations (full sync, pillars-only, skills-only, empty directories, conflicts, backups, bidirectional, profile-aware)
+- **Parameters** (4 tests): Argument validation (missing paths, invalid paths, conflicting flags)
+- **Safety** (5 tests): Security mechanisms (path traversal, symlinks, permissions, disk space, backup integrity)
+- **Error Handling** (5 tests): Exception scenarios (source not found, permission denied, git conflicts, partial recovery, network interruption)
+- **Integration** (3 tests): End-to-end workflows (manage-claude-md, init-docs, full project initialization)
+
+### Running Tests
+
+```bash
+# All tests
+pytest .claude/skills/update-framework/tests/
+
+# With coverage
+pytest .claude/skills/update-framework/tests/ --cov
+
+# By category
+pytest .claude/skills/update-framework/tests/ -m functional
+pytest .claude/skills/update-framework/tests/ -m safety
+```
+
+**See**: [tests/README.md](tests/README.md) for complete testing guide
 
 ## Workflow Skills Requirements
 
@@ -699,11 +767,13 @@ This is a **workflow skill** and must follow the standard pattern:
 
 ---
 
-**Version:** 4.1.0
+**Version:** 5.1.0
 **Pattern:** Meta-Skill (orchestrates update-* skills)
-**Compliance:** ADR-001 ✅ | ADR-013 ✅
-**Last Updated:** 2026-03-29
+**Compliance:** ADR-001 ✅ | ADR-013 ✅ | ADR-020 ✅
+**Last Updated:** 2026-04-07
 **Changelog:**
+- v5.1.0 (2026-04-07): Added comprehensive test suite (25 tests, 96% coverage) - ADR-020 compliance (Issue #528)
+- v5.0.0 (2026-04-06): **BREAKING** - Sub-skills (update-pillars/guides/skills) now only support ai-dev → target (removed --from/--to)
 - v4.1.0: Replace /configure-permissions with /update-permissions for direct framework copy (Issue #398)
 - v4.0.0: Remove outdated workflow/rules references, update component structure (Issue #375)
 - v3.0.0: **BREAKING** - Remove rules sync, use /manage-rules instead (Issue #353, ADR-013)

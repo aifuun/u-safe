@@ -52,10 +52,11 @@ rm -rf docs.old/
 **Before migration:**
 ```bash
 # Ensure target project has latest skills
-cd ../buffer
-/update-skills --from ~/dev/ai-dev
+cd ~/dev/ai-dev
+/update-skills ../buffer
 
 # Verify /init-docs and /check-docs are available
+cd ../buffer
 ls .claude/skills/init-docs/
 ls .claude/skills/check-docs/
 ```
@@ -75,8 +76,8 @@ git commit -m "docs: update migration guide with buffer example"
 ❌ /init-docs skill not found in target project
 
 Fix:
-cd ../buffer
-/update-skills --from ~/dev/ai-dev
+cd ~/dev/ai-dev
+/update-skills ../buffer
 ```
 
 **If `/check-docs` is missing:**
@@ -84,8 +85,8 @@ cd ../buffer
 ⚠️  /check-docs not available - skipping score validation
 
 Recommendation: Install skill for score tracking
-cd ../buffer
-/update-skills --from ~/dev/ai-dev
+cd ~/dev/ai-dev
+/update-skills ../buffer
 ```
 
 ## Data Flow

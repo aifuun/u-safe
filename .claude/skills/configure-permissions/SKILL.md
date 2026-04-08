@@ -5,7 +5,7 @@ description: |
   TRIGGER when: user wants to configure permissions ("configure permissions", "set up auto mode", "enable work-issue auto mode"), after framework sync with --configure-permissions flag, during project initialization.
   DO NOT TRIGGER when: user just wants to read about permissions, asks conceptual questions about auto mode, or wants to modify permissions manually.
 version: "3.0.0"
-allowed-tools: Bash(python3 *), Read, Write, Glob
+allowed-tools: Bash(uv *), Read, Write, Glob
 disable-model-invocation: false
 user-invocable: true
 ---
@@ -56,6 +56,32 @@ Without pre-configured permissions, work-issue auto mode stops at every bash com
 - `[target-path]` - Optional, defaults to current directory
 - `--source <path>` - Explicit path to ai-dev root (auto-detected if not provided)
 - `--dry-run` - Preview changes without modifying files
+
+## Safety Features
+
+**Pre-flight checks:**
+- ✅ ai-dev root directory exists and is valid
+- ✅ ai-dev settings.json exists and readable
+- ✅ Target .claude/ directory exists
+- ✅ Write permissions for target settings.json
+
+**Smart defaults:**
+- Auto-detects ai-dev from common locations (cwd, parent dirs, ~/dev/ai-dev)
+- Creates backup before overwriting existing settings
+- Preserves existing settings if copy fails
+- Dry-run mode for safe preview
+
+**Validation points:**
+- Source path contains .claude/pillars/ (confirms ai-dev root)
+- settings.json has valid JSON structure
+- Target path is a valid directory
+- No permission conflicts
+
+**Data integrity:**
+- Atomic file copy (no partial writes)
+- Backup created with timestamp before overwrite
+- Original preserved on failure
+- Clear error messages on validation failure
 
 ## AI Execution Instructions
 
@@ -124,7 +150,7 @@ TaskUpdate(tasks[3], "completed")
 ### Step 3: Call Python Script
 
 ```bash
-python3 .claude/skills/configure-permissions/scripts/configure.py [target-path] [options]
+uv run .claude/skills/configure-permissions/scripts/configure.py [target-path] [options]
 ```
 
 **Script handles:**
@@ -194,7 +220,7 @@ Next steps:
 
 **Execution:**
 ```bash
-python3 .claude/skills/configure-permissions/scripts/configure.py .
+uv run .claude/skills/configure-permissions/scripts/configure.py .
 ```
 
 **Result:**
@@ -211,7 +237,7 @@ python3 .claude/skills/configure-permissions/scripts/configure.py .
 
 **Execution:**
 ```bash
-python3 .claude/skills/configure-permissions/scripts/configure.py ../u-safe
+uv run .claude/skills/configure-permissions/scripts/configure.py ../u-safe
 ```
 
 **Result:**
@@ -228,7 +254,7 @@ python3 .claude/skills/configure-permissions/scripts/configure.py ../u-safe
 
 **Execution:**
 ```bash
-python3 .claude/skills/configure-permissions/scripts/configure.py . --dry-run
+uv run .claude/skills/configure-permissions/scripts/configure.py . --dry-run
 ```
 
 **Output:**
@@ -252,7 +278,7 @@ Permissions: 45 auto-approve patterns
 
 **Execution:**
 ```bash
-python3 .claude/skills/configure-permissions/scripts/configure.py . --source ~/repos/ai-dev
+uv run .claude/skills/configure-permissions/scripts/configure.py . --source ~/repos/ai-dev
 ```
 
 **Result:**

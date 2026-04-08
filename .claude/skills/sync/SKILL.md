@@ -3,473 +3,273 @@ name: sync
 description: |
   Sync branch with main - fetch, merge, resolve conflicts, test, push. Works on both feature branches and main branch.
   TRIGGER when: user wants to sync with main ("sync with main", "merge main into my branch", "update from main", "pull latest changes", "sync").
-version: "2.3.0"
+version: "2.4.0"
   DO NOT TRIGGER when: user wants to create branches (use /start-issue), or finish work (use /finish-issue).
 ---
 
 # Sync - Branch Synchronization with Main
 
-Safe synchronization of your branch with main, including conflict resolution and safety checks. Works on both feature branches and main branch.
+Safe synchronization of your branch with main, including conflict resolution and safety checks.
 
 ## Overview
 
 This skill automates the complete workflow to sync your branch:
 
 **On Feature Branch:**
-1. Auto-commits any uncommitted changes (WIP commit)
+1. Auto-commits uncommitted changes (with enhanced message including file list)
 2. Fetches latest changes from remote
-3. Merges main into your feature branch
-4. Detects and guides conflict resolution
+3. Merges main into branch (with detailed merge commit message)
+4. Detects and guides conflict resolution (with enhanced conflict messages)
 5. Runs tests to verify nothing broke
-6. Pushes synced changes to remote
-7. Provides live status throughout the process
+6. Pushes synced changes
 
 **On Main Branch:**
-1. Auto-commits any uncommitted changes (WIP commit)
-2. Fetches latest changes from remote
-3. Pulls and merges remote main into local main
-4. Detects and guides conflict resolution (if any)
-5. Pushes changes to remote
-6. Provides live status throughout the process
+1. Auto-commits uncommitted changes
+2. Fetches and pulls from origin/main
+3. Pushes changes
 
-**Why it's needed:**
-Keeping branches in sync with main prevents merge conflicts, ensures compatibility with latest changes, and makes final PRs smoother. Manual syncing involves multiple git commands and safety checks that are easy to forget.
-
-**When to use:**
-- Before starting new work on a long-running branch
-- Daily sync for active feature branches
-- Before creating a PR (with /finish-issue)
-- After main branch receives important updates
-- When you see "branch is X commits behind main"
-- To update local main with latest remote changes
+**When to use:** Before new work, daily sync, before PR, updating local main
 
 ## Workflow
 
-Copy this checklist to track progress:
-
-**For Feature Branches (7 steps):**
-```
-Task Progress:
+**Feature Branches (7 steps):**
+\`\`\`
 - [ ] Step 1: Auto-commit uncommitted changes
 - [ ] Step 2: Fetch latest from remote
 - [ ] Step 3: Check for potential conflicts
 - [ ] Step 4: Merge main into feature branch
 - [ ] Step 5: Resolve conflicts if any
-- [ ] Step 6: Run tests to verify
+- [ ] Step 6: Run tests
 - [ ] Step 7: Push synced branch
-```
+\`\`\`
 
-**For Main Branch (5 steps):**
-```
-Task Progress:
+**Main Branch (5 steps):**
+\`\`\`
 - [ ] Step 1: Auto-commit uncommitted changes
 - [ ] Step 2: Fetch latest from remote
 - [ ] Step 3: Pull and merge origin/main
 - [ ] Step 4: Resolve conflicts if any
 - [ ] Step 5: Push to remote
-```
+\`\`\`
 
-### Step 1: Create Todo List
+## Core Sync Steps
 
-**Initialize sync tracking** using TaskCreate:
+### 1. Auto-Commit Uncommitted Changes
 
-**For Feature Branches:**
-```
-Task #1: Auto-commit uncommitted changes
-Task #2: Fetch latest from remote (blocked by #1)
-Task #3: Check for potential conflicts (blocked by #2)
-Task #4: Merge main into feature branch (blocked by #3)
-Task #5: Resolve conflicts if any (blocked by #4)
-Task #6: Run tests to verify (blocked by #5)
-Task #7: Push synced branch (blocked by #6)
-```
+Enhanced commit message with file list and branch:
 
-**For Main Branch:**
-```
-Task #1: Auto-commit uncommitted changes
-Task #2: Fetch latest from remote (blocked by #1)
-Task #3: Pull and merge origin/main (blocked by #2)
-Task #4: Resolve conflicts if any (blocked by #3)
-Task #5: Push to remote (blocked by #4)
-```
+\`\`\`bash
+git add .
+MODIFIED=\$(git diff --name-only --cached | tr '\\n' ', ' | sed 's/,\$//')
+BRANCH=\$(git rev-parse --abbrev-ref HEAD)
 
-After creating tasks, proceed with sync execution.
+git commit -m "wip: auto-commit before sync on \${BRANCH}
 
-## Sync Dimensions
+Modified: \${MODIFIED}
+Reason: Preparing for main branch sync"
+\`\`\`
 
-### 1. Pre-Sync Status Check
+### 2. Fetch Latest
 
-Verify current state before syncing:
-
-```bash
-# Current branch
-git rev-parse --abbrev-ref HEAD
-
-# Latest commit on your branch
-git rev-parse --short HEAD
-
-# Latest commit on main
-git rev-parse --short origin/main
-
-# How many commits behind/ahead
-git rev-list --left-right --count origin/main...HEAD
-```
-
-**Safety checks:**
-- Auto-commit uncommitted changes (WIP commit if present)
-- Confirm tests are passing (for feature branches)
-- Verify branch exists on remote (for pushing)
-
-### 2. Fetch Latest Changes
-
-Get latest from remote without modifying local branches:
-
-```bash
+\`\`\`bash
 git fetch origin
-git fetch origin main
-```
+\`\`\`
 
-**Why fetch first:**
-- See what changes are coming
-- Preview potential conflicts
-- Don't modify working tree yet
+### 3. Merge Main
 
-### 3. Conflict Detection
+Enhanced merge message with commit count and list:
 
-Before merging, preview what might conflict:
+\`\`\`bash
+BRANCH=\$(git rev-parse --abbrev-ref HEAD)
+COMMITS=\$(git log HEAD..origin/main --oneline | head -5)
+COUNT=\$(git rev-list --count HEAD..origin/main)
 
-```bash
-# Files modified on both branches
-git diff --name-only origin/main...HEAD
+git merge origin/main -m "sync: merge main into \${BRANCH}
 
-# Detailed change preview
-git diff origin/main...HEAD --stat
+Merged \${COUNT} commits:
+\${COMMITS}"
+\`\`\`
 
-# Show commits on main not in your branch
-git log HEAD..origin/main --oneline
-```
+**Outcomes:**
+- ✅ Fast-forward - No conflicts
+- ✅ Auto-merge - Git resolved automatically
+- ⚠️ Conflicts - Manual resolution required
 
-**Common conflict scenarios:**
-- Same file modified in both branches
-- File deleted in main but modified in your branch
-- Package.json/lock file differences
-- Formatting changes (prettier, linting)
+### 4. Conflict Resolution
 
-### 4. Merge Execution
+Enhanced conflict resolution message:
 
-Merge main into your feature branch:
+\`\`\`bash
+# 1. View conflicts
+git status
 
-```bash
-# Standard merge
-git merge origin/main
+# 2. Edit files, remove markers (<<<<<<<, =======, >>>>>>>)
 
-# Or with message
-git merge origin/main -m "sync: merge main into feature branch"
-```
+# 3. Stage and commit with enhanced message
+git add <files>
+CONFLICTS=\$(git diff --name-only --diff-filter=U | tr '\\n' ', ' | sed 's/,\$//')
+git commit -m "resolve: merge conflicts in \${CONFLICTS}
 
-**Possible outcomes:**
-- ✅ **Fast-forward** - No conflicts, auto-merged
-- ✅ **Auto-merge** - Git resolved conflicts automatically
-- ⚠️ **Conflicts** - Manual resolution required (see Conflict Resolution)
+Strategy: Manual resolution
+Files: \${CONFLICTS}"
 
-### 5. Conflict Resolution
-
-If conflicts detected, guide the user:
-
-```markdown
-⚠️ Merge conflicts found in:
-- src/auth.ts (2 conflicts)
-- src/types.ts (1 conflict)
-- package-lock.json (auto-resolve recommended)
-
-Quick resolution steps:
-1. git status     # See conflicted files
-2. Edit files, remove conflict markers (<<<<<<<, =======, >>>>>>>)
-3. git add <files>
-4. git commit -m "resolve: merge conflicts"
-5. npm test       # Verify resolution
-
-See [CONFLICT-HANDLING.md](CONFLICT-HANDLING.md) for:
-- Detailed resolution steps
-- Special cases (package-lock.json, binary files)
-- Common conflict patterns
-- Prevention tips
-```
-
-### 6. Post-Merge Testing
-
-Verify nothing broke after merge:
-
-```bash
-# TypeScript compilation
-npx tsc --noEmit
-
-# Linting
-npm run lint
-
-# Unit tests
+# 4. Verify
 npm test
+\`\`\`
 
-# Build verification
-npm run build
-```
+**For detailed conflict resolution:**
+- Step-by-step guides
+- Special cases (package-lock.json, binaries)
+- Common patterns
+- Prevention tips
 
-**If tests fail:**
-1. Review merge-related changes
-2. Fix failing tests or broken code
-3. Commit fixes: `git commit -m "fix: resolve test failures after sync"`
-4. Re-run tests until passing
+See **[CONFLICT-HANDLING.md](CONFLICT-HANDLING.md)**
 
-### 7. Push Synced Branch
+### 5. Post-Merge Testing
 
-Push merged changes to remote:
+\`\`\`bash
+# Run tests if they exist
+if [ -f "package.json" ] && grep -q "test" package.json; then
+  npm test
+fi
+\`\`\`
 
-```bash
-# Push to remote
-git push origin <branch-name>
+### 6. Push Synced Branch
 
-# If remote was force-updated (rare)
-git push --force-with-lease origin <branch-name>
-```
+\`\`\`bash
+git push origin \$(git rev-parse --abbrev-ref HEAD)
+\`\`\`
 
-**Safety:**
-- Only push after tests pass
-- Use `--force-with-lease` instead of `--force` (safer)
-- Confirm branch name is correct
+## Syncing Main Branch
 
-## Safety Features
+Simpler workflow when on main:
 
-**Pre-flight checks:**
-- ✅ Auto-commit uncommitted changes (WIP commit)
-- ✅ Confirm tests passing before sync (feature branches)
-- ✅ Preview conflicts before merge
-- ✅ Detect branch type (main vs feature) and use appropriate workflow
+\`\`\`bash
+# 1. Auto-commit if needed
+git add .
+git commit -m "wip: auto-commit before sync"
 
-**Backup protection:**
-```bash
-# Create backup before risky operations
-git branch backup/<branch-name>
+# 2. Pull latest
+git pull origin main
 
-# Restore if needed
-git reset --hard backup/<branch-name>
-```
-
-**Abort mechanisms:**
-```bash
-# Abort merge if conflicts too complex
-git merge --abort
-
-# Reset to pre-sync state
-git reset --hard HEAD@{1}
-```
-
-## Integration
-
-**With /start-issue:**
-```
-/start-issue #23    # Creates feature branch from main
-# ... work for a while ...
-/sync               # Sync with main mid-development
-# ... more work ...
-/finish-issue #23   # Final sync happens automatically
-```
-
-**With /finish-issue:**
-```
-# finish-issue includes sync step automatically
-/finish-issue #23   # Syncs, then creates PR
-```
-
-**Daily workflow:**
-```
-# Morning routine
-/sync               # Get latest changes
-/next               # Continue work
-
-# Before lunch
-/sync               # Stay up-to-date
-
-# End of day
-/sync               # Prepare for tomorrow
-```
-
-## Special Workflows
-
-### Syncing Main Branch
-
-When already on main branch, the workflow is simpler:
-
-**Steps:**
-1. **Fetch latest changes**
-   ```bash
-   git fetch origin main
-   ```
-
-2. **Pull and merge**
-   ```bash
-   git pull origin main
-   # Or equivalently
-   git merge origin/main
-   ```
-
-3. **Resolve conflicts if any** (rare on main, but possible)
-   ```bash
-   git status  # Check for conflicts
-   # Edit files to resolve
-   git add .
-   git commit -m "resolve: merge conflicts from remote main"
-   ```
-
-4. **Push changes** (if you had local commits)
-   ```bash
-   git push origin main
-   ```
-
-**Why simpler:** Usually fast-forward merge, no conflicts, no testing needed.
-
-**When to use:** Update local main with latest remote changes.
+# 3. Push if you had local commits
+git push origin main
+\`\`\`
 
 ## Error Handling
 
 ### Auto-Commit Behavior
-```
+
+\`\`\`
 ℹ️ Auto-committing uncommitted changes
-
 Modified: 3 files
-Untracked: 1 file
+Action: Creating enhanced WIP commit with file list
+\`\`\`
 
-Action: Creating WIP commit
-  git add .
-  git commit -m "wip: auto-commit before sync"
-```
+### Remote Branch Missing
 
-**Note:** Uncommitted changes are automatically committed with a "wip:" prefix before syncing. This ensures a clean working tree and allows you to continue the sync safely.
-
-### Remote Branch Doesn't Exist
-```
-⚠️ Warning: Branch not pushed to remote yet
-
-Current: feature/23-task
-Remote: Not found
-
-Action: Push first
-  git push -u origin feature/23-task
-Then: /sync
-```
+\`\`\`
+⚠️ Branch not pushed to remote yet
+Action: git push -u origin <branch>
+\`\`\`
 
 ### Tests Failing After Merge
-```
-❌ Error: Tests failing after merge
 
-Failed: 2 tests in src/auth.test.ts
+Enhanced fix commit message:
 
-Next steps:
-  1. Review changes: git log origin/main..HEAD
-  2. Fix failing tests
-  3. Commit: git commit -m "fix: resolve test failures"
-  4. Continue: /sync --skip-tests (not recommended)
-```
+\`\`\`bash
+BRANCH=\$(git rev-parse --abbrev-ref HEAD)
+git commit -m "fix: resolve test failures after sync
+
+Branch: \${BRANCH}
+Cause: API changes from main merge
+Resolution: Updated test expectations"
+\`\`\`
+
+## Advanced Scenarios
+
+For complex scenarios:
+- Long-running branches (100+ commits behind)
+- Conflicting package.json dependencies
+- Emergency hotfix during sync
+- Large repository optimization
+- Performance tuning
+
+See **[SYNC-STRATEGIES.md](SYNC-STRATEGIES.md)**
 
 ## Usage Examples
 
-**Example 1: Daily Sync (feature branch)**
-- User: "sync my branch with main"
+**Example 1: Daily Sync**
+- Command: "sync my branch"
 - Flow: Fetch → Merge → Test → Push
-- Result: ✅ Branch synced successfully (~1 min)
+- Time: ~1 min
 
-**Example 2: Sync with Conflicts**
-- User: "pull latest changes from main"
-- Flow: Fetch → Merge → ⚠️ Conflicts → Resolve → Test → Push
-- Result: ✅ Conflicts resolved (~5-10 min)
+**Example 2: With Conflicts**
+- Command: "pull latest changes"
+- Flow: Fetch → Merge → Conflicts → Resolve → Test → Push
+- Time: ~5-10 min
 
-**Example 3: Sync Main Branch**
-- User: "sync" (on main branch)
-- Flow: Fetch → Fast-forward merge → Push
-- Result: ✅ Main synced (~30 sec)
+**Example 3: Main Branch**
+- Command: "sync" (on main)
+- Flow: Fetch → Pull → Push
+- Time: ~30 sec
 
 ## Best Practices
 
-1. **Sync frequently** - Daily or before starting new work
-2. **Auto-commits WIP** - Uncommitted changes automatically committed with "wip:" prefix
-3. **Test after merge** - Always verify tests pass
-4. **Resolve conflicts carefully** - Don't blindly choose "theirs" or "ours"
-5. **Communicate** - Tell team if resolving complex conflicts
+1. **Sync frequently** - Daily or before new work
+2. **Enhanced messages** - File lists, branch names, commit counts included
+3. **Test after merge** - Always verify
+4. **Careful resolution** - Don't blindly accept changes
+5. **Communicate** - Notify team of complex merges
 
 ## Task Management
 
-**After each sync step**, update progress:
+Track progress with TaskCreate/TaskUpdate:
 
-**For Feature Branches:**
-```
-Auto-commit completed → Update Task #1
-Fetch completed → Update Task #2
-Conflicts checked → Update Task #3
-Merge executed → Update Task #4
-Conflicts resolved → Update Task #5
-Tests passed → Update Task #6
-Branch pushed → Update Task #7
-```
-
-**For Main Branch:**
-```
-Auto-commit completed → Update Task #1
-Fetch completed → Update Task #2
-Pull/merge completed → Update Task #3
-Conflicts resolved → Update Task #4
-Branch pushed → Update Task #5
-```
-
-Provides real-time visibility of sync progress.
+\`\`\`
+Task #1: Auto-commit → completed
+Task #2: Fetch → completed
+...
+Task #7: Push → completed
+\`\`\`
 
 ## Final Verification
 
-**Before declaring sync complete**, verify:
-
-**For Feature Branches:**
-```
-- [ ] All 7 sync tasks completed
-- [ ] Uncommitted changes auto-committed
-- [ ] Main branch merged into feature branch
+\`\`\`
+- [ ] All tasks completed
+- [ ] Enhanced commit messages used
 - [ ] No remaining conflicts
 - [ ] Tests passing
-- [ ] Changes pushed to remote
+- [ ] Changes pushed
 - [ ] Working tree clean
-```
-
-**For Main Branch:**
-```
-- [ ] All 5 sync tasks completed
-- [ ] Uncommitted changes auto-committed
-- [ ] Remote main merged into local main
-- [ ] No remaining conflicts
-- [ ] Changes pushed to remote (if applicable)
-- [ ] Working tree clean
-```
-
-Missing items indicate incomplete sync.
+\`\`\`
 
 ## Workflow Skills Requirements
 
-This is a **workflow skill** and must follow the standard pattern:
+Follows standard pattern:
+1. **TaskCreate** - Todo list
+2. **TaskUpdate** - Progress tracking
+3. **Verification** - Final checks
 
-1. **TaskCreate** at start - Create todo list for progress tracking
-2. **TaskUpdate** during execution - Mark tasks in_progress → completed
-3. **Verification checklist** - Final validation before completion
-
-**See**: [WORKFLOW_PATTERNS.md](../WORKFLOW_PATTERNS.md) for complete implementation guide
+See: [WORKFLOW_PATTERNS.md](../WORKFLOW_PATTERNS.md)
 
 ## Related Skills
 
-- **/start-issue** - Creates feature branch from main
-- **/finish-issue** - Includes final sync before PR
-- **/review** - Review code after syncing
+- **/start-issue** - Create feature branch
+- **/finish-issue** - Final sync before PR
+- **/review** - Code review after sync
+
+## Documentation
+
+- **[CONFLICT-HANDLING.md](CONFLICT-HANDLING.md)** - Detailed conflict resolution
+- **[SYNC-STRATEGIES.md](SYNC-STRATEGIES.md)** - Advanced scenarios
 
 ---
 
-**Version:** 2.3.0
-**Pattern:** Tool-Reference (guides sync process)
-**Compliance:** ADR-001 Section 4 ✅
+**Version:** 2.4.0
+**Pattern:** Tool-Reference
+**Compliance:** ADR-001 ✅
 **Changelog:**
-- v2.3.0: Auto-commit uncommitted changes before sync (no user prompt needed)
-- v2.2.0: Added main branch sync support - pull and push when already on main
-- v2.1.0: Initial stable version with feature branch sync
+- v2.4.0: Enhanced commit messages + split documentation (Issue #558)
+- v2.3.0: Auto-commit before sync
+- v2.2.0: Main branch sync support

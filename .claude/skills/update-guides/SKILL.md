@@ -1,6 +1,6 @@
 ---
 name: update-guides
-version: "2.0.0"
+version: "3.1.0"
 framework-only: true
 description: Sync AI development guides and profiles between projects - ensures AI has latest reference standards.
 triggers:
@@ -16,18 +16,22 @@ last-updated: "2026-03-28"
 
 # update-guides - Sync AI Development Guides
 
-Synchronize AI development reference guides and profiles from framework to target projects.
+Synchronize AI development reference guides and profiles from ai-dev framework to target projects.
 
 ## Overview
 
-This skill syncs AI development reference standards (guides + profiles) between the framework and target projects.
+This skill syncs AI development reference standards (guides + profiles) from ai-dev framework to target projects.
+
+**Behavior:** Always syncs FROM current directory (ai-dev) TO target project path.
 
 **What it does:**
-1. Detects framework's `.claude/guides/` directory
+1. Detects ai-dev's `.claude/guides/` directory
 2. Deletes target project's `.claude/guides/` (if exists)
-3. Copies all AI guides and profiles from framework to target
+3. Copies all AI guides and profiles from ai-dev to target
 4. Creates `.ai-guides-version` tracking file
 5. Generates detailed sync report
+
+**Note**: Must be run from ai-dev framework directory.
 
 **Why it's needed:**
 AI skills read these guides and profiles to get development standards and workflows. When guides are updated in the framework, projects need the latest versions to ensure AI uses current best practices.
@@ -101,28 +105,154 @@ AI skills read these guides and profiles to get development standards and workfl
 ## Arguments
 
 ```bash
-/update-guides --from FRAMEWORK_DIR [TARGET_PROJECT]
+/update-guides <target-path> [options]
 ```
 
-**Parameters:**
-- `--from FRAMEWORK_DIR` - Path to framework directory (required)
-- `TARGET_PROJECT` - Path to target project (default: current directory)
+**Required:**
+- `<target-path>` - Target project path
+
+**Options:**
 - `--skip-validation` - Skip path validation (used when called by update-framework)
 
 **Common usage:**
 ```bash
-# Sync from framework to specific project
-/update-guides --from ~/dev/ai-dev ../u-safe
+# Must be in ai-dev directory
+cd ~/dev/ai-dev
 
-# Sync to current project
-/update-guides --from ~/dev/ai-dev .
+# Sync to target project
+/update-guides ../u-safe
 
-# Absolute paths
-/update-guides --from /Users/woo/dev/ai-dev /Users/woo/dev/my-project
+# Absolute path
+/update-guides ~/projects/my-app
 
 # Skip validation (when called by meta-skill)
-/update-guides --from ~/dev/ai-dev ../u-safe --skip-validation
+/update-guides ../u-safe --skip-validation
 ```
+
+## Safety Features
+
+This skill includes multiple safety mechanisms to ensure reliable guide synchronization:
+
+### 1. Pre-Sync Validation
+
+**What it checks:**
+- Framework directory contains `.claude/guides/` directory
+- All 4 subdirectories exist (workflow, doc-templates, rules, profiles)
+- Minimum file count threshold met (at least 15 files expected)
+- Target path is valid and writable
+
+**Why it matters:**
+- Prevents syncing incomplete or corrupted guides
+- Ensures target project can receive the sync
+- Catches configuration errors before file operations
+
+**On failure:**
+```
+❌ 错误：框架目录不存在 AI guides
+   期望路径: /Users/woo/dev/ai-dev/.claude/guides
+
+请确保框架目录包含 .claude/guides/ 并且包含 4 个子目录
+```
+
+### 2. Framework Directory Detection
+
+**What it checks:**
+- Current directory is ai-dev framework (has `.claude/guides/`)
+- Not accidentally running from target project
+- Framework has complete guide structure
+
+**Why it matters:**
+- Skill ONLY works from ai-dev → target (one direction)
+- Running from wrong directory would sync incomplete guides
+- Prevents accidental reverse sync (target → framework)
+
+**On failure:**
+```
+❌ 错误：必须从 ai-dev 框架目录运行
+
+当前目录: /Users/woo/dev/my-project
+期望目录: /Users/woo/dev/ai-dev (包含 .claude/guides/)
+
+修复: cd ~/dev/ai-dev && /update-guides ../my-project
+```
+
+### 3. Complete Replacement Strategy
+
+**What it does:**
+- Deletes target `.claude/guides/` directory before copying
+- Ensures clean slate for sync
+- No incremental merging or partial updates
+
+**Why it matters:**
+- Prevents stale files from remaining (handles renames/deletions)
+- Ensures target exactly matches framework
+- Simpler than complex diff/merge logic
+- No risk of version conflicts
+
+**Safety consideration:**
+- Deletes entire directory → requires confirmation if manual files detected
+- Warning shown if target has modifications
+
+### 4. Atomic Operation Validation
+
+**What it checks:**
+- Copy operation succeeded completely
+- Target directory exists after copy
+- File count matches expected (20 files)
+- All subdirectories present
+
+**Why it matters:**
+- Detects partial copy failures
+- Ensures sync completed successfully
+- Prevents broken guide state
+
+**On failure:**
+```
+❌ 错误：拷贝失败
+   期望文件数: 20
+   实际文件数: 12
+
+可能原因：
+- 磁盘空间不足
+- 权限问题
+- 拷贝中断
+
+修复：检查磁盘空间和权限，重新运行同步
+```
+
+### 5. Version Tracking and Audit Trail
+
+**What it creates:**
+- `.claude/guides/.ai-guides-version` file with metadata
+- Records framework source path and git commit
+- Timestamps sync operation
+- Tracks file count and subdirectories synced
+
+**Why it matters:**
+- Provides audit trail for troubleshooting
+- Shows when guides were last updated
+- Enables version comparison
+- Helps debug guide-related issues
+
+**Example tracking file:**
+```yaml
+framework_path: /Users/woo/dev/ai-dev
+framework_commit: a1b2c3d4e5f6...
+synced_at: 2026-04-07T14:00:00+08:00
+synced_by: update_guides.py v2.0.0
+file_count: 20
+subdirs: workflow,doc-templates,rules,profiles
+```
+
+### Safety Best Practices
+
+When syncing guides:
+
+1. **Always run from ai-dev** - Skill only works in one direction
+2. **Check version file** - Use `.ai-guides-version` to verify sync status
+3. **Backup custom changes** - If you modified guides in target, back them up first
+4. **Verify framework complete** - Ensure framework has all 20 files before syncing
+5. **Test after sync** - Run related skills to verify guides work correctly
 
 ## Workflow Steps
 
@@ -239,7 +369,8 @@ echo "AI 现在可以使用最新的开发参考标准（20 个文件，4 个子
 
 **Command:**
 ```bash
-/update-guides --from ~/dev/ai-dev ~/dev/u-safe
+cd ~/dev/ai-dev
+/update-guides ~/dev/u-safe
 ```
 
 **Output:**
@@ -287,7 +418,8 @@ AI 现在可以使用最新的开发参考标准（20 个文件，4 个子目录
 
 **Command:**
 ```bash
-/update-guides --from /invalid/path ../my-project
+cd /invalid/path
+/update-guides ../my-project
 ```
 
 **Output:**
@@ -334,9 +466,8 @@ if args.sync_guides:
     subprocess.run([
         "python3",
         ".claude/skills/update-guides/scripts/update_guides.py",
-        "--from", args.framework_path,
-        "--to", project_path
-    ])
+        project_path
+    ], cwd=args.framework_path)  # Run from framework directory
 ```
 
 ### With Related Skills
@@ -352,7 +483,7 @@ if args.sync_guides:
 **Workflow:**
 ```
 1. Update guides in framework: Edit .claude/guides/*.md
-2. Sync to projects: /update-guides --from framework project
+2. Sync to projects: cd ~/dev/ai-dev && /update-guides ../project
 3. AI skills read guides: Skills use Read tool to access guides
 4. AI executes with standards: Guides inform AI's decisions
 ```
@@ -361,12 +492,231 @@ if args.sync_guides:
 
 | Error | Cause | Solution |
 |-------|-------|----------|
-| Framework path missing | --from not specified | Add --from argument |
-| Framework guides missing | .claude/guides/ doesn't exist | Create guides in framework first |
+| Framework guides missing | .claude/guides/ doesn't exist in current directory | Run from ai-dev directory |
 | Missing subdirectory | One of 4 subdirectories missing | Check framework has workflow, doc-templates, rules, profiles |
 | Target not writable | Permission denied | Check directory permissions |
+| Target path missing | Target path not provided | Provide target path as argument |
 | Copy failed | Disk full, permissions | Check disk space and permissions |
 | Incomplete guides | <20 files found | Warning shown, continues anyway |
+
+## Usage Examples
+
+This section provides practical examples of update-guides usage across different scenarios.
+
+### Example 1: Basic Guide Sync (Happy Path)
+
+**Scenario**: Sync latest guides from framework to target project after guide updates.
+
+**User says:**
+> "sync the latest AI guides to my project"
+
+**Command:**
+```bash
+cd ~/dev/ai-dev
+/update-guides ../u-safe
+```
+
+**What happens:**
+1. **Validation** - Checks framework has `.claude/guides/` with 4 subdirectories
+2. **Delete existing** - Removes `../u-safe/.claude/guides/` if exists
+3. **Copy guides** - Copies all 20 files from framework to target
+4. **Create version file** - Records sync metadata
+5. **Generate report** - Shows detailed file list
+
+**Output:**
+```
+📋 同步 AI 开发指南
+   框架: /Users/woo/dev/ai-dev/.claude/guides
+   目标: /Users/woo/dev/u-safe/.claude/guides
+
+🗑️ 删除现有 guides 目录...
+📋 拷贝 AI 开发指南...
+📝 创建版本标记...
+
+✅ 同步完成 - 20 个文件已同步
+
+📁 workflow/ (6 files)
+  ✅ README.md
+  ✅ ADR_GUIDE.md
+  ✅ CLAUDE_MD_GUIDE.md
+  ✅ ISSUE_LIFECYCLE_GUIDE.md
+  ✅ PROJECT_PLANNING_GUIDE.md
+  ✅ SKILL_GUIDE.md
+
+[... other subdirectories ...]
+
+AI 现在可以使用最新的开发参考标准（20 个文件）
+```
+
+**Time:** ~2 seconds
+**Files affected:** 20 files created/replaced in target
+
+### Example 2: Sync to Multiple Projects
+
+**Scenario**: After updating framework guides, sync to all active projects.
+
+**User says:**
+> "sync AI guides to all my projects"
+
+**Commands:**
+```bash
+cd ~/dev/ai-dev
+
+# Sync to each project
+/update-guides ../u-safe
+/update-guides ../my-tauri-app
+/update-guides ../nextjs-project
+```
+
+**What happens:**
+Each project receives identical guide copies:
+1. **First sync** (u-safe) - Complete copy, creates version file
+2. **Second sync** (my-tauri-app) - Complete copy with same content
+3. **Third sync** (nextjs-project) - Complete copy with same content
+
+**Benefits:**
+- All projects use same guide versions
+- Consistent AI behavior across projects
+- Single source of truth (framework)
+
+**Time:** ~6 seconds (3 projects × 2 seconds each)
+
+**Verification:**
+```bash
+# Check version files match
+cat ~/dev/u-safe/.claude/guides/.ai-guides-version
+cat ~/dev/my-tauri-app/.claude/guides/.ai-guides-version
+cat ~/dev/nextjs-project/.claude/guides/.ai-guides-version
+
+# All should show same framework_commit and file_count
+```
+
+### Example 3: Error Recovery - Framework Not Found
+
+**Scenario**: User accidentally runs from wrong directory.
+
+**User says:**
+> "sync guides to my project"
+
+**Command:**
+```bash
+cd ~/dev/my-project  # ❌ Wrong directory
+/update-guides ../u-safe
+```
+
+**What happens:**
+1. **Validation fails** - No `.claude/guides/` in current directory
+2. **Error shown** - Clear message with expected path
+3. **No files modified** - Target project unchanged
+
+**Output:**
+```
+❌ 错误：框架目录不存在 AI guides
+   当前目录: /Users/woo/dev/my-project
+   期望路径: /Users/woo/dev/ai-dev/.claude/guides
+
+请确保框架目录包含 .claude/guides/ 并且包含 4 个子目录
+（workflow, doc-templates, rules, profiles）
+
+修复步骤:
+1. cd ~/dev/ai-dev
+2. /update-guides ../my-project
+```
+
+**User fixes:**
+```bash
+cd ~/dev/ai-dev  # ✅ Correct directory
+/update-guides ../my-project  # ✅ Works now
+```
+
+**Key insight:** Clear error messages guide user to correct usage.
+
+### Example 4: Incomplete Framework Detection
+
+**Scenario**: Framework missing some guides (partial checkout or corruption).
+
+**Setup:**
+```bash
+cd ~/dev/ai-dev
+# Simulate corruption: delete a subdirectory
+rm -rf .claude/guides/profiles/
+```
+
+**Command:**
+```bash
+/update-guides ../my-project
+```
+
+**What happens:**
+1. **Validation fails** - Missing subdirectory detected
+2. **Error shown** - Lists missing subdirectory
+3. **Sync aborted** - Prevents incomplete sync
+
+**Output:**
+```
+❌ 错误：缺少子目录 profiles
+   期望: .claude/guides/profiles/
+
+框架不完整，无法同步。
+
+修复步骤:
+1. 检查 framework 完整性
+2. 如果使用 git: git checkout .claude/guides/
+3. 如果是手动删除: 恢复缺失目录
+```
+
+**Recovery:**
+```bash
+# Restore framework
+git checkout .claude/guides/profiles/
+
+# Verify structure
+ls -la .claude/guides/
+# Should show: workflow/ doc-templates/ rules/ profiles/
+
+# Retry sync
+/update-guides ../my-project  # ✅ Works now
+```
+
+**Key insight:** Pre-flight checks prevent syncing corrupted/incomplete guides.
+
+### Example 5: Integration with update-framework
+
+**Scenario**: Sync guides as part of complete framework update.
+
+**User says:**
+> "update the entire framework in my project"
+
+**Command:**
+```bash
+cd ~/dev/ai-dev
+/update-framework ../my-project
+```
+
+**What happens (simplified):**
+```
+Phase 1: /update-pillars ../my-project
+  → Syncs 18 Pillar files
+
+Phase 2: /update-skills ../my-project
+  → Syncs 35+ skill directories
+
+Phase 3 (Optional): /update-guides ../my-project  ← THIS SKILL
+  → Syncs 20 guide files
+  → Uses --skip-validation flag (called by meta-skill)
+```
+
+**Output for guides portion:**
+```
+📋 Step 3/3: Syncing AI guides...
+✅ Guides 同步完成: 20 个文件
+
+(Simplified output when called by meta-skill)
+```
+
+**Time:** ~15 seconds total (guides = ~2 seconds)
+
+**Key insight:** Guides sync is optional in framework updates (can run independently).
 
 ## Best Practices
 
@@ -469,11 +819,15 @@ This reduces total output length when update-framework orchestrates multiple syn
 
 ---
 
-**Version:** 1.3.0
+**Version:** 3.1.0
 **Pattern:** Simple (SKILL.md + Bash script)
-**Compliance:** ADR-001 ✅
-**Last Updated:** 2026-03-28
+**Compliance:** ADR-001 ✅ | ADR-020 ✅
+**Last Updated:** 2026-04-07
 **Changelog:**
+- v3.1.0 (2026-04-07): Added Safety Features and Usage Examples sections for ADR-020 compliance (Issue #517)
+- v3.0.0 (2026-04-06): **BREAKING** - Removed --from/--to parameters, now only supports ai-dev → target (one direction)
+- v2.1.0 (2026-04-06): **FEATURE** - Default to --to (push) when only path provided, unified with update-skills/update-pillars
+- v2.0.0 (2026-04-06): **BREAKING** - Changed parameter format to support --from/--to like other update-* skills
 - v1.3.0 (2026-03-28): Update ai-guides structure documentation - 4 subdirectories, 20 files total
 - v1.2.0 (2026-03-27): Added profiles support
 - v1.0.0 (2026-03-24): Initial release - sync 6 AI guides between projects

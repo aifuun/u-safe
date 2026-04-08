@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
-"""Update skills between projects with clean mode support.
+"""Update skills from current directory (ai-dev) to target project.
 
 This script provides:
 1. Smart sync with version detection
 2. Clean mode for complete directory replacement
 3. Dry-run preview capabilities
 4. Safety measures (confirmation, mutual exclusion)
+
+Must be run from ai-dev framework directory.
 """
 
 import argparse
@@ -24,20 +26,13 @@ from utils.sync import filter_framework_only_skills
 def parse_arguments():
     """Parse command line arguments with mutual exclusion checks."""
     parser = argparse.ArgumentParser(
-        description="Sync skills between projects with optional clean mode"
+        description="Sync skills from current directory (ai-dev) to target project"
     )
 
-    # Direction (mutually exclusive)
-    direction_group = parser.add_mutually_exclusive_group(required=True)
-    direction_group.add_argument(
-        "--from",
-        dest="source",
-        help="Source project path (pull skills from)"
-    )
-    direction_group.add_argument(
-        "--to",
-        dest="target_push",
-        help="Target project path (push skills to)"
+    # Target directory (required positional argument)
+    parser.add_argument(
+        "target",
+        help="Target project path to sync skills to"
     )
 
     # Clean mode
@@ -222,15 +217,9 @@ def main():
     """Main entry point."""
     args = parse_arguments()
 
-    # Determine source and target
-    if args.source:
-        # Pull from source
-        source_project = Path(args.source).expanduser().resolve()
-        target_project = Path.cwd()
-    else:
-        # Push to target
-        source_project = Path.cwd()
-        target_project = Path(args.target_push).expanduser().resolve()
+    # Source is always current directory (must be ai-dev)
+    source_project = Path.cwd()
+    target_project = Path(args.target).expanduser().resolve()
 
     source_skills = source_project / ".claude" / "skills"
     target_skills = target_project / ".claude" / "skills"

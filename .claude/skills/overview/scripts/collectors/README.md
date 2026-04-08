@@ -186,7 +186,7 @@ source modules/collect-git.sh
 git_data=$(collect_git_status)
 
 # New way (Python)
-git_data=$(python3 collectors/git_collector.py)
+git_data=$(uv run collectors/git_collector.py)
 ```
 
 Or directly from Python:

@@ -17,34 +17,96 @@ user-invocable: true
 
 **Migrated from**: `/adr` v1.1.0
 
-## What Changed
+## Overview
 
-- ✅ **Renamed**: `adr` → `manage-adrs` (unified manage-* naming)
-- ✅ **Profile Integration**: Reads `docs/project-profile.md` for pillars
-- ✅ **Template Customization**: ADR templates adapt based on active pillars
-- ✅ **Error Handling**: Graceful handling of missing configuration
+This skill provides profile-aware Architecture Decision Record (ADR) management with intelligent template customization.
 
-## Purpose
+**What it does:**
+1. **Creates ADRs** - Auto-assigns numbers, generates files from templates
+2. **Profile integration** - Reads `docs/project-profile.md` for pillar configuration
+3. **Template customization** - Adds pillar-specific sections automatically (Type Safety for Pillar A, Error Handling for Pillar K, etc.)
+4. **Validates ADRs** - Checks structure, required sections, and pillar-specific content
+5. **Maintains index** - Auto-updates `docs/ADRs/README.md` and `CHECKLIST.md`
+6. **Lists ADRs** - Shows all decisions with status and metadata
+7. **Shows details** - Displays ADR summary and context
 
-Profile-aware ADR management with automatic template customization based on project pillars.
+**Why it's needed:**
+Manual ADR creation is error-prone and inconsistent. Developers forget numbering conventions, skip required sections, or omit pillar-specific considerations. This skill automates the mechanics while enforcing project-specific architecture standards.
 
-**Why This Skill Exists**:
-- ✅ Ensures consistent ADR formatting across the project
-- ✅ Automates mechanical tasks (numbering, indexing, metadata)
-- ✅ **NEW**: Customizes ADR templates based on project pillars
-- ✅ **NEW**: Validates profile configuration before operations
-- ✅ Reduces human error (duplicate numbers, missing index updates)
+**When to use:**
+- Record an architecture decision ("use Zustand for state", "implement saga pattern")
+- List existing ADRs to check for similar decisions
+- Validate an ADR before marking it "Accepted"
+- Show ADR details during implementation
+
+**Value proposition:**
+- Saves 10-15 minutes per ADR (manual creation time)
+- Ensures consistency across all architectural decisions
+- Prevents duplicate or conflicting ADRs
+- Adapts documentation to project's active pillars
+
+## Arguments
+
+```bash
+/manage-adrs create "<title>" [options]
+/manage-adrs list [--status=<status>]
+/manage-adrs show <number>
+/manage-adrs validate <number>
+```
+
+**Common usage:**
+```bash
+/manage-adrs create "Use Zustand Vanilla Stores"
+/manage-adrs list --status=Accepted
+/manage-adrs show 10
+/manage-adrs validate 10
+```
+
+**Options:**
+
+### create command
+- `"<title>"` - Decision title (required, will be converted to kebab-case for filename)
+- No additional options currently supported
+
+### list command
+- `--status=<status>` - Filter by status (Proposed, Accepted, Rejected, Deprecated, Superseded)
+- Default: Shows all ADRs
+
+### show command
+- `<number>` - ADR number (required, e.g., 10 for ADR-010)
+
+### validate command
+- `<number>` - ADR number to validate (required)
 
 ---
 
-## Usage
+## Safety Features
 
-```bash
-/manage-adrs create "<title>"       # Create new ADR with auto-assigned number
-/manage-adrs list                   # List all ADRs with status
-/manage-adrs show <number>          # Show ADR summary
-/manage-adrs validate <number>      # Validate ADR completeness
-```
+**Pre-flight checks:**
+- ✅ Project profile exists (`docs/project-profile.md`)
+- ✅ Profile has valid YAML syntax
+- ✅ ADRs directory exists (`docs/ADRs/`)
+- ✅ Write permissions for ADRs directory
+- ✅ No duplicate ADR numbers
+
+**Smart defaults:**
+- Auto-assigns next sequential number (scans existing ADRs)
+- Uses standard template if pillars not specified
+- Gracefully handles missing optional fields
+- Creates index files if missing
+
+**Validation points:**
+- YAML frontmatter structure (number, date, status, authors)
+- Required sections present (Context, Decision, Consequences, Alternatives)
+- Pillar-specific sections if pillars are active
+- File naming convention (NNN-kebab-case-title.md)
+- Status values (Proposed, Accepted, Rejected, Deprecated, Superseded)
+
+**Data integrity:**
+- Atomic file operations (no partial writes)
+- Index updates synchronized with file creation
+- Checklist updates match ADR creation
+- Title consistency (file name ↔ ADR title)
 
 ---
 
@@ -96,7 +158,7 @@ fi
 
 ```bash
 # Validate YAML before reading
-if ! python3 -c "import yaml; yaml.safe_load(open('docs/project-profile.md'))" 2>/dev/null; then
+if ! uv run -c "import yaml; yaml.safe_load(open('docs/project-profile.md'))" 2>/dev/null; then
   echo "❌ Error: Invalid YAML syntax in project-profile.md"
   exit 1
 fi
@@ -351,6 +413,175 @@ function useComponentLogic() {
 - ✅ Profile-aware template customization
 - ✅ Pillar-specific guidance
 - ✅ Error handling for missing config
+
+---
+
+## Usage Examples
+
+### Example 1: Create ADR with Pillar-Specific Sections
+
+**Scenario**: Recording a state management decision for a Tauri project with pillars A, K, L
+
+**Command:**
+```bash
+/manage-adrs create "Use Zustand Vanilla Stores"
+```
+
+**What happens:**
+1. **Validate profile** - Reads `docs/project-profile.md`, detects pillars: A (Nominal Typing), K (Result Type), L (Headless UI)
+2. **Auto-assign number** - Scans `docs/ADRs/`, finds last is 009, assigns 010
+3. **Customize template** - Adds 3 pillar-specific sections:
+   - Type Safety (Pillar A)
+   - Error Handling (Pillar K)
+   - UI Pattern (Pillar L)
+4. **Create file** - `docs/ADRs/010-use-zustand-vanilla-stores.md`
+5. **Update index** - Adds row to `docs/ADRs/README.md`
+6. **Update checklist** - Adds entry to `docs/ADRs/CHECKLIST.md`
+
+**Output:**
+```
+✅ Loaded profile: tauri (pillars: A, K, L)
+✅ Created ADR-010: docs/ADRs/010-use-zustand-vanilla-stores.md
+✅ Added pillar-specific sections:
+   - Type Safety (Pillar A)
+   - Error Handling (Pillar K)
+   - UI Pattern (Pillar L)
+✅ Updated index in docs/ADRs/README.md
+✅ Updated checklist in docs/ADRs/CHECKLIST.md
+
+Next steps:
+1. Fill in Context section (why this decision?)
+2. Document Decision details
+3. **Type Safety**: How does this affect nominal types? (Pillar A)
+4. **Error Handling**: What Result<T, E> patterns apply? (Pillar K)
+5. **UI Pattern**: How does this work with headless components? (Pillar L)
+6. List at least 2 Alternatives Considered
+7. Add Consequences (positive + negative)
+8. Change Status to "Accepted" when ready
+```
+
+**Time:** ~30 seconds (vs 10-15 minutes manual creation)
+
+### Example 2: List ADRs by Status
+
+**Scenario**: Find all accepted architectural decisions
+
+**Command:**
+```bash
+/manage-adrs list --status=Accepted
+```
+
+**Output:**
+```
+📋 ADRs (Status: Accepted)
+
+| # | Title | Date | Authors |
+|---|-------|------|---------|
+| 001 | Use TypeScript for type safety | 2026-01-15 | Team |
+| 003 | Implement Result<T, E> pattern | 2026-02-01 | Alice |
+| 007 | Use Tauri for desktop app | 2026-03-10 | Bob |
+| 010 | Use Zustand Vanilla Stores | 2026-04-07 | Charlie |
+
+Total: 4 Accepted ADRs
+```
+
+**Time:** <5 seconds
+
+### Example 3: Validate ADR Completeness
+
+**Scenario**: Check if ADR-010 has all required sections before marking "Accepted"
+
+**Command:**
+```bash
+/manage-adrs validate 010
+```
+
+**What happens:**
+1. **Read ADR file** - `docs/ADRs/010-use-zustand-vanilla-stores.md`
+2. **Check YAML frontmatter** - number, date, status, authors
+3. **Check required sections** - Context, Decision, Consequences, Alternatives
+4. **Check pillar sections** - Type Safety (A), Error Handling (K), UI Pattern (L)
+5. **Verify completeness** - No empty sections, all questions answered
+
+**Output (success):**
+```
+✅ ADR-010 validation PASSED
+
+Required sections:
+✅ YAML frontmatter (number, date, status, authors)
+✅ Context
+✅ Decision
+✅ Consequences
+✅ Alternatives Considered
+
+Pillar-specific sections (tauri profile):
+✅ Type Safety (Pillar A)
+✅ Error Handling (Pillar K)
+✅ UI Pattern (Pillar L)
+
+Status: Ready to mark as "Accepted"
+```
+
+**Output (failure):**
+```
+❌ ADR-010 validation FAILED
+
+Missing sections:
+❌ Alternatives Considered (required)
+⚠️  UI Pattern (Pillar L) - section exists but empty
+
+Recommendations:
+1. Add at least 2 alternatives you considered
+2. Fill in UI Pattern section:
+   - How does Zustand work with headless components?
+   - What component patterns does this enable?
+3. Re-run validation after fixes
+```
+
+**Time:** ~10 seconds
+
+### Example 4: Show ADR Summary
+
+**Scenario**: Quick reference to an ADR during implementation
+
+**Command:**
+```bash
+/manage-adrs show 10
+```
+
+**Output:**
+```
+📄 ADR-010: Use Zustand Vanilla Stores
+
+Status: Accepted
+Date: 2026-04-07
+Authors: Charlie, David
+
+Context:
+  We need a state management solution that works well with
+  our Tauri desktop app and supports TypeScript nominal types.
+
+Decision:
+  Use Zustand vanilla stores (non-React API) for state management.
+
+Key Consequences:
+  ✅ Better TypeScript integration with nominal types
+  ✅ Works outside React components (Tauri IPC)
+  ❌ Less ecosystem support than Redux
+
+Alternatives Considered:
+  - Redux Toolkit
+  - Jotai
+  - Custom solution
+
+Related ADRs:
+  - ADR-001 (TypeScript)
+  - ADR-003 (Result<T, E>)
+
+File: docs/ADRs/010-use-zustand-vanilla-stores.md
+```
+
+**Time:** <5 seconds
 
 ---
 

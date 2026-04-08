@@ -106,8 +106,8 @@ Phase 1: /start-issue → Phase 1.5: /eval-plan → Phase 2: /execute-plan → P
 
 **错误示例**：
 ```python
-Skill("update-pillars", args="--from ~/framework")
-Skill("update-skills", args="--from ~/framework")
+Skill("update-pillars", args="~/framework")
+Skill("update-skills", args="~/framework")
 ```
 
 **正确示例**：
@@ -233,10 +233,10 @@ Skill("{{sync-skill-2}}", args="{{args-2}}")
 
 **修复**：
 ```diff
-- Skill("update-pillars", args="--from ~/framework")
-- Skill("update-skills", args="--from ~/framework")
-+ Skill("{{sync-skill-1}}", args="{{args-1}}")
-+ Skill("{{sync-skill-2}}", args="{{args-2}}")
+- Skill("update-pillars", args="~/framework")
+- Skill("update-skills", args="~/framework")
++ Skill("{{sync-skill-1}}", args="{{target-path}}")
++ Skill("{{sync-skill-2}}", args="{{target-path}}")
 ```
 
 ---

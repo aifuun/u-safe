@@ -357,7 +357,8 @@ Same 5 questions as before:
 ### Example 1: Update Framework (Profile Auto-Detected)
 
 ```bash
-$ /update-framework --from ~/dev/ai-dev
+$ cd ~/dev/ai-dev
+$ /update-framework ../my-app
 
 Profile detected: minimal
 Loading profile configuration...
@@ -375,7 +376,8 @@ Total: 52 items synced (37 filtered out by profile)
 ### Example 2: Update Framework (No Profile, Uses Questionnaire)
 
 ```bash
-$ /update-framework --to ~/projects/new-app
+$ cd ~/dev/ai-dev
+$ /update-framework ~/projects/new-app
 
 ℹ️  No profile detected in .framework-install
 ℹ️  Using tech stack questionnaire for filtering
@@ -403,7 +405,8 @@ Total: 89 items synced (filtered by questionnaire)
 ### Example 3: Force Questionnaire with --reconfigure
 
 ```bash
-$ /update-framework --from ~/dev/ai-dev --reconfigure
+$ cd ~/dev/ai-dev
+$ /update-framework ../my-app --reconfigure
 
 Profile detected: minimal
 ⚠️  --reconfigure flag: Ignoring profile, using questionnaire

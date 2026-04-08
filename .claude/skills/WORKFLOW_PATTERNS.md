@@ -533,7 +533,8 @@ This document travels with skills when synced via `/update-skills`:
 
 ```bash
 # When syncing skills, WORKFLOW_PATTERNS.md is automatically copied
-/update-skills --from ~/dev/ai-dev
+cd ~/dev/ai-dev
+/update-skills ../my-app
 
 # What gets synced:
 ✅ .claude/skills/README.md                  # Navigation hub

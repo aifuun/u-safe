@@ -187,7 +187,7 @@ When ADR validation fails, `/check-docs --fix` can leverage `/adr`:
 
 ```bash
 # Initialize framework
-python3 scripts/init-project.py --profile=tauri --name=my-app
+uv run scripts/init-project.py --profile=tauri --name=my-app
 
 # Create documentation
 /init-docs

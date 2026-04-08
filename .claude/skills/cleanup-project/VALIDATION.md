@@ -25,7 +25,7 @@
 **Dry-run test:**
 ```bash
 $ cd ai-dev-411-cleanup-project-script-refactor
-$ python3 .claude/skills/cleanup-project/scripts/cleanup.py --dry-run
+$ uv run .claude/skills/cleanup-project/scripts/cleanup.py --dry-run
 
 🧹 Project Cleanup
 📋 Profile: common

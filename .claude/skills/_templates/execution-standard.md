@@ -23,7 +23,7 @@
 
 ```bash
 # ✅ 正确 - 使用 uv run 执行脚本
-uv run scripts/update_skills.py --from ../ai-dev
+uv run scripts/update_skills.py ../target-project
 
 uv run scripts/generate_rules.py --profile tauri
 
@@ -175,7 +175,7 @@ python3 -c "import sys; sys.path.insert(0, '.claude/skills/_scripts'); from util
 **✅ 正确方式 A（推荐）：**
 ```bash
 # 创建正式脚本
-uv run scripts/sync_skills.py --from ../ai-dev
+uv run scripts/sync_skills.py ../target-project
 ```
 
 **✅ 正确方式 B（简单操作）：**

@@ -59,12 +59,12 @@ Different tech stacks need different rules. Tauri projects need Rust + TypeScrip
 /manage-rules                    # Auto-detect profile, generate instantly
 /manage-rules --plan             # Dry-run (show what would be generated)
 /manage-rules --profile tauri    # Override profile detection
-/manage-rules --instant          # Force immediate generation (default)
+/manage-rules --confirm          # Force immediate generation (default)
 ```
 
 **Options:**
-- `--plan` - Dry-run mode (show what would be generated without creating files)
-- `--instant` - Generate immediately (default mode)
+- `--dry-run` - Preview mode (show what would be generated without creating files)
+- `--confirm` - Auto-confirm (skip confirmation prompt, generate immediately)
 - `--profile <name>` - Override auto-detected profile (tauri, nextjs-aws, minimal)
 
 ## AI Execution Instructions
@@ -83,7 +83,7 @@ if [ ! -f ".claude/skills/manage-rules/scripts/generate_rules.py" ]; then
 fi
 
 # Check dependencies installed
-python3 -c "import yaml" 2>/dev/null || {
+uv run -c "import yaml" 2>/dev/null || {
   echo "⚠️ Warning: PyYAML not installed"
   echo "Install: pip install PyYAML"
 }
@@ -101,18 +101,17 @@ profile_override = extract_arg("--profile", args)  # Optional
 ### Step 3: Execute Python Script
 
 ```bash
-# Basic execution (auto-detect profile, instant mode)
-python3 .claude/skills/manage-rules/scripts/generate_rules.py --instant
+# Basic execution (auto-detect profile, with confirmation prompt)
+uv run .claude/skills/manage-rules/scripts/generate_rules.py
+
+# Auto-confirm (skip confirmation prompt)
+uv run .claude/skills/manage-rules/scripts/generate_rules.py --confirm
 
 # Dry-run (show plan)
-python3 .claude/skills/manage-rules/scripts/generate_rules.py --dry-run
+uv run .claude/skills/manage-rules/scripts/generate_rules.py --dry-run
 
 # Override profile
-python3 .claude/skills/manage-rules/scripts/generate_rules.py --profile tauri --instant
-
-# Interactive confirmation
-python3 .claude/skills/manage-rules/scripts/generate_rules.py
-# (prompts: "Proceed with generation? [y/N]:")
+uv run .claude/skills/manage-rules/scripts/generate_rules.py --profile tauri --confirm
 ```
 
 ### Step 4: Report Results
@@ -177,6 +176,145 @@ def main():
 
 **See**: [ARCHITECTURE.md](ARCHITECTURE.md) for detailed design
 
+## Safety Features
+
+This skill includes multiple safety mechanisms to prevent errors during rule generation:
+
+### 1. Profile Validation
+
+**Purpose**: Ensure valid profile configuration before processing
+
+**How it works:**
+```python
+def validate_profile(profile_path: Path) -> dict:
+    """Validate profile file exists and has valid YAML"""
+    if not profile_path.exists():
+        raise ProfileError("Profile file not found")
+
+    with open(profile_path) as f:
+        content = f.read()
+
+    # Parse YAML frontmatter
+    if not content.startswith('---'):
+        raise ProfileError("Missing YAML frontmatter")
+
+    metadata = yaml.safe_load(frontmatter)
+
+    # Validate required fields
+    if 'rules' not in metadata:
+        raise ProfileError("Missing 'rules' configuration")
+
+    return metadata
+```
+
+**Prevents:** Missing profiles, malformed YAML, incomplete configuration
+
+### 2. Template Validation
+
+**Purpose**: Ensure templates are valid and parseable before copying
+
+**How it works:**
+```python
+def validate_template(template_path: Path) -> bool:
+    """Check template has valid structure"""
+    if not template_path.exists():
+        return False
+
+    if not template_path.suffix == '.md':
+        return False
+
+    # Check file is readable
+    try:
+        with open(template_path) as f:
+            content = f.read()
+        return True
+    except Exception:
+        return False
+```
+
+**Prevents:** Corrupt files, non-markdown files, permission errors
+
+### 3. Framework-Only Filtering
+
+**Purpose**: Prevent framework management skills from being copied to projects
+
+**How it works:**
+```python
+def has_framework_only_marker(template_path: Path) -> bool:
+    """Check if template has framework-only: true marker"""
+    with open(template_path) as f:
+        content = f.read()
+
+    if content.startswith('---'):
+        yaml_end = content.find('---', 3)
+        frontmatter = content[3:yaml_end]
+        metadata = yaml.safe_load(frontmatter)
+        return metadata.get('framework-only', False)
+
+    return False
+
+# Filter out framework-only templates
+filtered = [t for t in templates if not has_framework_only_marker(t)]
+```
+
+**Prevents:** Copying framework management skills to target projects (Issue #401)
+
+### 4. Dry-Run Mode
+
+**Purpose**: Preview changes before applying them
+
+**How it works:**
+```bash
+# Dry-run shows what would be generated
+/manage-rules --dry-run
+
+# Output shows file operations without executing
+📋 Dry Run - Would generate 34 rules:
+  - template A → destination A
+  - template B → destination B
+```
+
+**Enables:** Safe preview, verification before execution, no side effects
+
+### 5. Error Recovery
+
+**Purpose**: Graceful handling of partial failures
+
+**How it works:**
+```python
+def generate_rules(templates: List[Path], dry_run: bool) -> int:
+    """Generate rules with error handling"""
+    count = 0
+    errors = []
+
+    for template in templates:
+        try:
+            copy_template(template, destination)
+            count += 1
+        except Exception as e:
+            errors.append((template, str(e)))
+            continue  # Continue with remaining files
+
+    if errors:
+        print(f"⚠️ {len(errors)} files failed:")
+        for template, error in errors:
+            print(f"  - {template}: {error}")
+
+    return count
+```
+
+**Prevents:** Complete failure on single file error, provides partial success, logs failures
+
+### Safety Best Practices
+
+When generating rules:
+
+1. **Always use dry-run first** - Preview changes before applying
+2. **Verify profile configuration** - Check `docs/project-profile.md` is correct
+3. **Check template directory** - Ensure `.claude/guides/rules/templates/` exists
+4. **Review generated files** - Verify rules match your tech stack
+5. **Don't edit .claude/rules/ directly** - Regenerate from templates instead
+
 ## Testing
 
 **File**: `tests/test_rule_generator.py`
@@ -192,7 +330,7 @@ def main():
 **Run tests**:
 ```bash
 cd .claude/skills/manage-rules
-python3 -m unittest tests.test_rule_generator -v
+uv run -m unittest tests.test_rule_generator -v
 ```
 
 **Requirements**:
@@ -200,15 +338,15 @@ python3 -m unittest tests.test_rule_generator -v
 pip install PyYAML>=6.0
 ```
 
-## Examples
+## Usage Examples
 
-### Example 1: Basic Generation
+### Example 1: Basic Generation (Instant Mode)
 
 **User:** "generate rules for this project"
 
 **Execute:**
 ```bash
-python3 .claude/skills/manage-rules/scripts/generate_rules.py --instant
+uv run .claude/skills/manage-rules/scripts/generate_rules.py --confirm
 ```
 
 **Output:**
@@ -231,13 +369,13 @@ python3 .claude/skills/manage-rules/scripts/generate_rules.py --instant
 
 **Time:** ~2 seconds
 
-### Example 2: Dry Run
+### Example 2: Dry-Run Mode (Preview Changes)
 
 **User:** "show me what rules would be generated"
 
 **Execute:**
 ```bash
-python3 .claude/skills/manage-rules/scripts/generate_rules.py --dry-run
+uv run .claude/skills/manage-rules/scripts/generate_rules.py --dry-run
 ```
 
 **Output:**
@@ -263,13 +401,13 @@ python3 .claude/skills/manage-rules/scripts/generate_rules.py --dry-run
 
 **Time:** ~1 second
 
-### Example 3: Override Profile
+### Example 3: Profile-Aware Generation (Override Profile)
 
 **User:** "generate rules for nextjs-aws profile"
 
 **Execute:**
 ```bash
-python3 .claude/skills/manage-rules/scripts/generate_rules.py --profile nextjs-aws --instant
+uv run .claude/skills/manage-rules/scripts/generate_rules.py --profile nextjs-aws --confirm
 ```
 
 **Output:**
@@ -367,7 +505,7 @@ pip install -r requirements.txt
 **Fix:**
 ```bash
 # Override profile explicitly
-/manage-rules --profile tauri --instant
+/manage-rules --profile tauri --confirm
 
 # Or fix profile in docs/project-profile.md
 ```
@@ -386,7 +524,7 @@ framework-only: true
 ---
 
 # Then regenerate
-/manage-rules --instant
+/manage-rules --confirm
 ```
 
 ### Issue: No templates filtered
@@ -464,6 +602,34 @@ Fast because:
 - Minimal YAML parsing (frontmatter only)
 - Batch file copying
 
+## Testing
+
+This skill has comprehensive test coverage following ADR-020 standards.
+
+**Test Suite:**
+- **test_arguments.py** (6 test classes) - 参数验证测试
+- **test_functional.py** (7 test classes) - 功能测试（What it does章节）
+- **test_safety.py** (7 test classes) - 安全特性测试
+- **test_error_handling.py** (8 test classes) - 错误处理测试
+- **test_integration.py** (5 test classes) - 集成测试（Usage Examples章节）
+- **test_rule_generator.py** (4 test classes) - 核心逻辑单元测试
+
+**Coverage:** >60% overall, >80% core logic (符合 ADR-020标准)
+
+**Run tests:**
+```bash
+# All tests
+pytest .claude/skills/manage-rules/tests/
+
+# With coverage
+pytest .claude/skills/manage-rules/tests/ --cov --cov-report=html
+
+# Specific test file
+pytest .claude/skills/manage-rules/tests/test_functional.py
+```
+
+**See:** [tests/README.md](tests/README.md) for complete testing guide (if available)
+
 ## Related Skills
 
 - **/manage-claude-md --configure-profile** - Select and activate project profile
@@ -480,8 +646,8 @@ Fast because:
 
 **Migration steps:**
 1. Install dependencies: `pip install PyYAML`
-2. Test script: `python3 .claude/skills/manage-rules/scripts/generate_rules.py --dry-run`
-3. Regenerate rules: `/manage-rules --instant`
+2. Test script: `uv run .claude/skills/manage-rules/scripts/generate_rules.py --dry-run`
+3. Regenerate rules: `/manage-rules --confirm`
 
 **Behavioral compatibility:** v3.0 maintains identical behavior to v2.0 (same filtering logic, output structure, profile detection)
 

@@ -82,7 +82,7 @@ echo "---\nprofile: tauri\n---\n# Tauri Project" > docs/project-profile.md
 
 # Execute
 cd .claude/skills/manage-rules
-python3 scripts/generate_rules.py --instant
+uv run scripts/generate_rules.py --instant
 
 # Expected
 ✅ Generated ~34 rules for profile 'tauri'
@@ -101,7 +101,7 @@ python3 scripts/generate_rules.py --instant
 echo "---\nprofile: nextjs-aws\n---\n# Next.js AWS Project" > docs/project-profile.md
 
 # Execute
-python3 scripts/generate_rules.py --instant
+uv run scripts/generate_rules.py --instant
 
 # Expected
 ✅ Generated ~43 rules for profile 'nextjs-aws'
@@ -127,7 +127,7 @@ Framework management skill.
 EOF
 
 # Execute
-python3 scripts/generate_rules.py --instant
+uv run scripts/generate_rules.py --instant
 
 # Expected
 ✅ Template excluded from generation
@@ -141,7 +141,7 @@ python3 scripts/generate_rules.py --instant
 
 ```bash
 cd .claude/skills/manage-rules
-python3 -m unittest tests.test_rule_generator -v
+uv run -m unittest tests.test_rule_generator -v
 
 # Expected
 Ran 12 tests in X.XXXs
@@ -199,7 +199,7 @@ Comparing v3.0.0 (script-based) with v2.0.0 (embedded logic):
 brew install pyyaml
 
 # Option 2: Virtual environment
-python3 -m venv venv
+uv run -m venv venv
 source venv/bin/activate
 pip install PyYAML
 

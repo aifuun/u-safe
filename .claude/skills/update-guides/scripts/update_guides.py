@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
-"""Sync AI development guides between projects.
+"""Sync AI development guides from current directory to target project.
 
-This script synchronizes AI guides (.claude/guides/) from framework
-to target projects with version tracking and complete directory replacement.
+This script synchronizes AI guides (.claude/guides/) from the current directory
+(must be ai-dev) to target projects with version tracking and complete directory replacement.
 
 Usage:
-    python update_guides.py --from ~/dev/ai-dev ../u-safe
-    python update_guides.py --from ~/dev/ai-dev .
-    python update_guides.py --from ~/dev/ai-dev --to ../u-safe --dry-run
+    # Must be run from ai-dev directory
+    cd ~/dev/ai-dev
+    python update_guides.py ../u-safe
+    python update_guides.py ../u-safe --dry-run
+    python update_guides.py ~/projects/my-app
 """
 
 import argparse
@@ -25,21 +27,12 @@ def parse_arguments() -> argparse.Namespace:
         Parsed arguments namespace
     """
     parser = argparse.ArgumentParser(
-        description="Sync AI guides from framework to target project"
+        description="Sync AI guides from current directory (ai-dev) to target project"
     )
 
     parser.add_argument(
-        "--from",
-        dest="framework_dir",
-        required=True,
-        help="Framework directory path (required)"
-    )
-
-    parser.add_argument(
-        "--to",
-        dest="target_dir",
-        default=".",
-        help="Target project directory (default: current directory)"
+        "target_dir",
+        help="Target project directory path"
     )
 
     parser.add_argument(
@@ -226,7 +219,8 @@ def main() -> int:
     try:
         args = parse_arguments()
 
-        framework_dir = Path(args.framework_dir).resolve()
+        # Framework directory is always current directory
+        framework_dir = Path.cwd()
         target_dir = Path(args.target_dir).resolve()
 
         framework_guides, target_guides = validate_paths(

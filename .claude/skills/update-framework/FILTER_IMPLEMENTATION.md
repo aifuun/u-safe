@@ -371,7 +371,8 @@ Total: 71 items (vs 89 without filtering)
 Add flag to reconfigure:
 
 ```bash
-/update-framework --to ../u-safe --reconfigure
+cd ~/dev/ai-dev
+/update-framework ../u-safe --reconfigure
 
 # This will:
 1. Ignore existing .claude/framework-config.json

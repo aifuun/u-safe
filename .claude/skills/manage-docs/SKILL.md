@@ -1,6 +1,6 @@
 ---
 name: manage-docs
-version: "1.0.0"
+version: "1.1.0"
 description: |
   Manage project documentation structure and content with profile awareness.
   TRIGGER when: user wants to check documentation structure, validate docs, or generate missing documentation.
@@ -25,6 +25,36 @@ Profile-aware documentation structure management and validation.
 - ✅ Ensures consistency across project documentation
 
 ---
+
+## Arguments
+
+```bash
+/manage-docs [options]
+```
+
+**Common usage:**
+```bash
+/manage-docs                    # Run all checks (check + validate)
+/manage-docs --check            # Check documentation structure
+/manage-docs --validate         # Validate content (links, code examples)
+/manage-docs --generate         # Generate missing documentation
+/manage-docs --instant          # All-in-one (check + validate + generate)
+```
+
+**Options:**
+- `--check` - Check documentation structure against profile requirements
+- `--validate` - Validate documentation content (links, code examples, format)
+- `--generate` - Generate missing documentation from templates
+- `--instant` - Run all operations in sequence (check + validate + generate)
+- `--profile=<name>` - Override profile from project-profile.md
+- `--dry-run` - Preview actions without executing
+- `--force` - Skip safety checks and prompts
+
+**Advanced options:**
+- `--template-dir=<path>` - Use custom template directory
+- `--output-dir=<path>` - Generate docs to specific directory
+- `--fix-links` - Auto-fix broken internal links
+- `--update-index` - Regenerate documentation index
 
 ## Usage
 
@@ -69,6 +99,135 @@ pillars: [A, B, K, L]
 
 ---
 
+## Safety Features
+
+This skill includes multiple safety mechanisms to ensure reliable documentation management:
+
+### 1. Document Structure Validation
+
+**Purpose**: Prevent corrupted or incomplete documentation structures
+
+**How it works:**
+- Validates required directory structure exists (`docs/`, `docs/architecture/`, etc.)
+- Checks for required files based on profile (README.md, API.md, etc.)
+- Ensures documentation follows project conventions
+
+**Prevents:**
+- Generating docs in wrong locations
+- Overwriting existing important files
+- Creating orphaned documentation
+
+### 2. Profile Configuration Checks
+
+**Purpose**: Ensure profile-aware operations use valid configuration
+
+**How it works:**
+```python
+# Validate profile file exists and is parseable
+if not profile_exists():
+    warn("Project profile not found, using defaults")
+    return default_config
+
+# Validate YAML syntax
+try:
+    profile = yaml.safe_load(profile_content)
+except YAMLError:
+    error("Invalid YAML in project-profile.md")
+    return None
+
+# Validate required fields
+required = ["name", "techStack", "pillars"]
+missing = [f for f in required if f not in profile]
+if missing:
+    error(f"Profile missing fields: {missing}")
+```
+
+**Prevents:**
+- Operating with invalid/corrupted profiles
+- Missing required profile fields causing failures
+- Type errors from malformed YAML
+
+### 3. File Conflict Detection
+
+**Purpose**: Avoid overwriting user-modified documentation
+
+**How it works:**
+```python
+# Before generating docs, check for conflicts
+for doc in docs_to_generate:
+    if file_exists(doc.path):
+        if file_modified_by_user(doc.path):
+            conflicts.append(doc.path)
+
+if conflicts:
+    prompt_user(f"These files exist: {conflicts}")
+    options = ["Skip", "Backup and overwrite", "Merge", "Cancel"]
+    action = ask_user(options)
+```
+
+**Prevents:**
+- Losing user customizations
+- Overwriting manual edits
+- Data loss from automated generation
+
+### 4. Backup Mechanism
+
+**Purpose**: Provide rollback capability for generated documentation
+
+**How it works:**
+```python
+# Before any modifications, create backups
+backup_dir = f".claude/backups/docs-{timestamp}/"
+for file in files_to_modify:
+    backup(file, backup_dir)
+
+# On failure, auto-restore
+try:
+    generate_documentation()
+except Exception as e:
+    restore_from_backup(backup_dir)
+    raise
+```
+
+**Enables:**
+- Rollback on generation failures
+- Manual recovery if needed
+- Audit trail of changes
+
+### 5. Permission Validation
+
+**Purpose**: Ensure filesystem permissions allow documentation operations
+
+**How it works:**
+```python
+# Check write permissions before operations
+def validate_permissions():
+    directories = ["docs/", ".claude/", ".claude/backups/"]
+
+    for dir in directories:
+        if not can_write(dir):
+            error(f"No write permission for {dir}")
+            suggest_fix(f"chmod 755 {dir}")
+            return False
+
+    return True
+```
+
+**Prevents:**
+- Silent failures from permission denied
+- Partial writes leaving inconsistent state
+- Unclear error messages
+
+### Safety Best Practices
+
+When managing documentation:
+
+1. **Run --check before --generate** - Preview what will be created
+2. **Use --dry-run first** - Validate operations without executing
+3. **Keep backups** - Auto-backups in `.claude/backups/docs-*/`
+4. **Review generated docs** - Always check before committing
+5. **Validate profile first** - Ensure configuration is correct
+
 ## Error Handling
 
 All operations include graceful error handling:
@@ -88,7 +247,7 @@ fi
 
 ```bash
 # Validate YAML before reading
-if ! python3 -c "import yaml; yaml.safe_load(open('docs/project-profile.md'))" 2>/dev/null; then
+if ! uv run -c "import yaml; yaml.safe_load(open('docs/project-profile.md'))" 2>/dev/null; then
   echo "⚠️  Warning: Invalid YAML in project-profile.md"
   echo "Continuing with default checks..."
   # Skip profile-based validation
@@ -423,6 +582,244 @@ Next steps:
 
 ---
 
+## Usage Examples
+
+This section provides practical examples of manage-docs usage across different scenarios.
+
+### Example 1: Check Documentation Structure
+
+**Scenario**: Validate project documentation completeness before PR
+
+**User says:**
+> "check if our documentation is complete"
+
+**Execution:**
+```bash
+/manage-docs --check
+```
+
+**What happens:**
+1. **Load profile** - Reads `docs/project-profile.md`
+   ```yaml
+   name: tauri
+   techStack:
+     frontend: React
+     backend: Rust
+     desktop: Tauri
+   ```
+
+2. **Determine required docs** based on tech stack:
+   - ✅ `docs/architecture/tauri-ipc.md`
+   - ✅ `docs/development/desktop-builds.md`
+   - ❌ `docs/development/rust-backend.md` (missing)
+   - ✅ `docs/architecture/component-structure.md`
+   - ❌ `docs/testing/rust-tests.md` (missing)
+
+3. **Validate directory structure:**
+   - ✅ `docs/` exists
+   - ✅ `docs/architecture/` exists
+   - ✅ `docs/development/` exists
+   - ⚠️ `docs/api/` missing (optional)
+
+4. **Report findings:**
+   ```
+   📋 Documentation Check Results
+
+   Profile: tauri
+   Tech Stack: React + Rust + Tauri
+
+   Missing Documentation (2):
+   - docs/development/rust-backend.md
+   - docs/testing/rust-tests.md
+
+   Optional (1):
+   - docs/api/ directory
+
+   Recommendation: Run /manage-docs --generate
+   ```
+
+**Time:** ~5 seconds
+
+**Key insight:** Profile-aware checking ensures tech-stack-specific docs are present.
+
+### Example 2: Generate Missing Documentation
+
+**Scenario**: Auto-create missing docs from templates
+
+**User says:**
+> "generate the missing documentation files"
+
+**Execution:**
+```bash
+/manage-docs --generate
+```
+
+**What happens:**
+1. **Run check first** to identify missing docs
+
+2. **Find templates** for missing files:
+   - Template: `.claude/guides/doc-templates/rust-backend.md.template`
+   - Template: `.claude/guides/doc-templates/rust-tests.md.template`
+
+3. **Customize templates** with project data:
+   ```markdown
+   # Rust Backend Development
+
+   > Auto-generated from template for project: tauri-app
+
+   ## Tech Stack
+   - Backend: Rust
+   - IPC: Tauri Commands
+
+   ## Project Structure
+   ```
+
+4. **Create backup** before writing:
+   ```bash
+   Backup created: .claude/backups/docs-20260407-154530/
+   ```
+
+5. **Write generated files:**
+   - Created: `docs/development/rust-backend.md`
+   - Created: `docs/testing/rust-tests.md`
+
+6. **Update documentation index:**
+   ```bash
+   Updated: docs/INDEX.md
+   Added 2 new entries
+   ```
+
+7. **Report results:**
+   ```
+   ✅ Documentation Generated
+
+   Created (2):
+   - docs/development/rust-backend.md
+   - docs/testing/rust-tests.md
+
+   Backup: .claude/backups/docs-20260407-154530/
+
+   Next steps:
+   1. Review generated files
+   2. Customize content for your project
+   3. Commit changes
+   ```
+
+**Time:** ~10 seconds
+
+**Key insight:** Templates are customized with project context from profile.
+
+### Example 3: Profile-Specific Documentation
+
+**Scenario**: Generate docs for different profile (e.g., testing Next.js setup)
+
+**User says:**
+> "show me what docs would be needed for a Next.js + AWS setup"
+
+**Execution:**
+```bash
+/manage-docs --check --profile=nextjs-aws --dry-run
+```
+
+**What happens:**
+1. **Override profile** temporarily:
+   ```python
+   profile = load_profile("nextjs-aws")  # Instead of reading project-profile.md
+   ```
+
+2. **Determine required docs** for Next.js + AWS:
+   - `docs/architecture/nextjs-routing.md`
+   - `docs/infrastructure/aws-deployment.md`
+   - `docs/api/lambda-functions.md`
+   - `docs/development/react-patterns.md`
+
+3. **Compare with current docs:**
+   - ❌ None exist (different stack)
+
+4. **Dry-run report** (no files created):
+   ```
+   🔍 Dry Run: Profile nextjs-aws
+
+   Would require (4 files):
+   - docs/architecture/nextjs-routing.md
+   - docs/infrastructure/aws-deployment.md
+   - docs/api/lambda-functions.md
+   - docs/development/react-patterns.md
+
+   Would create backup: .claude/backups/docs-20260407-154600/
+
+   ℹ️  Dry run - no changes made
+   Run without --dry-run to generate
+   ```
+
+**Time:** ~3 seconds
+
+**Key insight:** --profile override allows testing different configurations without modifying project.
+
+### Example 4: Validate and Fix Broken Links
+
+**Scenario**: Check documentation for broken internal links
+
+**User says:**
+> "validate our documentation and fix any broken links"
+
+**Execution:**
+```bash
+/manage-docs --validate --fix-links
+```
+
+**What happens:**
+1. **Scan all markdown files** in `docs/`
+
+2. **Check internal links:**
+   ```markdown
+   # Found in docs/architecture/overview.md:
+   [Component Structure](../development/components.md)  ✅ Valid
+   [API Guide](../api/endpoints.md)  ❌ Broken (file not found)
+   [Rust Backend](./backend.md)  ❌ Broken (should be ../development/rust-backend.md)
+   ```
+
+3. **Check external links:**
+   ```markdown
+   https://tauri.app/v1/guides/  ✅ Valid (200 OK)
+   https://example.com/old-page  ⚠️ Warning (404 Not Found)
+   ```
+
+4. **Auto-fix enabled** - attempt repairs:
+   ```
+   Fixing broken links:
+   - ./backend.md → ../development/rust-backend.md (found nearby)
+   - ../api/endpoints.md → (no fix available, flagged for manual review)
+   ```
+
+5. **Report results:**
+   ```
+   📝 Validation Results
+
+   Internal links checked: 24
+   - ✅ Valid: 20
+   - ❌ Broken: 2 (1 auto-fixed)
+   - ⚠️  Manual review needed: 1
+
+   External links checked: 8
+   - ✅ Valid: 7
+   - ⚠️  404 errors: 1
+
+   Auto-fixed (1):
+   - docs/architecture/overview.md:
+     ./backend.md → ../development/rust-backend.md
+
+   Manual review needed (1):
+   - docs/architecture/overview.md:
+     ../api/endpoints.md (file does not exist)
+
+   Next: Review changes and commit
+   ```
+
+**Time:** ~15 seconds (includes HTTP requests for external links)
+
+**Key insight:** --fix-links automates common link corrections while flagging issues needing manual attention.
+
 ## Related Documentation
 
 - [Project Profile](../../docs/project-profile.md) - Tech stack config
@@ -431,7 +828,7 @@ Next steps:
 
 ---
 
-## Notes for Claude
+## AI Execution Instructions
 
 When user invokes `/manage-docs`:
 

@@ -56,14 +56,16 @@
 ### Framework Management
 
 ```bash
+# Must be in ai-dev directory
+cd ~/dev/ai-dev
+
 # Sync entire framework (recommended)
-/update-framework --from ~/dev/ai-dev
+/update-framework ../my-app
 
 # Or sync individual components
-/update-skills --from ~/dev/ai-dev
-/update-pillars --from ~/dev/ai-dev
-/update-rules --from ~/dev/ai-dev
-/update-workflow --from ~/dev/ai-dev
+/update-skills ../my-app
+/update-pillars ../my-app
+/update-guides ../my-app
 ```
 
 ---
@@ -133,11 +135,13 @@ Shared code logic? → Python library (Layer 3, imported by Layer 2)
 
 | Skill | Purpose | Command | Details |
 |-------|---------|---------|---------|
-| **update-framework** | Sync all framework components | `/update-framework --from <path>` | [SKILL.md](update-framework/SKILL.md) |
-| **update-skills** | Sync skills only | `/update-skills --from <path>` | [SKILL.md](update-skills/SKILL.md) |
-| **update-pillars** | Sync Pillars only | `/update-pillars --from <path>` | [SKILL.md](update-pillars/SKILL.md) |
-| **update-rules** | Sync rules only | `/update-rules --from <path>` | [SKILL.md](update-rules/SKILL.md) |
-| **update-workflow** | Sync workflow docs | `/update-workflow --from <path>` | [SKILL.md](update-workflow/SKILL.md) |
+| **update-framework** | Sync all framework components | `/update-framework <target-path>` | [SKILL.md](update-framework/SKILL.md) |
+| **update-skills** | Sync skills only | `/update-skills <target-path>` | [SKILL.md](update-skills/SKILL.md) |
+| **update-pillars** | Sync Pillars only | `/update-pillars <target-path>` | [SKILL.md](update-pillars/SKILL.md) |
+| **update-guides** | Sync AI guides and profiles | `/update-guides <target-path>` | [SKILL.md](update-guides/SKILL.md) |
+| **update-permissions** | Sync permissions config | `/update-permissions <target-path>` | [SKILL.md](update-permissions/SKILL.md) |
+
+**Note**: All update-* skills must be run from ai-dev directory. For rules, use `/manage-rules` instead.
 
 ### 🛠️ Specialized Tools
 
@@ -372,7 +376,7 @@ if __name__ == '__main__':
 
 **Python import errors?**
 - Verify _scripts path: `sys.path.insert(0, str(Path(__file__).parent.parent.parent / '_scripts'))`
-- Check Python version: `python3 --version` (requires 3.9+)
+- Check Python version: `uv run python --version` (requires 3.9+)
 - See: [PYTHON_GUIDE.md](PYTHON_GUIDE.md) troubleshooting section
 
 **Need to add/modify skills?**
@@ -390,7 +394,7 @@ cat .claude/skills/{skill-name}/SKILL.md
 ls -1 .claude/skills/ | grep -v "^_" | grep -v "\.md$"
 
 # Test shared libraries (example)
-python3 -c "import sys; sys.path.insert(0, '.claude/skills/_scripts'); from git.worktree import list_worktrees; print('OK')"
+uv run -c "import sys; sys.path.insert(0, '.claude/skills/_scripts'); from git.worktree import list_worktrees; print('OK')"
 
 # Verify Python-only (should show 0)
 find .claude/skills -name "*.sh" | wc -l

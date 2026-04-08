@@ -21,10 +21,9 @@ Detailed orchestration logic, execution patterns, and output examples for the up
 For each enabled component:
 
 1. Call respective update-* skill with flags
-   - update-pillars --from <source> --dry-run
-   - update-rules --from <source> --dry-run
-   - update-workflow --from <source> --dry-run
-   - update-skills --from <source> --dry-run
+   - update-pillars <target> --dry-run
+   - update-guides <target> --dry-run
+   - update-skills <target> --dry-run
 
 2. Capture analysis output from each skill
    - Parse component-specific change counts
@@ -36,8 +35,7 @@ For each enabled component:
    │ Component  │ New │ Upd │ Same │ Action   │
    ├────────────┼─────┼─────┼──────┼──────────┤
    │ Pillars    │  0  │  2  │   3  │ Update 2 │
-   │ Rules      │  1  │  3  │  36  │ Update 4 │
-   │ Workflow   │  1  │  1  │   3  │ Update 2 │
+   │ Guides     │  1  │  3  │  16  │ Update 4 │
    │ Skills     │  2  │  1  │  10  │ Update 3 │
    └────────────┴─────┴─────┴──────┴──────────┘
 
@@ -47,10 +45,9 @@ For each enabled component:
    - No per-component confirmations
 
 5. If confirmed, execute actual sync:
-   - update-pillars --from <source>
-   - update-rules --from <source>
-   - update-workflow --from <source>
-   - update-skills --from <source>
+   - update-pillars <target>
+   - update-guides <target>
+   - update-skills <target>
 
 6. Collect results and report comprehensive summary
    - Count total items synced
@@ -265,10 +262,12 @@ Retrying failed components...
 ❌ Still failing: Permission denied
 
 Please fix the permission issue and run:
-  /update-workflow --from ~/dev/ai-dev
+  cd ~/dev/ai-dev
+  /update-guides ../my-app
 
 Or retry entire framework sync:
-  /update-framework --from ~/dev/ai-dev --only workflow
+  cd ~/dev/ai-dev
+  /update-framework ../my-app --only guides
 ```
 
 ### Graceful Degradation

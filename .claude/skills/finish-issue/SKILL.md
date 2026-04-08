@@ -63,6 +63,158 @@ Manually finishing an issue requires 10+ commands (git, gh CLI) and takes 5-10 m
 - `--dry-run` - Show what would happen without executing
 - `--force` - Skip validation checks (use cautiously)
 
+## Safety Features
+
+This skill includes comprehensive safety mechanisms to prevent accidental damage during issue completion:
+
+### 1. Pre-Finish Validation
+
+**What it checks:**
+- Review status exists and is valid (score ≥ 90 recommended)
+- Not on main branch (must be on feature branch)
+- No uncommitted changes (all work committed)
+- Tests passing (if test suite exists)
+- Branch synced with main (no merge conflicts)
+
+**Why it matters:**
+- Prevents merging untested code
+- Ensures quality gates passed
+- Avoids losing uncommitted work
+- Reduces merge conflict risks
+
+**On failure:**
+```
+❌ Pre-finish validation failed
+
+Issues:
+- No review status (run /review first)
+- 3 uncommitted files (commit before finishing)
+- 2 tests failing (fix tests before merge)
+
+Fix: Address issues above, then retry /finish-issue
+```
+
+### 2. Commit Safety
+
+**What it checks:**
+- Commit message format (semantic commit with issue reference)
+- All changed files staged (no forgotten files)
+- Commit includes "Fixes #N" footer (auto-closes issue)
+- Co-authored-by attribution present
+
+**Why it matters:**
+- Ensures consistent commit history
+- Enables automatic issue closing
+- Provides proper attribution
+- Makes commits searchable
+
+**On failure:**
+```
+⚠️ Commit validation warning
+
+- Commit message missing "Fixes #511"
+- 1 file not staged: .claude/plans/active/issue-511-plan.md
+
+Action: Auto-correcting commit message and staging files
+```
+
+### 3. PR Creation Validation
+
+**What it checks:**
+- Issue body accessible (for PR description)
+- Branch pushed to remote
+- No existing PR for this branch
+- PR title includes issue reference
+
+**Why it matters:**
+- Prevents duplicate PRs
+- Ensures PR properly linked to issue
+- Provides context in PR description
+
+**On failure:**
+```
+❌ PR creation failed
+
+Error: PR already exists for this branch
+Existing PR: #534
+
+Options:
+1. View PR: gh pr view 534
+2. Continue with existing PR
+3. Close old PR and create new one
+```
+
+### 4. Merge Safety
+
+**What it checks:**
+- All PR checks passing (CI/CD, required reviews)
+- Branch up-to-date with main
+- Squash merge strategy (clean history)
+- Branch deletion after merge
+
+**Why it matters:**
+- Prevents merging broken code
+- Ensures linear git history
+- Cleans up remote branches
+
+**On failure:**
+```
+❌ Merge blocked
+
+Checks failing:
+- CI build failed (fix build errors)
+- 1 required review missing (request review)
+
+Fix: Address check failures, then retry merge
+```
+
+### 5. Cleanup Safety
+
+**What it checks:**
+- Worktree removed successfully (no orphaned directories)
+- Local branch deleted
+- Status files cleaned (.eval-plan-status.json, .review-status.json)
+- Back on main branch and up-to-date
+
+**Why it matters:**
+- Prevents disk accumulation
+- Avoids state confusion
+- Ensures clean working environment
+
+**On failure:**
+```
+⚠️ Cleanup incomplete
+
+Issues:
+- Worktree has uncommitted files (forcing removal)
+- Local branch deletion failed (branch protected)
+
+Action: Manual cleanup may be required
+Command: git worktree remove --force {path}
+```
+
+### Safety Override
+
+Use `--force` flag to bypass safety checks:
+
+```bash
+/finish-issue #511 --force  # Skips validation
+```
+
+**Warning:** Only use --force when you understand the risks:
+- May merge untested/unreviewed code
+- May create duplicate PRs
+- May skip quality gates
+- May leave cleanup incomplete
+
+**Recommended approach:** Fix the safety issue instead:
+```bash
+# Instead of --force, fix the issue:
+/review                    # Run quality check
+git add . && git commit    # Commit uncommitted changes
+/finish-issue #511         # Now safe to proceed
+```
+
 ## AI Execution Instructions
 
 **CRITICAL: Immediate Issue Detection**
@@ -239,112 +391,119 @@ Merges PR with squash strategy for clean history. Use `gh pr merge --squash --de
 
 ### Step 5: Generate Summary Comment
 
-**Create comprehensive completion summary:**
+**Create human-friendly completion summary:**
+
+Uses `formatter.py` to generate standardized, business-focused output with 4 main sections:
 
 ```python
+from formatter import HumanReadableSummary
+
 def generate_issue_summary(issue_number: int, branch_name: str) -> str:
+    """生成人类友好的 issue 完成总结
+
+    Extracts information from multiple sources:
+    - Issue body: Why (background/problem)
+    - Plan file: What (main changes), Achievements (acceptance criteria)
+    - Review data: Notes (recommendations)
+    - Git history: Technical metrics
+
+    Returns: Human-readable markdown focused on business value
     """
-    生成 issue 完成总结内容
+    # Gather raw data
+    issue_data = get_issue_details(issue_number)
+    commits = get_commits(branch_name)
+    plan_content = read_plan_file(issue_number)
+    review_data = load_review_status()
 
-    Returns: Formatted markdown string
-    """
-    # 1. 提取 commits 列表 (from origin/main to current branch)
-    commits = Bash(f'git log origin/main..HEAD --oneline')
-    commit_count = len(commits.split('\n'))
+    # Use formatter to generate summary
+    summary = HumanReadableSummary.from_issue_data(
+        issue_number=issue_number,
+        issue_title=issue_data['title'],
+        issue_body=issue_data['body'],
+        commits=commits,
+        plan_content=plan_content,
+        review_data=review_data,
+        files_changed=count_files_changed(),
+        lines_summary=get_lines_summary(),
+        duration=calculate_duration(),
+        issue_url=issue_data['url'],
+        pr_number=get_pr_number(branch_name)
+    )
 
-    # 2. 提取变更文件统计
-    diff_stat = Bash(f'git diff origin/main..HEAD --stat')
-
-    # 3. 读取 review 分数（如果存在）
-    review_score = None
-    try:
-        with open('.claude/.review-status.json', 'r') as f:
-            review_data = json.load(f)
-            review_score = review_data.get('score')
-    except:
-        pass
-
-    # 4. 提取 PR 编号 (from gh pr list or recent PR)
-    pr_number = extract_pr_number_from_branch(branch_name)
-
-    # 5. 格式化 markdown
-    return f"""## ✅ Issue 完成总结
-
-**分支**: {branch_name}
-**PR**: #{pr_number}
-**完成时间**: {datetime.now().strftime('%Y-%m-%d %H:%M')}
-
-### Commits 列表
-
-{commits}
-
-**总计**: {commit_count} commits
-
-### 变更文件
-
-{diff_stat}
-
-### 代码质量
-
-{format_review_score(review_score) if review_score else 'No review data'}
-
----
-
-🤖 Generated by [Claude Code](https://claude.com/claude-code) via `/finish-issue`
-"""
+    return summary.format_output()
 ```
 
-**Summary includes:**
-- Branch name and PR number
-- Complete commits list with hashes and messages
-- File change statistics (additions/deletions)
-- Code review score (if /review was run)
-- Timestamp of completion
+**Output format (4 sections):**
 
-**Why this step:**
-- Provides permanent record of what was done
-- Easy to reference later (no need to check PR/commits)
-- Shows testing and quality metrics
-- Documents completion context
+1. **💡 实现原因 (Why)** - Business problem/background from issue body
+2. **✨ 主要改动 (What)** - 3-5 core changes from plan/commits
+3. **🎯 实现功能 (Achievements)** - Features delivered (acceptance criteria)
+4. **⚠️ 注意事项 (Notes)** - Warnings, breaking changes, follow-ups
+
+Plus one-line technical metrics: `📊 质量：92/100 | 3 commits | 8 files (+245/-120)`
+
+**Information extraction:**
+- **Why**: Regex extracts `## 背景` or `## 问题` from issue body; fallback to first paragraph
+- **What**: Parses `### Part N:` structure from plan; fallback to commit messages
+- **Achievements**: Extracts completed items from `## 验收标准` section
+- **Notes**: Combines review recommendations (severity >= warning) + plan technical points
+
+**Why this format:**
+- Focuses on business value, not technical details
+- Easy for stakeholders to understand completion status
+- Consistent format across all issues
+- Technical metrics condensed to single line
 
 ### Step 6: Post Summary to Issue
 
-Posts comprehensive completion summary as issue comment before closing. Use `gh issue comment` with heredoc to avoid special character issues. Summary includes branch name, PR number, commits list, file changes, and review score.
+Posts human-friendly completion summary as issue comment before closing. Uses the standardized 4-section format (Why/What/Achievements/Notes) generated by `formatter.py`.
 
-**Example summary:**
+**Example summary (Issue #558):**
 ```markdown
-## ✅ Issue 完成总结
+🎉 Issue #558 完成：改进 sync skill commit 消息质量和简化实现
 
-**分支**: feature/97-implement-auth
-**PR**: #109
-**完成时间**: 2026-03-23 15:30
+## 💡 实现原因
 
-### Commits 列表
+当前 /sync skill 的 commit 消息过于通用，缺乏具体信息：
+- Auto-commit 缺少文件列表和原因
+- Merge 未指明具体分支
+- Conflict 未说明冲突文件和策略
 
-a1b2c3d feat: add OAuth2 login flow
-e4f5g6h feat: implement logout endpoint
-i7j8k9l docs: update authentication guide
+这导致 Git history 可读性差，无法从历史记录了解具体变更，调试困难。
+同时 SKILL.md 476 行过于复杂，需要简化。
 
-**总计**: 3 commits
+## ✨ 主要改动
 
-### 变更文件
+- Part 1: Commit 消息增强 - Auto-commit 现在包含文件列表、分支名、原因说明
+- Part 1: Merge 消息包含具体分支名、commit 数量、最近 5 个 commits
+- Part 1: Conflict 消息包含冲突文件列表、解决策略
+- Part 2: SKILL.md 从 501 行精简到 275 行（减少 45%）
+- Part 2: 冲突处理拆分到 CONFLICT-HANDLING.md（162 行）
 
- src/auth/login.ts     | 45 +++++++++++++++++++++++++
- src/auth/logout.ts    | 28 +++++++++++++++
- docs/AUTH.md          | 15 +++++++++
- 3 files changed, 88 insertions(+)
+## 🎯 实现功能
 
-### 代码质量
+- Git history 现在可以直接看懂每个 commit 做了什么
+- Commit 消息自动包含关键上下文信息
+- 文档结构清晰，核心流程和详细指南分离
+- 新用户快速上手（核心文档 < 300 行）
+- 验收标准：11/12 完成（92%）
 
-✅ Review Score: 92/100
-- Architecture: 38/40
-- Best Practices: 28/30
-- Testing: 25/30
+## ⚠️ 注意事项
+
+- 新的 commit 消息格式需要 bash 变量捕获，确保 shell 环境支持
+- 如果生成失败，会降级到简单格式（向后兼容）
+- CONFLICT-HANDLING.md 和 SYNC-STRATEGIES.md 是可选文档
 
 ---
-
-🤖 Generated by [Claude Code](https://claude.com/claude-code) via `/finish-issue`
+📊 质量：94/100 | 1 commit | 4 files (+852/-718)
+🔗 Issue #558 | PR #559 | 用时：2小时
 ```
+
+**What changed:**
+- Old format: Technical focus (commits, files, test coverage)
+- New format: Business focus (why, what, achievements, notes)
+- Technical metrics compressed to 1 line
+- Easier for stakeholders to understand value delivered
 
 ### Step 7: Close Issue
 
@@ -387,13 +546,117 @@ Claude:
 
 **Common errors:** Not on feature branch (checkout feature branch first), uncommitted changes (commit before finishing), no review status (run `/review` or use `--force`), PR already exists (check `gh pr list` and merge manually), merge conflicts (sync with main and resolve). Summary generation/posting failures use graceful degradation: skip optional summary, continue to close issue, allow manual summary addition.
 
-## Examples
+## Usage Examples
 
-**Basic finish:** User says "finish issue #97" → Claude creates 8-step task list, commits changes with issue reference, creates and merges PR, posts summary comment to issue (commits, file changes, review score), closes issue, cleanups (archives plan, removes state files, deletes branch/worktree). Time: ~2-3 minutes.
+### Example 1: Basic Finish (Happy Path)
 
-**Dry run:** Use `--dry-run` to preview steps without executing. Time: <10 seconds.
+**User says:**
+> "finish issue #97"
 
-**No merge:** Use `--no-merge` to create PR but skip merging for manual review.
+**What happens:**
+1. **Pre-finish validation** - Checks review status, tests passing, no uncommitted changes
+2. **Commit changes** - Semantic commit with "Fixes #97" footer
+3. **Create PR** - Generates PR with issue context, summary, test results
+4. **Merge PR** - Squash merge to main, deletes remote branch
+5. **Post summary** - Adds completion summary to issue (commits, files, review score)
+6. **Close issue** - Marks issue as closed on GitHub
+7. **Cleanup** - Removes worktree, deletes local branch, cleans status files
+8. **Return to main** - Switches to main branch, pulls latest
+
+**Output:**
+```
+✅ Issue #97 finished successfully
+
+Commits: 1 commit
+PR: #534 (merged)
+Review score: 92/100
+
+Cleanup complete:
+- Worktree removed
+- Branch deleted
+- Status files cleaned
+
+Back on: main branch
+```
+
+**Time:** ~2-3 minutes
+
+### Example 2: Dry Run Preview
+
+**User says:**
+> "show me what would happen if I finish issue #97, but don't actually do it"
+
+**What happens:**
+1. **Load plan and review status**
+2. **Preview all 8 steps** without executing:
+   ```
+   DRY RUN MODE - No changes will be made
+
+   Step 1: Commit changes
+     Files: .claude/skills/finish-issue/SKILL.md
+     Message: "docs(finish-issue): add Safety Features and Usage Examples"
+
+   Step 2: Create PR
+     Title: "docs: finish-issue 文档重构（ADR-020 合规）"
+     Body: [Summary of changes...]
+
+   Step 3: Merge PR
+     Strategy: Squash merge
+     Delete branch: Yes
+
+   Step 4-8: [Summary, Close, Cleanup...]
+
+   To execute: /finish-issue #97 (without --dry-run)
+   ```
+
+**Time:** <10 seconds
+
+### Example 3: Error Handling (Validation Failure)
+
+**User says:**
+> "finish issue #97"
+
+**What happens:**
+```
+❌ Pre-finish validation failed
+
+Issues found:
+1. No review status found
+   - Run: /review
+   - Or use: /finish-issue #97 --force (not recommended)
+
+2. Uncommitted changes detected
+   - Files: .claude/skills/finish-issue/SKILL.md
+   - Action: Commit changes before finishing
+
+3. Tests failing (2/10 passing)
+   - Failed: test_validation, test_cleanup
+   - Fix tests before merge
+
+Fix these issues, then retry /finish-issue #97
+```
+
+**User fixes issues:**
+```bash
+# Fix tests
+npm test  # All passing ✅
+
+# Commit changes
+git add .
+git commit -m "fix: resolve test failures"
+
+# Run review
+/review  # Score: 92/100 ✅
+
+# Retry finish
+/finish-issue #97  # Now succeeds ✅
+```
+
+**Outcome:** All validation checks pass, issue finishes successfully
+
+**Time:** 5-10 minutes (including fixes)
+
+**Key insight:** Safety checks prevent merging broken code. Fix issues instead of using --force.
 
 ## Integration
 
@@ -443,6 +706,116 @@ If worktree was created by `/start-issue`, extract worktree path from plan metad
 
 ---
 
+## Testing
+
+This skill has comprehensive test coverage following ADR-020 standards.
+
+### Test Suite Overview
+
+**Location**: `.claude/skills/finish-issue/tests/`
+
+**Coverage**: 80%+ (ADR-015 requirement)
+
+**Test Files**:
+- `test_detection.py` (8 tests) - Issue number detection strategies
+- `test_worktree.py` (7 tests) - Worktree handling and cleanup
+- `test_validation.py` (7 tests) - Pre-finish validation checks
+- `test_safety.py` (15 tests) - All 5 safety mechanisms
+- `test_examples.py` (12 tests) - Usage examples from SKILL.md
+- `test_workflow.py` (9 tests) - End-to-end integration tests
+
+**Total**: 58 tests across 6 categories
+
+### Running Tests
+
+```bash
+# Navigate to skill directory
+cd .claude/skills/finish-issue
+
+# Activate virtual environment
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r tests/requirements.txt
+
+# Run all tests
+pytest tests/
+
+# Run with coverage
+pytest tests/ --cov --cov-report=term-missing
+
+# Run specific category
+pytest tests/ -m unit          # Unit tests only
+pytest tests/ -m integration   # Integration tests only
+pytest tests/ -m safety        # Safety mechanism tests
+pytest tests/ -m examples      # Usage example tests
+
+# Run specific file
+pytest tests/test_detection.py
+pytest tests/test_safety.py
+```
+
+### Test Categories
+
+Tests are organized with pytest markers:
+
+| Marker | Count | Purpose |
+|--------|-------|---------|
+| `unit` | 22 | Unit tests for individual functions |
+| `integration` | 9 | End-to-end workflow tests |
+| `safety` | 15 | Safety mechanism validation |
+| `examples` | 12 | Usage examples from docs |
+
+### Coverage Requirements
+
+- **Minimum**: 80% (ADR-015 standard)
+- **Target**: 90%+
+- **Fails CI if**: Coverage < 80%
+
+Check coverage:
+```bash
+pytest tests/ --cov --cov-report=html
+open htmlcov/index.html
+```
+
+### Adding New Tests
+
+When adding new functionality:
+
+1. **Create test file** in `tests/` (follow `test_*.py` naming)
+2. **Add marker** from conftest.py (`@pytest.mark.unit`, `@pytest.mark.integration`, etc.)
+3. **Use fixtures** from `conftest.py` for setup
+4. **Follow ADR-020** - tests should map to SKILL.md sections
+5. **Run coverage** - ensure new code is covered
+
+Example test structure:
+```python
+import pytest
+
+@pytest.mark.unit
+class TestNewFeature:
+    def test_feature_behavior(self, temp_worktree):
+        """Test description matching SKILL.md section."""
+        # Arrange
+        setup_data = prepare_test_data()
+
+        # Act
+        result = execute_feature(setup_data)
+
+        # Assert
+        assert result == expected_output
+```
+
+### Continuous Integration
+
+Tests run automatically on:
+- Every PR to main branch
+- Every commit to feature branches
+- Manual workflow dispatch
+
+CI configuration: `.github/workflows/test-finish-issue.yml`
+
+---
+
 ## Final Verification
 
 **Critical checks before completion:**
@@ -480,7 +853,7 @@ This is a **workflow skill** and must follow the standard pattern:
 
 ---
 
-**Version:** 3.1.0
+**Version:** 3.2.0
 **Pattern:** Workflow Orchestrator (AI-guided + Script)
 **Compliance:** ADR-001 ✅ | ADR-003 ✅ | WORKFLOW_PATTERNS ✅
 **Last Updated:** 2026-03-18

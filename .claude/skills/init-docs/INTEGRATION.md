@@ -30,7 +30,7 @@
 
 **Workflow:**
 ```
-1. python3 scripts/init-project.py --profile=tauri --name=my-app
+1. uv run scripts/init-project.py --profile=tauri --name=my-app
    # Creates .framework-install with profile
 
 2. /init-docs
